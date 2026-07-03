@@ -1,0 +1,1 @@
+import{f as e,p as t}from"./index-BsnmE8U4.js";function n({kind:n,field:r,inputMode:i,autoComplete:a,enterKeyHint:o}){let s=t(`${n}:${r}`),c={...e};return n===`secret`||n===`config`?{...c,autoComplete:a??`new-password`,enterKeyHint:o??`done`,inputMode:i??`text`,name:s}:{...c,autoComplete:a??`new-password`,enterKeyHint:o??`go`,inputMode:i??`url`,name:s}}export{n as t};
