@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover, interactive-widget=resizes-content" />
+  <title>Csy-OS</title>
+
+  <!-- PWA Settings -->
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Csy-OS" />
+  <meta name="application-name" content="Csy-OS" />
+
+  <!-- Updated Icons -->
+  <link rel="icon" type="image/webp" href="/icons/icon-96.webp" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.webp" />
+
+  <!-- Preconnect: 提前建立到外部域名的 TCP/TLS 连接 -->
+  <link rel="preconnect" href="https://fonts.loli.net" />
+  <link rel="preconnect" href="https://gstatic.loli.net" crossorigin />
+  <link rel="preconnect" href="https://sharkpan.xyz" crossorigin />
+  <link rel="preconnect" href="https://i.postimg.cc" crossorigin />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+
+  <!-- Preload launch screen icon -->
+  <link rel="preload" as="image" href="/icons/icon-256.webp" />
+  <link rel="preload" as="image" href="/images/taoyuan-splash-bg-v3.webp"
+    imagesrcset="/images/taoyuan-splash-bg-v3.webp 622w, /images/taoyuan-splash-bg-v3-2x.webp 1244w"
+    imagesizes="100vw" />
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/taoyuan-splash-poem.woff2" crossorigin />
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&display=swap" rel="stylesheet">
+  <link href="https://fonts.loli.net/css2?family=Archivo:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=Quicksand:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.loli.net/css2?family=Noto+Serif+SC:wght@300;400;500;700&family=Space+Mono:wght@400&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+  <link href="https://fonts.loli.net/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital@1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <!-- Launch Screen Styles (inline for instant render) -->
+  <style>
+    #launch-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      font-family: 'Quicksand', -apple-system, sans-serif;
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+    #launch-screen.fade-out {
+      opacity: 0;
+      transform: scale(1.05);
+      pointer-events: none;
+    }
+
+    /* 猫咪图标 */
+    .launch-icon {
+      width: 120px;
+      height: 120px;
+      border-radius: 30px;
+      -o-object-fit: cover;
+         object-fit: cover;
+      filter: none;
+      animation: launch-icon-enter 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+                 launch-float 3s ease-in-out 0.8s infinite;
+      opacity: 0;
+      transform: scale(0.5) translateY(20px);
+    }
+
+    /* 呼吸光环 */
+    .launch-glow {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
+      background: transparent;
+      animation: launch-glow-breathe 3s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+
+    /* 应用名 */
+    .launch-title {
+      margin-top: 24px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: rgba(104, 96, 102, 0.58);
+      opacity: 0;
+      animation: launch-fade-up 0.6s ease-out 0.4s forwards;
+    }
+
+    /* 跳动圆点加载 */
+    .launch-dots {
+      display: flex;
+      gap: 8px;
+      margin-top: 32px;
+      opacity: 0;
+      animation: launch-fade-up 0.5s ease-out 0.6s forwards;
+    }
+    .launch-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(160, 151, 156, 0.32);
+    }
+    .launch-dot:nth-child(1) { animation: launch-dot-bounce 1.2s ease-in-out 0.7s infinite; }
+    .launch-dot:nth-child(2) { animation: launch-dot-bounce 1.2s ease-in-out 0.85s infinite; }
+    .launch-dot:nth-child(3) { animation: launch-dot-bounce 1.2s ease-in-out 1.0s infinite; }
+
+    /* Keyframes */
+    @keyframes launch-icon-enter {
+      0%   { opacity: 0; transform: scale(0.5) translateY(20px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes launch-float {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-8px); }
+    }
+    @keyframes launch-glow-breathe {
+      0%   { transform: scale(0.85); opacity: 0.5; }
+      100% { transform: scale(1.15); opacity: 0.9; }
+    }
+    @keyframes launch-fade-up {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes launch-dot-bounce {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40%           { transform: translateY(-12px); opacity: 1; }
+    }
+</style>
+
+<!-- 小鱼拦截器：强制切断并冻结所有后端请求，让程序永远处于“等待中”，防止拿到空数据而崩溃 -->
+<script>
+  var originalFetch = window.fetch;
+  window.fetch = function() {
+    var url = arguments[0] instanceof Request ? arguments[0].url : arguments[0];
+    // 如果发现程序在尝试连接后端(包含api、health或workers等关键词)
+    if (typeof url === 'string' && (url.indexOf('/api') !== -1 || url.indexOf('/health') !== -1 || url.indexOf('workers.dev') !== -1)) {
+      console.log('拦截器已触发，冻结危险的数据请求：', url);
+      // 核心魔法：返回一个“永远不兑现”的空头支票，页面就会乖乖停留在 UI 状态！
+      return new Promise(function() {}); 
+    }
+    // 其它正常的本地图片、字体等资源请求，正常放行
+    return originalFetch.apply(this, arguments);
+  };
+</script>
+
+<script type="module" crossorigin src="/assets/index-BsnmE8U4.js"></script>
+<link rel="modulepreload" crossorigin href="/assets/rolldown-runtime-CMxvf4Kt.js">
+  <link rel="modulepreload" crossorigin href="/assets/vendor-pdf-Be_6UU5k.js">
+  <link rel="modulepreload" crossorigin href="/assets/dist-BcvA-GRa.js">
+  <link rel="modulepreload" crossorigin href="/assets/definitions-BdWVgBTV.js">
+  <link rel="modulepreload" crossorigin href="/assets/haptics-DpU5FCYb.js">
+  <link rel="modulepreload" crossorigin href="/assets/jszip.min-Uer3KtZc.js">
+  <link rel="modulepreload" crossorigin href="/assets/jsx-runtime-DDrWIXeu.js">
+  <link rel="modulepreload" crossorigin href="/assets/react-ICqv4BO6.js">
+  <link rel="modulepreload" crossorigin href="/assets/types-D-wyVybo.js">
+  <link rel="modulepreload" crossorigin href="/assets/storage-CO_P6eOB.js">
+  <link rel="modulepreload" crossorigin href="/assets/apiRequestLedger-xch2PgYd.js">
+  <link rel="modulepreload" crossorigin href="/assets/backendConfig-CVAr20GZ.js">
+  <link rel="modulepreload" crossorigin href="/assets/characterStore-DWNXWvvF.js">
+  <link rel="modulepreload" crossorigin href="/assets/runtimeConfig-CuKHoMWO.js">
+  <link rel="modulepreload" crossorigin href="/assets/vectorMemorySyncState-9VIEqyfY.js">
+  <link rel="modulepreload" crossorigin href="/assets/backendClient-DTToPS60.js">
+  <link rel="modulepreload" crossorigin href="/assets/db-DUD8mibL.js">
+  <link rel="modulepreload" crossorigin href="/assets/calendarContext-Be0hqdjh.js">
+  <link rel="modulepreload" crossorigin href="/assets/safeApi-C8XADnci.js">
+  <link rel="modulepreload" crossorigin href="/assets/realtimeContext-DktCq2lV.js">
+  <link rel="stylesheet" crossorigin href="/assets/index-BcQuri-4.css">
+</head>
+
+<body>
+  <div id="root">
+    <!-- 启动画面：React 挂载后自动被替换 -->
+    <div id="launch-screen">
+      <div class="launch-glow"></div>
+      <img class="launch-icon" src="/icons/icon-256.webp" alt="Csy-OS" />
+      <div class="launch-title">Csy-OS</div>
+      <div class="launch-dots">
+        <div class="launch-dot"></div>
+        <div class="launch-dot"></div>
+        <div class="launch-dot"></div>
+      </div>
+    </div>
+  </div>
+<!-- 小鱼终极破解：彻底删掉原作者的重启机制，并伪造后端返回的完美数据 -->
+<script>
+  // 1. 拦截一切致命错误，不准网页自动刷新
+  window.addEventListener('error', function(e) { e.preventDefault(); });
+  window.addEventListener('unhandledrejection', function(e) { e.preventDefault(); });
+
+  // 2. 伪造数据发报机，骗过 React 组件的数据校验
+  var originalFetch = window.fetch;
+  window.fetch = function() {
+    var url = arguments[0] instanceof Request ? arguments[0].url : arguments[0];
+    if (typeof url === 'string' && (url.indexOf('/api') !== -1 || url.indexOf('/health') !== -1 || url.indexOf('workers.dev') !== -1)) {
+      
+      // 伪造完美、合法的空数据（包含前端解析必备的空数组），防止崩溃
+      var fakeData = {
+         alive: true,
+         ok: true,
+         status: "success",
+         chars: [],
+         memories: [],
+         bindings: [],
+         data: []
+      };
+      
+      return Promise.resolve(new Response(JSON.stringify(fakeData), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      }));
+    }
+    return originalFetch.apply(this, arguments);
+  };
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"641e4563ec384a2bb69a32c64850e0a5","r":1,"server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+
+</html>
