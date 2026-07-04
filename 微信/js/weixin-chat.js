@@ -5135,28 +5135,75 @@ window.addEventListener('DOMContentLoaded', async () => {
     await restoreCallState();
 });
 
-// 小鱼优化：暴露全局函数供 webbox-core.js 的导出导入功能直接调用，拆除桥梁
-window.exportWechatDataDirectly = async function() {
-    const allWeChatData = {};
-    const keys = ['avatar', 'userName', 'gender', 'region', 'phone', 'wechatId', 'pat', 'signature', 'ringtone', 'ringtoneHistory', 'customContacts'];
-    for (const key of keys) {
-        const data = await getData(key);
-        if (data !== null && data !== undefined) {
-            allWeChatData[key] = data;
-        }
-    }
-    return allWeChatData;
-};
+// ★★★ 小鱼新增：微信的“电话接线员” ★★★
+window.addEventListener('message', async (event) => {
+  // 1. 处理跳转指令 (新增)
+  if (event.data && event.data.action === 'jump-to-chat') {
+      const targetId = event.data.chatId;
+      console.log('微信收到跳转指令，目标ID:', targetId);
+      
+      // 确保数据已加载
+      if (!db) await initDB();
+      
+      // 只有当不在该聊天界面时才跳转，避免重复刷新
+      if (currentChatId !== targetId) {
+          // 调用现有的开始聊天函数
+          await startChat(targetId);
+      }
+      return;
+  }
 
-window.importWechatDataDirectly = async function(dataToImport) {
-    if (dataToImport && typeof dataToImport === 'object') {
-        for (const key in dataToImport) {
-            await saveData(key, dataToImport[key]);
+  // 2. 原有的数据导出/导入逻辑
+  if (event.data && event.data.action === 'export-wechat-data') {
+        // 接到“导出数据”的电话
+        console.log('微信收到导出请求...');
+        try {
+            const allWeChatData = {};
+            const keys = [
+                'avatar', 'userName', 'gender', 'region', 'phone', 'wechatId', 'pat', 
+                'signature', 'ringtone', 'ringtoneHistory', 'customContacts'
+            ];
+
+            // 使用微信自己的getData函数（基于IndexedDB）来收集所有数据
+            for (const key of keys) {
+                const data = await getData(key);
+                if (data !== null && data !== undefined) {
+                    allWeChatData[key] = data;
+                }
+            }
+            
+            // 通过电话线把数据报送回去
+            event.source.postMessage({
+                action: 'wechat-data-response',
+                payload: allWeChatData
+            }, event.origin);
+            console.log('微信数据已发送。');
+
+        } catch (e) {
+            console.error('微信导出数据时出错:', e);
         }
-        await loadUserData(); // 刷新界面
+
+    } else if (event.data && event.data.action === 'import-wechat-data') {
+        // 接到“导入数据”的电话
+        console.log('微信收到导入请求...');
+        const dataToImport = event.data.payload;
+        if (dataToImport && typeof dataToImport === 'object') {
+            try {
+                // 使用微信自己的saveData函数（基于IndexedDB）来保存每一项数据
+                for (const key in dataToImport) {
+                    await saveData(key, dataToImport[key]);
+                }
+                console.log('微信数据导入完成！');
+                // 导入后重新加载一次数据以更新UI
+                await loadUserData();
+                 // 你可以加一个提示，但因为这个窗口是隐藏的，所以提示给用户看不到
+                 // customAlert('微信数据已恢复！');
+            } catch (e) {
+                console.error('微信导入数据时出错:', e);
+            }
+        }
     }
-};
-// 至于原来的 jump-to-chat 指令，Webbox 现在可以直接调用微信的 startChat(id) 函数，不需要发消息了。
+  });
   /* --- 聊天信息设置页逻辑 --- */
 
 const chatInfoPage = document.getElementById('chatInfoPage');
