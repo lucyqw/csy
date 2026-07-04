@@ -1685,6 +1685,53 @@ async function restoreDockAppIcon(appId) {
 
 cancelChangeIconBtn.addEventListener('click', hideChangeIconModal);
 
+// 小鱼新增：直接打开微信（复用桥接iframe，不走apps动态逻辑）
+function openWeChatDirectly() {
+    const bridge = document.getElementById('wechat-data-bridge');
+    const viewer = document.getElementById('wechat-fullscreen-viewer');
+    
+    if (!bridge || !viewer) {
+        showToast('未找到微信桥接文件');
+        return;
+    }
+    
+    // 把原本隐藏的iframe，移动进全屏容器里显示
+    bridge.style.display = 'block';
+    bridge.style.width = '100%';
+    bridge.style.height = '100%';
+    bridge.style.border = 'none';
+    viewer.appendChild(bridge);
+    
+    document.body.classList.add('app-open');
+    launcherScreen.style.opacity = '0';
+    launcherScreen.style.pointerEvents = 'none';
+    
+    viewer.style.display = 'flex';
+    setTimeout(() => viewer.classList.add('active'), 10);
+    closeMenu();
+}
+
+// 小鱼新增：关闭微信全屏，把iframe还原回隐藏桥接状态
+function closeWeChatDirectly() {
+    const bridge = document.getElementById('wechat-data-bridge');
+    const viewer = document.getElementById('wechat-fullscreen-viewer');
+    
+    viewer.classList.remove('active');
+    setTimeout(() => {
+        viewer.style.display = 'none';
+        
+        // 把iframe还原回body最底部，恢复隐藏状态，继续当桥接工具用
+        bridge.style.display = 'none';
+        bridge.style.width = '';
+        bridge.style.height = '';
+        document.body.appendChild(bridge);
+        
+        document.body.classList.remove('app-open');
+        launcherScreen.style.opacity = '1';
+        launcherScreen.style.pointerEvents = 'auto';
+    }, 300);
+}
+
 async function openApp(appId) { 
     const apps = await getApps(); 
     const appToOpen = apps.find(app => app.id == appId); 
