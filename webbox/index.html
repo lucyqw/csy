@@ -80,15 +80,8 @@
   </div>
 </div>
 
-<main id="app-grid">
-</main>
-<!-- 小鱼新增：微信固定图标（不依赖 apps 数组，永久存在） -->
-<div id="fixed-wechat-icon" class="app-icon" style="position: fixed; top: 70px; right: 20px; z-index: 500;" onclick="openWeChatDirectly()">
-  <div class="icon-image">
-    <img src="https://icon.horse/icon/weixin.qq.com" alt="微信" onerror="this.src='logo.png'">
-  </div>
-  <span class="icon-label">微信</span>
-</div>
+    <main id="app-grid">
+    </main>
 
     <div id="page-indicators"></div>
 
@@ -890,11 +883,6 @@
 </div>
 
 <iframe id="wechat-data-bridge" src="微信.html" style="display: none;"></iframe>
-
-<!-- 小鱼新增：微信全屏显示容器，复用同一个iframe，不新建应用 -->
-<div id="wechat-fullscreen-viewer" class="app-window">
-  <div onclick="closeWeChatDirectly()" style="position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); width: 50px; height: 5px; background: rgba(0,0,0,0.2); border-radius: 3px; z-index: 9999; cursor: pointer;" title="点击返回桌面"></div>
-</div>
 
 <script src="js/webbox-core.js"></script>
 <script src="js/webbox-ai.js"></script>
