@@ -1,0 +1,18 @@
+/* 自动生成: css/layout-options.css */
+
+.layout-options { display: flex; gap: 20px; margin-top: 10px; }
+
+.layout-options label { display: flex; align-items: center; gap: 8px; font-weight: normal; font-size: 15px; cursor: pointer; }
+
+.layout-options input[type="radio"] { width: 18px; height: 18px; cursor: pointer; }
+
+.timer-icon { cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; display: flex; align-items: center; justify-content: center; }
+
+.timer-icon:hover { background-color: rgb(240, 240, 240); }
+
+.timer-icon:active { background-color: rgb(224, 224, 224); }
+
+.radio-option { display: flex; align-items: center; padding: 10px 0px; }
+
+.radio-option input[type="radio"] { margin-right: 10px; width: 18px; height: 18px; }
+

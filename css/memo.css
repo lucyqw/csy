@@ -1,0 +1,50 @@
+/* 自动生成: css/memo.css */
+
+.memo-back-btn { background: none; border: none; cursor: pointer; padding: 10px; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; }
+
+.memo-back-btn svg { font-weight: 900; stroke: rgb(93, 64, 55); stroke-width: 0.8px; width: 24px; height: 24px; fill: rgb(93, 64, 55) !important; }
+
+.memo-add-btn { background: none; border: none; font-size: 32px; cursor: pointer; padding: 0px; width: 40px; height: 40px; line-height: 32px; font-weight: 700; color: rgb(93, 64, 55) !important; }
+
+.memo-save-btn { background: none; border: none; font-size: 16px; font-weight: 700; cursor: pointer; padding: 5px 10px; color: rgb(93, 64, 55) !important; }
+
+#memo-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 20px; overflow-y: auto; height: calc(100% - 60px); background: rgb(255, 253, 245); }
+
+.memo-item { background: rgb(255, 251, 235); border: 3px solid rgb(255, 192, 203); border-radius: 12px; padding: 12px; position: relative; display: flex; flex-direction: column; box-shadow: rgba(212, 175, 155, 0.3) 0px 4px 12px; cursor: pointer; overflow: hidden; aspect-ratio: 3 / 4; transition: transform 0.3s, box-shadow 0.3s; }
+
+.memo-item:hover { transform: translateY(-5px) rotate(1deg); box-shadow: rgba(255, 192, 203, 0.4) 0px 8px 20px; }
+
+.memo-item:active { transform: translateY(-3px) scale(0.98); }
+
+.memo-title { font-weight: 600; color: rgb(93, 64, 55); font-size: 15px; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+
+.memo-item-tag { background: rgb(255, 228, 225); border: 2px solid rgb(255, 192, 203); color: rgb(139, 90, 43); font-size: 13px; padding: 5px 10px; border-radius: 8px; cursor: pointer; overflow-wrap: break-word; word-break: break-word; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-height: 1.5; max-height: calc(3em); transition: 0.2s; }
+
+.memo-item-tag:hover { background: rgb(255, 192, 203); transform: scale(1.05); }
+
+.memo-items-display-container { display: flex; flex-direction: column; gap: 6px; overflow-y: auto; }
+
+.memo-time { font-size: 11px; color: rgb(153, 153, 153); margin-top: auto; padding-top: 8px; border-top: 1px solid rgba(0, 0, 0, 0.05); flex-shrink: 0; }
+
+.memo-delete-btn { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); border: 1px solid rgb(221, 221, 221); display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 16px; color: rgb(255, 59, 48); opacity: 0; transition: opacity 0.2s; }
+
+.memo-item:hover .memo-delete-btn { opacity: 1; }
+
+#memo-edit-form { height: calc(100% - 60px); display: flex; flex-direction: column; }
+
+#memo-title { width: 100%; border-top: none; border-right: none; border-left: none; border-image: initial; border-bottom: 1px solid rgb(238, 238, 238); padding: 15px 20px; font-size: 18px; flex-shrink: 0; font-weight: bold; }
+
+#memo-items-container { flex-grow: 1; overflow-y: auto; padding: 10px 20px; }
+
+.memo-edit-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
+
+.memo-edit-item textarea { flex-grow: 1; border: 1px solid rgb(221, 221, 221); border-radius: 6px; padding: 10px; font-size: 16px; line-height: 1.5; resize: none; overflow-y: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+
+.memo-edit-item .remove-item-btn { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgb(255, 77, 77); background: rgb(255, 255, 255); color: rgb(255, 77, 77); font-size: 18px; cursor: pointer; margin-top: 5px; }
+
+#add-memo-item-btn { display: block; width: calc(100% - 40px); margin: 15px 20px; padding: 12px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; flex-shrink: 0; background: rgb(255, 182, 193) !important; color: rgb(93, 64, 55) !important; border: 2px solid rgb(255, 192, 203) !important; transition: 0.2s !important; }
+
+#add-memo-item-btn:hover { transform: translateY(-2px); background-color: rgb(255, 192, 203) !important; box-shadow: rgba(255, 192, 203, 0.4) 0px 4px 10px !important; }
+
+#memo-title:focus, .memo-edit-item textarea:focus { outline: none; border-color: rgb(0, 122, 255); }
+

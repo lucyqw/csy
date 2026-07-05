@@ -1,0 +1,14 @@
+/* 自动生成: css/panel-headers.css */
+
+#memo-header, #memo-edit-header, #theme-header, #settings-header, #import-export-header, #recycle-bin-header { display: flex; justify-content: space-between; align-items: center; padding: 36px 20px 15px; background: rgb(255, 251, 235); border-bottom: 4px solid rgb(255, 192, 203); box-shadow: rgba(212, 175, 155, 0.2) 0px 2px 8px; flex-shrink: 0; position: relative; }
+
+#settings-header h2, #import-export-header h2, #recycle-bin-header h2, #memo-header h2, #memo-edit-header h2, #theme-header h2 { margin: 0px; font-size: 18px; color: rgb(93, 64, 55); font-weight: 700; }
+
+#settings-header h2, #import-export-header h2, #recycle-bin-header h2 { position: absolute; left: 50%; transform: translateX(-50%); }
+
+#settings-header .timer-icon, #recycle-bin-header .timer-icon, #settings-header .trash-icon { cursor: pointer; padding: 8px; border-radius: 50%; transition: background-color 0.2s; display: flex; align-items: center; justify-content: center; margin-left: auto; }
+
+#settings-header .timer-icon:hover, #recycle-bin-header .timer-icon:hover, #settings-header .trash-icon:hover { background-color: rgba(255, 182, 193, 0.2); }
+
+#theme-modal > div[style*="overflow-y"] { background: rgb(255, 253, 245) !important; }
+
