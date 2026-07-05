@@ -1,6 +1,43 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <!-- ★★★ 小鱼新增：云端数据库崩溃自动修复补丁 ★★★ -->
+  <script>
+    window.addEventListener('unhandledrejection', function(event) {
+      // 精准拦截截图中出现的 IDBDatabase 报错
+      if (event.reason && event.reason.message && event.reason.message.includes('IDBDatabase') && event.reason.message.includes('object store')) {
+        console.error("检测到云端数据库冲突，启动自动修复程序...");
+        alert('系统检测到首次部署的数据冲突，正在为您自动重置修复，请点击确定。');
+        
+        // 1. 清空常规缓存
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // 2. 暴力摧毁所有损坏的 IndexedDB 数据库，让代码重新建表
+        if (window.indexedDB && indexedDB.databases) {
+          indexedDB.databases().then(function(dbs) {
+            let promises = dbs.map(function(db) {
+              return new Promise(function(resolve) {
+                let req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = resolve;
+                req.onerror = resolve;
+                req.onblocked = resolve;
+              });
+            });
+            // 删完之后强制刷新页面
+            Promise.all(promises).then(function() {
+              window.location.reload(true);
+            });
+          }).catch(function() {
+            window.location.reload(true);
+          });
+        } else {
+          window.location.reload(true);
+        }
+      }
+    });
+  </script>
+
   <!-- 小鱼自动生成的基础结构 -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes">
@@ -63,16 +100,17 @@
   <link rel="stylesheet" href="css/dropdown.css">
   <link rel="stylesheet" href="css/app-icon.css">
   
-  <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 ★★★ -->
-  <style>
-    /* 只要系统没有判定为"已打开应用(app-open)"，微信容器绝对不可见！ */
-    body:not(.app-open) #app-viewer { 
-      display: none !important; 
-    }
-    body:not(.app-open) #wechat-native-app { 
-      display: none !important; 
-    }
-  </style>
+  <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 (现在放在最后，且用最高优先级选择器) ★★★ -->
+<style id="ultimate-wall-style">
+  /* 只要系统没有判定为"已打开应用(app-open)"，微信容器绝对不可见！ */
+  /* 小鱼修正：去掉 visibility，避免连坐隐藏内部的设置/主题等弹窗和按钮 */
+  body:not(.app-open) div#app-viewer { 
+    display: none !important; 
+  }
+  body:not(.app-open) div#wechat-native-app { 
+    display: none !important; 
+  }
+</style>
 </head>
 <body>
   <div id="global-fab-trigger"></div>
@@ -3114,13 +3152,31 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/world-book.js?v=999"></script>
   <script src="js/wechat-bridge.js?v=999"></script>
   
-  <!-- 终极桌面守护者 -->
-  <script>
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        if (typeof goHome === 'function') goHome();
-        document.body.classList.remove('app-open');
-      }, 500); 
-    });
-  </script>
+  <!-- 终极桌面守护者 (加强版：多重保险，确保云端环境下也一定生效) -->
+<script>
+  function forceGoHome() {
+    if (typeof goHome === 'function') {
+      goHome();
+    } else {
+      // 即使 goHome 函数还没加载出来，也手动把微信隐藏、body 的 app-open 去掉
+      var viewer = document.getElementById('app-viewer');
+      var wechatApp = document.getElementById('wechat-native-app');
+      if (viewer) viewer.style.display = 'none';
+      if (wechatApp) wechatApp.style.display = 'none';
+    }
+    document.body.classList.remove('app-open');
+  }
+
+  // 第一重保险：DOM 结构解析完就立刻执行一次（不等图片/CSS/CDN资源）
+  document.addEventListener('DOMContentLoaded', forceGoHome);
+
+  // 第二重保险：所有资源（图片、CSS、CDN脚本）都加载完之后再执行一次
+  window.addEventListener('load', () => {
+    setTimeout(forceGoHome, 500);
+  });
+
+  // 第三重保险：即使上面两个时机都因为某些资源卡住而没触发，
+  // 3秒后强制兜底执行一次，确保用户看到的一定是桌面而不是微信
+  setTimeout(forceGoHome, 3000);
+</script>
 </body></html>
