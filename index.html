@@ -3056,35 +3056,42 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
 
 
 
-  <!-- 引入微信的JS脚本（已全部改为 wechat/ 子路径） -->
-<script src="js/wechat/config.js"></script>
-<script src="js/wechat/db.js"></script>
-<script src="js/wechat/api.js"></script>
-<script src="js/wechat/dom.js"></script>
-<script src="js/wechat/ui.js"></script>
-<script src="js/wechat/gestures.js"></script>
-<script src="js/wechat/notifications.js"></script>
-<script src="js/wechat/memory.js"></script>
-<script src="js/wechat/relations.js"></script>
-<script src="js/wechat/tag-relations.js"></script>
-<script src="js/wechat/contacts.js"></script>
-<script src="js/wechat/stickers.js"></script>
-<script src="js/wechat/media.js"></script>
-<script src="js/wechat/camera.js"></script>
-<script src="js/wechat/translate.js"></script>
-<script src="js/wechat/chat.js"></script>
-<script src="js/wechat/group-chat.js"></script>
-<script src="js/wechat/message-actions.js"></script>
-<script src="js/wechat/topic.js"></script>
-<script src="js/wechat/chat-info.js"></script>
-<script src="js/wechat/chat-settings.js"></script>
-<script src="js/wechat/chat-background.js"></script>
-<script src="js/wechat/moments.js"></script>
-<script src="js/wechat/transfer.js"></script>
-<script src="js/wechat/call.js"></script>
-<script src="js/wechat/profile.js"></script>
-<script src="js/wechat/ringtone.js"></script>
+  <!-- 引入微信的JS脚本 -->
+  <script src="js/wechat/config.js"></script>
+  <script src="js/wechat/db.js"></script>
+  <script src="js/wechat/api.js"></script>
+  <script src="js/wechat/dom.js"></script>
+  <script src="js/wechat/ui.js"></script>
+  <script src="js/wechat/gestures.js"></script>
+  <script src="js/wechat/notifications.js"></script>
+  <script src="js/wechat/memory.js"></script>
+  
+  <!-- 小鱼修改：暂时注释掉这两个关系图脚本，因为缺失了相关的HTML元素会导致报错，稍后我们再修复它 -->
+  <!-- <script src="js/wechat/relations.js"></script> -->
+  <!-- <script src="js/wechat/tag-relations.js"></script> -->
+  
+  <script src="js/wechat/contacts.js"></script>
+  <script src="js/wechat/stickers.js"></script>
+  <script src="js/wechat/media.js"></script>
+  <script src="js/wechat/camera.js"></script>
+  <script src="js/wechat/translate.js"></script>
+  
+  <!-- ★★★ 小鱼修改：把 profile.js 提前到了 chat.js 前面，解决 loadUserData 找不到的问题 ★★★ -->
+  <script src="js/wechat/profile.js"></script>
+  
+  <script src="js/wechat/chat.js"></script>
+  <script src="js/wechat/group-chat.js"></script>
+  <script src="js/wechat/message-actions.js"></script>
+  <script src="js/wechat/topic.js"></script>
+  <script src="js/wechat/chat-info.js"></script>
+  <script src="js/wechat/chat-settings.js"></script>
+  <script src="js/wechat/chat-background.js"></script>
+  <script src="js/wechat/moments.js"></script>
+  <script src="js/wechat/transfer.js"></script>
+  <script src="js/wechat/call.js"></script>
+  <script src="js/wechat/ringtone.js"></script>
 
+  <!-- 引入父项目(WebBox)的JS脚本 -->
   <script src="js/state.js"></script>
   <script src="js/apps-core.js"></script>
   <script src="js/dock-fab.js"></script>
@@ -3102,12 +3109,12 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/world-book.js"></script>
   <script src="js/wechat-bridge.js"></script>
   
-  <!-- 小鱼新增：强制开机回到桌面，清除记忆状态 -->
+  <!-- 强制开机回到桌面 -->
   <script>
     window.addEventListener('load', () => {
       setTimeout(() => {
         if (typeof goHome === 'function') {
-          goHome(); // 强制执行一次返回桌面
+          goHome();
         }
       }, 100);
     });
