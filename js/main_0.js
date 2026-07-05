@@ -1,0 +1,14601 @@
+/* 小鱼注释：IndexedDB数据库管理 (已优化为更健壮的异步模式) */
+  const DB_NAME = 'WeChatDB', DB_VERSION = 1, STORE_NAME = 'userProfile';
+  let db = null;
+
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = (event) => reject(`数据库打开失败: ${event.target.error}`);
+      request.onsuccess = (event) => {
+        db = event.target.result;
+        console.log('数据库打开成功');
+        resolve(db);
+      };
+      request.onupgradeneeded = (event) => {
+        db = event.target.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+          console.log('对象仓库创建成功');
+        }
+      };
+    });
+  }
+
+  function saveData(key, value) {
+    return new Promise((resolve, reject) => {
+      if (!db) return reject('数据库未初始化，无法保存数据');
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      transaction.oncomplete = () => {
+        console.log(`数据事务完成: ${key} 已保存`);
+        resolve();
+      };
+      transaction.onerror = (event) => {
+        console.error(`数据事务错误: ${event.target.error}`);
+        reject(event.target.error);
+      };
+      const objectStore = transaction.objectStore(STORE_NAME);
+      objectStore.put({ id: key, value: value });
+    });
+  }
+
+  function getData(key) {
+    return new Promise((resolve, reject) => {
+      if (!db) return reject('数据库未初始化，无法读取数据');
+      const transaction = db.transaction([STORE_NAME], 'readonly');
+      const objectStore = transaction.objectStore(STORE_NAME);
+      const request = objectStore.get(key);
+      
+      request.onsuccess = () => {
+        resolve(request.result ? request.result.value : null);
+      };
+      request.onerror = (event) => {
+        console.error(`读取数据请求错误: ${event.target.error}`);
+        reject(event.target.error);
+      };
+    });
+  }
+
+  /* 小鱼注释：DOM元素获取 */
+  const mainApp = document.getElementById('mainApp');
+  const personalInfoPage = document.getElementById('personalInfoPage');
+  const ringtoneHistoryPage = document.getElementById('ringtoneHistoryPage');
+  
+  /* 小鱼修复：将 createCharacterPage 加入管理列表，解决返回按钮失效问题 */
+/* 小鱼修复：将 groupSelectPage 加入管理列表 */
+const allFullscreenPages = [
+  mainApp, personalInfoPage,
+  document.getElementById('nameEditPage'), document.getElementById('genderEditPage'),
+  document.getElementById('regionEditPage'), document.getElementById('patEditPage'),
+  document.getElementById('signatureEditPage'), document.getElementById('phoneEditPage'),
+  document.getElementById('wechatIdEditPage'), document.getElementById('ringtonePage'),
+  ringtoneHistoryPage,
+  document.getElementById('createCharacterPage'),
+  document.getElementById('chatRoomPage'),
+  document.getElementById('chatInfoPage'),
+  document.getElementById('contactProfilePage'),
+  document.getElementById('chatBackgroundSettingsPage'),
+  document.getElementById('dataSettingsPage'),
+  document.getElementById('myChatProfilePage'),
+  document.getElementById('userPersonaEditPage'),
+  document.getElementById('stickerLibraryPage'), 
+  document.getElementById('stickerDetailPage'),
+  document.getElementById('topicArchivePage'),
+  // ★★★ 新增这一行 ★★★
+  document.getElementById('groupSelectPage'),
+  document.getElementById('groupTransferSelectPage') // ★ 新增：群聊转账选人页面
+];
+
+  const tabItems = document.querySelectorAll('.tab-item');
+  const pages = document.querySelectorAll('.page');
+  const navBar = document.querySelector('#mainApp .nav-bar');
+  const navTitle = document.getElementById('navTitle');
+  const profileHeader = document.querySelector('.profile-header');
+  const backButton = document.getElementById('backButton');
+  const profileAvatar = document.querySelector('.profile-avatar');
+  const profileName = document.querySelector('.profile-name');
+  const profileIdSpan = document.querySelector('.profile-id');
+  const avatarInput = document.getElementById('avatarInput');
+  const infoAvatar = document.querySelector('.info-avatar');
+  const avatarItem = document.querySelector('#personalInfoPage .discover-item:first-child');
+
+  const nameItem = document.querySelector('#personalInfoPage .discover-section:first-child .discover-item:nth-child(2)');
+  const genderItem = document.querySelector('#personalInfoPage .discover-section:first-child .discover-item:nth-child(3)');
+  const regionItem = document.querySelector('#personalInfoPage .discover-section:first-child .discover-item:nth-child(4)');
+  const phoneItem = document.querySelector('#personalInfoPage .discover-section:first-child .discover-item:nth-child(5)');
+  const wechatIdItem = document.querySelector('#personalInfoPage .discover-section:first-child .discover-item:nth-child(6)');
+  const patItem = document.querySelector('#personalInfoPage .discover-section:first-child .discover-item:nth-child(8)');
+  const signatureItem = document.querySelectorAll('#personalInfoPage .discover-section')[1].querySelector('.discover-item');
+// 小鱼新增：获取我的人设相关元素
+const userPersonaItem = document.getElementById('userPersonaItem');
+const userPersonaEditPage = document.getElementById('userPersonaEditPage');
+const userPersonaInput = document.getElementById('userPersonaInput');
+const userPersonaSaveBtn = document.getElementById('userPersonaSaveBtn');
+const userPersonaValueSpan = userPersonaItem.querySelector('.item-value');
+
+// 小鱼新增：将新页面加入页面管理器，防止返回按钮失效
+allFullscreenPages.push(userPersonaEditPage);
+
+const nameValueSpan = nameItem.querySelector('.item-value');
+
+    const ringtoneItem = document.querySelectorAll('#personalInfoPage .discover-section')[2].querySelector('.discover-item');
+  const genderValueSpan = document.createElement('span');
+  genderValueSpan.className = 'item-value';
+  genderItem.insertBefore(genderValueSpan, genderItem.querySelector('.contact-arrow'));
+
+  const regionValueSpan = document.createElement('span');
+  regionValueSpan.className = 'item-value';
+  regionItem.insertBefore(regionValueSpan, regionItem.querySelector('.contact-arrow'));
+  
+  const phoneValueSpan = document.createElement('span');
+  phoneValueSpan.className = 'item-value';
+  phoneItem.insertBefore(phoneValueSpan, phoneItem.querySelector('.contact-arrow'));
+
+  const wechatIdValueSpan = wechatIdItem.querySelector('.item-value');
+
+  const patValueSpan = document.createElement('span');
+  patValueSpan.className = 'item-value';
+  patItem.insertBefore(patValueSpan, patItem.querySelector('.contact-arrow'));
+
+  const signatureValueSpan = signatureItem.querySelector('.item-value');
+
+  const ringtoneValueSpan = document.createElement('span');
+  ringtoneValueSpan.className = 'item-value';
+  ringtoneItem.insertBefore(ringtoneValueSpan, ringtoneItem.querySelector('.contact-arrow'));
+
+  const nameEditPage = document.getElementById('nameEditPage'), newNameInput = document.getElementById('newNameInput'), nameSaveBtn = document.getElementById('nameSaveBtn');
+  const genderEditPage = document.getElementById('genderEditPage'), genderOptions = document.querySelectorAll('.gender-option'), genderDoneBtn = document.getElementById('genderDoneBtn');
+  const regionEditPage = document.getElementById('regionEditPage'), regionInput = document.getElementById('regionInput'), regionSaveBtn = document.getElementById('regionSaveBtn');
+  const patEditPage = document.getElementById('patEditPage'), patInput = document.getElementById('patInput'), patSaveBtn = document.getElementById('patSaveBtn'), patPreview = document.getElementById('patPreview');
+  const signatureEditPage = document.getElementById('signatureEditPage'), signatureInput = document.getElementById('signatureInput'), signatureSaveBtn = document.getElementById('signatureSaveBtn'), signatureCounter = document.getElementById('signatureCounter');
+  const phoneEditPage = document.getElementById('phoneEditPage'), phoneInput = document.getElementById('phoneInput'), phoneSaveBtn = document.getElementById('phoneSaveBtn');
+  const wechatIdEditPage = document.getElementById('wechatIdEditPage'), wechatIdInput = document.getElementById('wechatIdInput'), wechatIdSaveBtn = document.getElementById('wechatIdSaveBtn');
+  const ringtonePage = document.getElementById('ringtonePage'), ringtonePreviewBtn = document.getElementById('ringtonePreviewBtn'), ringtoneName = document.getElementById('ringtoneName'), showRingtoneModalBtn = document.getElementById('showRingtoneModalBtn'), ringtoneChangeModal = document.getElementById('ringtoneChangeModal'), ringtoneUrlInput = document.getElementById('ringtoneUrlInput'), ringtoneFileInput = document.getElementById('ringtoneFileInput'), fileNameSpan = document.getElementById('fileName'), ringtoneNameInput = document.getElementById('ringtoneNameInput'), cancelRingtoneChange = document.getElementById('cancelRingtoneChange'), saveRingtoneChange = document.getElementById('saveRingtoneChange'), ringtonePlayer = document.getElementById('ringtonePlayer');
+  
+  // 新增：历史记录和删除相关元素
+  const ringtoneHistoryList = document.getElementById('ringtoneHistoryList');
+  const historyLinkBtn = document.querySelector('#ringtonePage .nav-bar > span');
+  const historyMenuBtn = document.getElementById('historyMenuBtn');
+  const historyActionSheetOverlay = document.getElementById('historyActionSheetOverlay');
+  const multiSelectDeleteBtn = document.getElementById('multiSelectDeleteBtn');
+  const clearHistoryBtn = document.getElementById('clearHistoryBtn');
+  const cancelActionBtn = document.getElementById('cancelActionBtn');
+  const multiDeleteBar = document.getElementById('multiDeleteBar');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+  const cancelMultiDeleteBtn = document.getElementById('cancelMultiDeleteBtn');
+
+  let originalValues = { name: '', gender: '', region: '', pat: '', signature: '', phone: '', wechatId: '', ringtone: null };
+  let currentRingtone = null;
+  let ringtoneHistory = [];
+
+  function showPage(pageToShow) {
+  allFullscreenPages.forEach(page => page && (page.style.display = 'none'));
+
+  // ★★★ 小鱼新增：离开朋友圈页时，自动清理所有朋友圈浮层 ★★★
+  if (pageToShow !== document.getElementById('momentsPage')) {
+    const momentCommentBar = document.getElementById('momentCommentBar');
+    if (momentCommentBar) momentCommentBar.remove();
+
+    const globalMomentActionMenu = document.getElementById('globalMomentActionMenu');
+    if (globalMomentActionMenu) globalMomentActionMenu.remove();
+
+    const momentEditMenu = document.getElementById('momentEditMenu');
+    if (momentEditMenu) momentEditMenu.remove();
+  }
+
+  if (pageToShow) pageToShow.style.display = 'flex';
+}
+  
+  /* 小鱼新增：核心角色数据获取函数 (支持备注/覆盖) */
+async function getContactDetails(id) {
+  // 1. 获取通讯录原数据
+  const contacts = await getData('customContacts') || [];
+  const original = contacts.find(c => c.id === id);
+  if (!original) return null;
+
+  // 2. 获取覆盖数据 (备注/专属人设)
+  const overrides = await getData('contactOverrides') || {};
+  const override = overrides[id] || {};
+
+  // 3. 合并数据 (覆盖层优先)
+  const mergedLibs = (override.allowedStickerLibs !== undefined) ? override.allowedStickerLibs : original.allowedStickerLibs;
+  const mergedWBs = (override.worldBookIds !== undefined) ? override.worldBookIds : original.worldBookIds;
+
+  return {
+    ...original,
+    nickname: override.nickname || original.nickname,
+    avatar: override.avatar || original.avatar,
+    persona: override.persona || original.persona,
+    allowedStickerLibs: mergedLibs,
+    worldBookIds: mergedWBs // 合并后的世界书ID
+  };
+}
+
+/* 快捷编辑页功能已删除 */
+
+// 小鱼优化：通用的世界书渲染函数（支持分类折叠）
+function renderWorldBookOptionsForElement(elementId, selectedIds = []) {
+  const area = document.getElementById(elementId);
+  const rawData = localStorage.getItem('wechat_world_book_shared');
+  const entries = rawData ? JSON.parse(rawData) : [];
+  
+  if (entries.length === 0) {
+    area.innerHTML = '<div style="color:#999; font-size:12px;">暂无世界书条目，请在WebBox桌面悬浮菜单中添加</div>';
+    return;
+  }
+
+  area.innerHTML = ''; // 清空原有内容
+
+  // 1. 提取所有分类并去重
+  const categories = [...new Set(entries.map(e => e.category || '未分类'))].sort();
+
+  // 2. 按分类生成折叠栏
+  categories.forEach(cat => {
+    const catEntries = entries.filter(e => (e.category || '未分类') === cat);
+    
+    // 计算该分类下选中的数量
+    const selectedCount = catEntries.filter(e => selectedIds.includes(e.id)).length;
+    const countText = selectedCount > 0 ? `<span style="color:#07C160; margin-left:6px; font-size:13px;">(${selectedCount})</span>` : '';
+    const activeClass = selectedCount > 0 ? 'active' : ''; // 如果有选中的，默认文字高亮一点(可选)
+    const showClass = selectedCount > 0 ? 'show' : ''; // 可选：如果有选中的，默认展开，这里暂时默认不展开，保持整洁
+
+    // 生成唯一ID
+    const catContentId = 'wb-cat-' + elementId + '-' + Math.random().toString(36).substr(2, 9);
+
+    const groupHtml = `
+      <div class="wb-category-group">
+        <div class="wb-category-header ${activeClass}" onclick="toggleWbCategory('${catContentId}', this)">
+          <span>${cat} ${countText}</span>
+          <span class="wb-category-arrow">▼</span>
+        </div>
+        <div id="${catContentId}" class="wb-category-content ${showClass}">
+          ${catEntries.map(entry => {
+            const isChecked = selectedIds.includes(entry.id) ? 'checked' : '';
+            return `
+              <label class="wb-item-row">
+                <input type="checkbox" class="world-book-checkbox" value="${entry.id}" ${isChecked} style="margin-right: 12px; width: 18px; height: 18px; accent-color: #07C160;">
+                <div style="overflow:hidden; flex: 1;">
+                    <div style="font-size: 15px; color: #333;">${entry.title}</div>
+                    <div style="font-size: 12px; color: #999; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${entry.content}</div>
+                </div>
+              </label>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+    area.insertAdjacentHTML('beforeend', groupHtml);
+  });
+}
+
+// 小鱼新增：切换折叠状态的辅助函数
+window.toggleWbCategory = function(contentId, headerEl) {
+  const content = document.getElementById(contentId);
+  if (content.classList.contains('show')) {
+    content.classList.remove('show');
+    headerEl.classList.remove('active');
+  } else {
+    content.classList.add('show');
+    headerEl.classList.add('active');
+  }
+};
+
+// 保留通用的表情包渲染函数（新建角色页仍需要）
+async function renderStickerOptionsForElement(elementId, selectedLibIds = []) {
+  const area = document.getElementById(elementId);
+  const libs = await getData('stickerLibs') || [];
+  
+  if (libs.length === 0) {
+    area.innerHTML = '<div style="color:#999; font-size:12px;">暂无表情包库，请去"我-表情"添加</div>';
+    return;
+  }
+
+  area.innerHTML = libs.map(lib => {
+    const isChecked = selectedLibIds.includes(lib.id) ? 'checked' : '';
+    return `
+      <label style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer;">
+        <input type="checkbox" class="sticker-select-checkbox" value="${lib.id}" ${isChecked} style="margin-right: 10px;">
+        <span style="font-size: 15px;">${lib.name}</span>
+        <span style="font-size: 12px; color: #999; margin-left: auto;">${lib.stickers ? lib.stickers.length : 0}张</span>
+      </label>
+    `;
+  }).join('');
+}
+
+// 直接进入通讯录编辑页
+document.getElementById('cpFriendProfileRow').addEventListener('click', async () => {
+  // ★★★ 小鱼修复：优先读取“当前查看的ID”，如果没有才用“当前聊天的ID” ★★★
+  const targetId = window.currentProfileId || currentChatId;
+  if (!targetId) return;
+  
+  // ★★★ 核心修改：先清除覆盖数据，再进入编辑页 ★★★
+  const overrides = await getData('contactOverrides') || {};
+  delete overrides[targetId]; // 使用 targetId
+  await saveData('contactOverrides', overrides);
+  
+  // 调用编辑函数（此时会读取通讯录的原始数据）
+  await editCharacter(targetId); // 使用 targetId
+  
+  // 修改页面标题
+  pageTitle.textContent = "编辑朋友资料";
+});
+
+// 辅助：刷新资料页显示
+async function refreshProfilePageDisplay() {
+    const contact = await getContactDetails(currentChatId);
+    if (!contact) return;
+    
+    const cpAvatar = document.getElementById('cpAvatar');
+    const cpNickname = document.getElementById('cpNickname');
+    
+    if (contact.avatar) {
+        cpAvatar.style.backgroundImage = `url(${contact.avatar})`;
+        cpAvatar.innerHTML = '';
+    } else {
+        cpAvatar.style.backgroundImage = '';
+        cpAvatar.innerHTML = contact.nickname[0];
+    }
+    cpNickname.textContent = contact.nickname;
+}
+
+  async function loadUserData() {
+    try {
+      await initDB();
+      // 小鱼修改：增加了 userPersona (我的人设) 的读取
+const [avatar, userName, gender, region, phone, wechatId, pat, signature, ringtone, history, userPersona] = await Promise.all([
+  getData('avatar'), getData('userName'), getData('gender'), getData('region'),
+  getData('phone'), getData('wechatId'), getData('pat'), getData('signature'), 
+  getData('ringtone'), getData('ringtoneHistory'), getData('userPersona')
+]);
+
+// 小鱼新增：显示人设
+if(userPersonaValueSpan) userPersonaValueSpan.textContent = userPersona || '未设置';
+
+      if (avatar) {
+        profileAvatar.style.backgroundImage = `url(${avatar})`;
+        profileAvatar.style.backgroundSize = 'cover';
+        profileAvatar.textContent = '';
+        infoAvatar.style.backgroundImage = `url(${avatar})`;
+        infoAvatar.style.backgroundSize = 'cover';
+      }
+      
+      // ★★★ 小鱼修改：生成用户默认微信号 user_拼音 ★★★
+let defaultUserWxId = 'user_unknown';
+if (userName && userName.trim()) {
+  try {
+    const py = window.pinyinPro.pinyin(userName, { toneType: 'none', type: 'array' }).join('');
+    defaultUserWxId = 'user_' + py.toLowerCase();
+  } catch (e) {
+    defaultUserWxId = 'user_' + userName.toLowerCase().replace(/\s+/g, '');
+  }
+}
+
+profileName.textContent = userName || 'user';
+nameValueSpan.textContent = userName || '未设置';
+genderValueSpan.textContent = gender || '未设置';
+regionValueSpan.textContent = region || '未设置';
+phoneValueSpan.textContent = phone || '未设置';
+wechatIdValueSpan.textContent = wechatId || defaultUserWxId;
+profileIdSpan.textContent = `微信号: ${wechatId || defaultUserWxId}`;
+      patValueSpan.textContent = pat || '未设置';
+      signatureValueSpan.textContent = signature || '未填写';
+      
+      ringtoneHistory = history || [];
+      
+      if (ringtone) {
+        currentRingtone = ringtone;
+        ringtonePlayer.src = ringtone.src;
+        ringtoneName.textContent = ringtone.name;
+        ringtoneValueSpan.textContent = ringtone.name;
+      } else {
+        currentRingtone = { src: '', name: '微信' };
+        ringtoneName.textContent = '微信';
+        ringtoneValueSpan.textContent = '默认';
+      }
+      
+      renderRingtoneHistory();
+    } catch (error) {
+      console.error('数据加载失败:', error);
+    }
+  }
+
+  /* 小鱼新增：渲染铃声历史记录列表 */
+  function renderRingtoneHistory(isMultiSelectMode = false) {
+    if (ringtoneHistory.length === 0) {
+      ringtoneHistoryList.innerHTML = '<div class="history-empty">暂无历史记录</div>';
+      return;
+    }
+    
+    ringtoneHistoryList.innerHTML = ringtoneHistory.map((item, index) => {
+      const isCurrent = currentRingtone && item.name === currentRingtone.name;
+      return `
+        <div class="history-item ${isCurrent ? 'current' : ''} ${isMultiSelectMode ? 'multi-select-mode' : ''}" data-index="${index}">
+          ${isMultiSelectMode ? '' : '<div class="history-item-icon">♪</div>'}
+          <span class="history-item-name">${item.name}</span>
+          ${isCurrent && !isMultiSelectMode ? '<span style="color: var(--primary-color); font-size: 14px;">当前</span>' : ''}
+        </div>
+      `;
+    }).join('');
+    
+    if (!isMultiSelectMode) {
+      document.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', async function() {
+          const index = parseInt(this.dataset.index);
+          await switchToRingtone(ringtoneHistory[index]);
+        });
+      });
+    } else {
+      document.querySelectorAll('.history-item').forEach(item => {
+        item.addEventListener('click', function() {
+          this.classList.toggle('selected');
+        });
+      });
+    }
+  }
+
+  /* 小鱼新增：切换到指定铃声 */
+  async function switchToRingtone(ringtoneData) {
+    if (!ringtonePlayer.paused) {
+      ringtonePlayer.pause();
+    }
+    ringtonePlayer.currentTime = 0;
+    ringtonePreviewBtn.classList.remove('playing');
+    
+    currentRingtone = ringtoneData;
+    ringtonePlayer.src = ringtoneData.src;
+    ringtoneName.textContent = ringtoneData.name;
+    ringtoneValueSpan.textContent = ringtoneData.name;
+    await saveData('ringtone', ringtoneData);
+    renderRingtoneHistory();
+    showPage(ringtonePage);
+  }
+
+  /* 小鱼新增：历史记录页面操作 */
+  historyMenuBtn.addEventListener('click', () => {
+    historyActionSheetOverlay.style.display = 'flex';
+  });
+  
+  cancelActionBtn.addEventListener('click', () => {
+    historyActionSheetOverlay.style.display = 'none';
+  });
+  
+  historyActionSheetOverlay.addEventListener('click', (e) => {
+    if (e.target === historyActionSheetOverlay) {
+      historyActionSheetOverlay.style.display = 'none';
+    }
+  });
+
+  clearHistoryBtn.addEventListener('click', async () => {
+    if (await customConfirm('确定要清空所有历史记录吗？')) {
+      ringtoneHistory = [];
+      await saveData('ringtoneHistory', []);
+      renderRingtoneHistory();
+      historyActionSheetOverlay.style.display = 'none';
+    }
+  });
+  
+  multiSelectDeleteBtn.addEventListener('click', () => {
+    historyActionSheetOverlay.style.display = 'none';
+    multiDeleteBar.style.display = 'flex';
+    renderRingtoneHistory(true); // 进入多选模式
+  });
+
+  cancelMultiDeleteBtn.addEventListener('click', () => {
+    multiDeleteBar.style.display = 'none';
+    renderRingtoneHistory(false); // 退出多选模式
+  });
+  
+  deleteSelectedBtn.addEventListener('click', async () => {
+    const selectedItems = document.querySelectorAll('.history-item.selected');
+    if (selectedItems.length === 0) {
+      customAlert('请选择要删除的铃声');
+      return;
+    }
+    
+    const indexesToDelete = Array.from(selectedItems).map(item => parseInt(item.dataset.index)).sort((a, b) => b - a);
+    
+    indexesToDelete.forEach(index => {
+      ringtoneHistory.splice(index, 1);
+    });
+    
+    await saveData('ringtoneHistory', ringtoneHistory);
+    multiDeleteBar.style.display = 'none';
+    renderRingtoneHistory(false);
+  });
+
+  function setupEditPage(item, page, input, saveBtn, valueSpan, dataKey, originalKey, placeholder) {
+    item.addEventListener('click', () => {
+      originalValues[originalKey] = valueSpan.textContent;
+      input.value = (originalValues[originalKey] === placeholder || originalValues[originalKey] === 'user_2025') ? '' : originalValues[originalKey];
+      showPage(page);
+      input.focus();
+      saveBtn.classList.remove('active');
+    });
+
+    input.addEventListener('input', () => {
+      const originalValue = (originalValues[originalKey] === placeholder || originalValues[originalKey] === 'user_2025') ? '' : originalValues[originalKey];
+      saveBtn.classList.toggle('active', input.value.trim() !== originalValue);
+    });
+
+    saveBtn.addEventListener('click', async () => {
+      if (!saveBtn.classList.contains('active')) return;
+      const newValue = input.value.trim();
+      valueSpan.textContent = newValue || placeholder;
+      
+      if (dataKey === 'userName') {
+        profileName.textContent = newValue || 'user';
+      }
+      if (dataKey === 'wechatId') {
+        profileIdSpan.textContent = `微信号: ${newValue || 'user_2025'}`;
+      }
+
+      try {
+        await saveData(dataKey, newValue);
+        showPage(personalInfoPage);
+      } catch (error) {
+        customAlert('保存失败，请稍后再试');
+      }
+    });
+  }
+
+  avatarItem.addEventListener('click', () => avatarInput.click());
+  avatarInput.addEventListener('change', async (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const imageData = e.target.result;
+        profileAvatar.style.backgroundImage = `url(${imageData})`;
+        profileAvatar.style.backgroundSize = 'cover';
+        profileAvatar.textContent = '';
+        infoAvatar.style.backgroundImage = `url(${imageData})`;
+        infoAvatar.style.backgroundSize = 'cover';
+        await saveData('avatar', imageData);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  setupEditPage(nameItem, nameEditPage, newNameInput, nameSaveBtn, nameValueSpan, 'userName', 'name', '未设置');
+  setupEditPage(phoneItem, phoneEditPage, phoneInput, phoneSaveBtn, phoneValueSpan, 'phone', 'phone', '未设置');
+  setupEditPage(wechatIdItem, wechatIdEditPage, wechatIdInput, wechatIdSaveBtn, wechatIdValueSpan, 'wechatId', 'wechatId', 'user_2025');
+  /* 小鱼新增：我的人设编辑逻辑 */
+userPersonaItem.addEventListener('click', () => {
+  const currentVal = userPersonaValueSpan.textContent;
+  userPersonaInput.value = currentVal === '未设置' ? '' : currentVal;
+  showPage(userPersonaEditPage);
+  userPersonaInput.focus();
+  userPersonaSaveBtn.classList.remove('active');
+});
+
+userPersonaInput.addEventListener('input', () => {
+  userPersonaSaveBtn.classList.add('active');
+});
+
+userPersonaSaveBtn.addEventListener('click', async () => {
+  if (!userPersonaSaveBtn.classList.contains('active')) return;
+  const newVal = userPersonaInput.value.trim();
+  userPersonaValueSpan.textContent = newVal || '未设置';
+  await saveData('userPersona', newVal); // 保存到数据库
+  showPage(personalInfoPage);
+});
+
+  let selectedGender = '';
+  genderItem.addEventListener('click', () => {
+    selectedGender = genderValueSpan.textContent;
+    genderOptions.forEach(option => option.classList.toggle('selected', option.dataset.gender === selectedGender));
+    showPage(genderEditPage);
+  });
+  genderOptions.forEach(option => {
+    option.addEventListener('click', () => {
+      selectedGender = option.dataset.gender;
+      genderOptions.forEach(opt => opt.classList.remove('selected'));
+      option.classList.add('selected');
+    });
+  });
+  genderDoneBtn.addEventListener('click', async () => {
+    if (selectedGender && selectedGender !== '未设置') {
+      genderValueSpan.textContent = selectedGender;
+      await saveData('gender', selectedGender);
+    }
+    showPage(personalInfoPage);
+  });
+
+  regionItem.addEventListener('click', () => {
+    originalValues.region = regionValueSpan.textContent;
+    regionInput.value = originalValues.region === '未设置' ? '' : originalValues.region;
+    showPage(regionEditPage);
+    regionInput.focus();
+    regionSaveBtn.classList.remove('active');
+  });
+  regionInput.addEventListener('input', () => {
+    const originalValue = originalValues.region === '未设置' ? '' : originalValues.region;
+    regionSaveBtn.classList.toggle('active', regionInput.value.trim() !== originalValue);
+  });
+  regionSaveBtn.addEventListener('click', async () => {
+    if (!regionSaveBtn.classList.contains('active')) return;
+    const newRegion = regionInput.value.trim();
+    regionValueSpan.textContent = newRegion || '未设置';
+    await saveData('region', newRegion);
+    showPage(personalInfoPage);
+  });
+
+  patItem.addEventListener('click', () => {
+    originalValues.pat = patValueSpan.textContent;
+    patInput.value = originalValues.pat === '未设置' ? '' : originalValues.pat;
+    showPage(patEditPage);
+    patInput.focus();
+    patSaveBtn.classList.remove('active');
+    updatePatPreview();
+  });
+  function updatePatPreview() { patPreview.textContent = `朋友拍了拍我${patInput.value.trim()}`; }
+  patInput.addEventListener('input', () => {
+    updatePatPreview();
+    const originalValue = originalValues.pat === '未设置' ? '' : originalValues.pat;
+    patSaveBtn.classList.toggle('active', patInput.value.trim() !== originalValue);
+  });
+  // ★★★ 小鱼修改：落实拍一拍后缀的保存逻辑 ★★★
+patSaveBtn.addEventListener('click', async () => {
+  if (!patSaveBtn.classList.contains('active')) return;
+  
+  const newPat = patInput.value.trim();
+  
+  // 1. 更新页面上的显示
+  patValueSpan.textContent = newPat || '未设置';
+  
+  // 2. 存入数据库 (关键：键名为 'pat')
+  await saveData('pat', newPat);
+  
+  // 3. 提示并返回
+  // alert('拍一拍设置已保存'); // 可选：如果你想要弹窗提示就取消注释
+  showPage(personalInfoPage);
+});
+
+  signatureItem.addEventListener('click', () => {
+    originalValues.signature = signatureValueSpan.textContent;
+    signatureInput.value = originalValues.signature === '未填写' ? '' : originalValues.signature;
+    showPage(signatureEditPage);
+    signatureInput.focus();
+    signatureSaveBtn.classList.remove('active');
+    signatureCounter.textContent = 30 - signatureInput.value.length;
+  });
+  signatureInput.addEventListener('input', () => {
+    signatureCounter.textContent = 30 - signatureInput.value.length;
+    const originalValue = originalValues.signature === '未填写' ? '' : originalValues.signature;
+    signatureSaveBtn.classList.toggle('active', signatureInput.value !== originalValue);
+  });
+  signatureSaveBtn.addEventListener('click', async () => {
+    if (!signatureSaveBtn.classList.contains('active')) return;
+    const newSignature = signatureInput.value.trim();
+    signatureValueSpan.textContent = newSignature || '未填写';
+    await saveData('signature', newSignature);
+    showPage(personalInfoPage);
+  });
+
+  ringtoneItem.addEventListener('click', () => showPage(ringtonePage));
+  
+  ringtonePreviewBtn.addEventListener('click', () => {
+    if (ringtonePlayer.paused) {
+      ringtonePlayer.play().catch(e => customAlert("无法播放铃声。"));
+      ringtonePreviewBtn.classList.add('playing');
+    } else {
+      ringtonePlayer.pause();
+      ringtonePlayer.currentTime = 0;
+      ringtonePreviewBtn.classList.remove('playing');
+    }
+  });
+  
+  ringtonePlayer.addEventListener('ended', () => {
+    ringtonePreviewBtn.classList.remove('playing');
+  });
+  
+  historyLinkBtn.addEventListener('click', () => {
+    showPage(ringtoneHistoryPage);
+  });
+  
+  document.querySelector('.back-from-history').addEventListener('click', () => {
+    showPage(ringtonePage);
+  });
+
+  showRingtoneModalBtn.addEventListener('click', () => { ringtoneChangeModal.style.display = 'flex'; });
+  cancelRingtoneChange.addEventListener('click', () => {
+    ringtoneChangeModal.style.display = 'none';
+    ringtoneUrlInput.value = '';
+    ringtoneFileInput.value = '';
+    fileNameSpan.textContent = '';
+    ringtoneNameInput.value = '';
+  });
+  ringtoneFileInput.addEventListener('change', () => {
+    if (ringtoneFileInput.files.length > 0) {
+      fileNameSpan.textContent = ringtoneFileInput.files[0].name;
+      ringtoneUrlInput.value = '';
+    }
+  });
+
+  saveRingtoneChange.addEventListener('click', async () => {
+    const url = ringtoneUrlInput.value.trim();
+    const file = ringtoneFileInput.files[0];
+    const customName = ringtoneNameInput.value.trim();
+    
+    if (!url && !file) return customAlert('请输入URL或选择一个文件。');
+
+    const processRingtone = async (src, defaultName) => {
+      const finalName = customName || defaultName;
+      const data = { src, name: finalName };
+      
+      const existingIndex = ringtoneHistory.findIndex(item => item.name === finalName);
+      if (existingIndex === -1) {
+        ringtoneHistory.unshift(data);
+        if (ringtoneHistory.length > 20) {
+          ringtoneHistory.pop();
+        }
+        await saveData('ringtoneHistory', ringtoneHistory);
+      }
+      
+      if (!ringtonePlayer.paused) {
+        ringtonePlayer.pause();
+      }
+      ringtonePlayer.currentTime = 0;
+      ringtonePreviewBtn.classList.remove('playing');
+      
+      currentRingtone = data;
+      ringtonePlayer.src = data.src;
+      ringtoneName.textContent = data.name;
+      ringtoneValueSpan.textContent = data.name;
+      await saveData('ringtone', data);
+      renderRingtoneHistory();
+      cancelRingtoneChange.click();
+      customAlert('铃声已更换！');
+    };
+
+    if (url) {
+      await processRingtone(url, url.split('/').pop() || '网络铃声');
+    } else if (file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => await processRingtone(e.target.result, file.name);
+      reader.readAsDataURL(file);
+    }
+  });
+
+  profileHeader.addEventListener('click', () => showPage(personalInfoPage));
+  backButton.addEventListener('click', () => showPage(mainApp));
+  document.querySelectorAll('.back-from-edit').forEach(btn => {
+    btn.addEventListener('click', () => showPage(personalInfoPage));
+  });
+
+const titleMap = { 'chats': '微信', 'contacts': '通讯录', 'discover': '发现', 'profile': '我' };
+tabItems.forEach(item => {
+  item.addEventListener('click', function() {
+    const targetTab = this.getAttribute('data-tab');
+    
+    // 小鱼修复：清除所有页面的动画类和样式
+    pages.forEach(page => {
+      page.classList.remove('active', 'slide-from-left', 'slide-to-right', 'slide-to-left');
+      page.style.display = 'none'; // 确保所有页面都隐藏
+      page.style.position = ''; // 重置position
+      page.style.opacity = '';
+      page.style.transform = '';
+    });
+    
+    tabItems.forEach(tab => tab.classList.remove('active'));
+    this.classList.add('active');
+    
+    // 小鱼修复：正确显示目标页面
+    const targetPage = document.getElementById(targetTab);
+    targetPage.style.display = 'block';
+    targetPage.classList.add('active');
+    
+    navTitle.textContent = titleMap[targetTab];
+    navBar.classList.toggle('nav-bar-hidden', targetTab === 'profile');
+  });
+});
+/* 小鱼新增：主界面左右滑动切换功能（已优化全屏滑动+动画效果） */
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
+const swipeThreshold = 60; // 最小水平滑动距离
+const verticalThreshold = 40; // 最大垂直滑动距离（防止误触）
+
+mainApp.addEventListener('touchstart', (e) => {
+  // 只在主应用界面生效，不影响其他全屏页面
+  if (mainApp.style.display !== 'none') {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }
+}, { passive: true });
+
+mainApp.addEventListener('touchend', (e) => {
+  if (mainApp.style.display !== 'none') {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    handleSwipe();
+  }
+}, { passive: true });
+
+function handleSwipe() {
+  const deltaX = touchEndX - touchStartX;
+  const deltaY = Math.abs(touchEndY - touchStartY);
+
+  // 如果垂直滑动距离太大，认为是上下滚动，不触发页面切换
+  if (deltaY > verticalThreshold) {
+    return;
+  }
+
+  // 检查水平滑动距离是否超过阈值
+  if (Math.abs(deltaX) < swipeThreshold) {
+    return;
+  }
+
+  // 找到当前激活的标签索引
+  const currentIndex = Array.from(tabItems).findIndex(tab => tab.classList.contains('active'));
+  let targetIndex = -1;
+
+  if (deltaX > 0 && currentIndex > 0) {
+    // 向右滑动（切换到上一个标签）
+    targetIndex = currentIndex - 1;
+    animatePageTransition(currentIndex, targetIndex, 'right');
+  } else if (deltaX < 0 && currentIndex < tabItems.length - 1) {
+    // 向左滑动（切换到下一个标签）
+    targetIndex = currentIndex + 1;
+    animatePageTransition(currentIndex, targetIndex, 'left');
+  }
+}
+
+/* 小鱼新增：页面切换动画函数 */
+function animatePageTransition(fromIndex, toIndex, direction) {
+  const fromPage = pages[fromIndex];
+  const toPage = pages[toIndex];
+
+  // 清除所有动画类
+  pages.forEach(page => {
+    page.classList.remove('slide-from-left', 'slide-to-right', 'slide-to-left');
+  });
+
+  if (direction === 'left') {
+    // 向左滑动
+    toPage.style.display = 'block';
+    toPage.style.position = 'absolute';
+    toPage.style.transform = 'translateX(100%)';
+    toPage.style.opacity = '0';
+    
+    setTimeout(() => {
+      toPage.style.transform = 'translateX(0)';
+      toPage.style.opacity = '1';
+      fromPage.style.transform = 'translateX(-100%)';
+      fromPage.style.opacity = '0';
+      
+      setTimeout(() => {
+        fromPage.classList.remove('active');
+        fromPage.style.display = 'none';
+        fromPage.style.transform = '';
+        fromPage.style.opacity = '';
+        fromPage.style.position = '';
+        
+        toPage.classList.add('active');
+        toPage.style.position = '';
+        toPage.style.transform = '';
+        toPage.style.opacity = '';
+      }, 300);
+    }, 10);
+  } else {
+    // 向右滑动
+    toPage.style.display = 'block';
+    toPage.style.position = 'absolute';
+    toPage.style.transform = 'translateX(-100%)';
+    toPage.style.opacity = '0';
+    
+    setTimeout(() => {
+      toPage.style.transform = 'translateX(0)';
+      toPage.style.opacity = '1';
+      fromPage.style.transform = 'translateX(100%)';
+      fromPage.style.opacity = '0';
+      
+      setTimeout(() => {
+        fromPage.classList.remove('active');
+        fromPage.style.display = 'none';
+        fromPage.style.transform = '';
+        fromPage.style.opacity = '';
+        fromPage.style.position = '';
+        
+        toPage.classList.add('active');
+        toPage.style.position = '';
+        toPage.style.transform = '';
+        toPage.style.opacity = '';
+      }, 300);
+    }, 10);
+  }
+
+  // 更新底部标签栏和标题
+  tabItems.forEach(tab => tab.classList.remove('active'));
+  tabItems[toIndex].classList.add('active');
+  
+  const targetTab = tabItems[toIndex].getAttribute('data-tab');
+  navTitle.textContent = titleMap[targetTab];
+  navBar.classList.toggle('nav-bar-hidden', targetTab === 'profile');
+}
+  document.body.addEventListener('touchmove', (e) => {
+  if (!e.target.closest('.content, .ringtone-content, .chat-messages, textarea, input, .modal-content, #chatStickerOverlay, #momentsFeedContainer, #momentsPage')) e.preventDefault();
+}, { passive: false });
+
+/* 小鱼新增：角色管理逻辑（包含新建和编辑） */
+const newFriendBtn = document.getElementById('newFriendBtn');
+const createCharacterPage = document.getElementById('createCharacterPage');
+const saveCharacterBtn = document.getElementById('saveCharacterBtn');
+const charAvatarPreview = document.getElementById('charAvatarPreview');
+const charAvatarInput = document.getElementById('charAvatarInput');
+const charRealName = document.getElementById('charRealName');
+const charNickname = document.getElementById('charNickname');
+const charPersona = document.getElementById('charPersona');
+const customContactsList = document.getElementById('customContactsList');
+const backFromCreateBtn = document.querySelector('.back-from-create');
+const pageTitle = createCharacterPage.querySelector('h1'); // 获取标题元素
+
+let tempCharAvatar = ''; // 临时存储头像
+let currentEditingId = null; // 关键：用来记录当前是在“新建”还是“编辑”
+
+// 小鱼新增：渲染表情库选择列表
+async function renderCharStickerOptions(selectedLibIds = []) {
+  const area = document.getElementById('charStickerSelectArea');
+  const libs = await getData('stickerLibs') || [];
+  
+  if (libs.length === 0) {
+    area.innerHTML = '<div style="color:#999; font-size:12px;">暂无表情包库，请去“我-表情”添加</div>';
+    return;
+  }
+
+  area.innerHTML = libs.map(lib => {
+    const isChecked = selectedLibIds.includes(lib.id) ? 'checked' : '';
+    return `
+      <label style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer;">
+        <input type="checkbox" class="char-sticker-checkbox" value="${lib.id}" ${isChecked} style="margin-right: 10px;">
+        <span style="font-size: 15px;">${lib.name}</span>
+        <span style="font-size: 12px; color: #999; margin-left: auto;">${lib.stickers ? lib.stickers.length : 0}张</span>
+      </label>
+    `;
+  }).join('');
+}
+
+// 1. 点击“新的朋友” -> 进入新建模式
+newFriendBtn.addEventListener('click', async () => {
+  // ★★★ 修复核心：进入新建模式前，强制清空当前聊天ID，防止保存时跳错页面 ★★★
+  currentChatId = null; 
+
+  currentEditingId = null;
+  pageTitle.textContent = "新建角色";
+  
+  charRealName.value = '';
+  charNickname.value = '';
+  charPersona.value = '';
+  tempCharAvatar = '';
+  charAvatarPreview.style.backgroundImage = '';
+  charAvatarPreview.textContent = '点击传头像';
+  
+  // 使用通用函数渲染 (ID为 charStickerSelectArea)
+await renderStickerOptionsForElement('charStickerSelectArea', []);
+// 世界书渲染已删除
+
+showPage(createCharacterPage);
+});
+
+// 2. 点击列表中的角色 -> 进入编辑模式
+window.editCharacter = async function(id) {
+  currentEditingId = id;
+  pageTitle.textContent = "编辑角色";
+  
+  const contacts = await getData('customContacts') || [];
+  const target = contacts.find(c => c.id === id);
+  
+if (target) {
+  charRealName.value = target.realName || '';
+  charNickname.value = target.nickname || '';
+  charPersona.value = target.persona || '';
+  
+  // ★★★ 新增：回显记忆挂载数量 ★★★
+  document.getElementById('charMemoryMount').value = target.memoryMount || 5;
+  
+  // 时间观念设置已移除，在聊天信息页管理
+  
+  tempCharAvatar = target.avatar || '';
+    if (tempCharAvatar) {
+      charAvatarPreview.style.backgroundImage = `url(${tempCharAvatar})`;
+      charAvatarPreview.textContent = '';
+    } else {
+      charAvatarPreview.style.backgroundImage = '';
+      charAvatarPreview.textContent = '点击传头像';
+    }
+    
+        // 使用通用函数渲染，并回显已选库
+await renderStickerOptionsForElement('charStickerSelectArea', target.allowedStickerLibs || []);
+// 世界书渲染已删除，请前往聊天信息页管理
+
+showPage(createCharacterPage);
+  }
+};
+
+// 3. 返回按钮 (小鱼修复：智能判断返回路径)
+backFromCreateBtn.addEventListener('click', () => {
+  if (currentEditingId) {
+    // 如果是编辑模式，返回资料页
+    showPage(document.getElementById('contactProfilePage'));
+  } else {
+    // 如果是新建模式，返回通讯录
+    showPage(mainApp);
+  }
+});
+
+// 4. 头像上传处理
+charAvatarPreview.addEventListener('click', () => charAvatarInput.click());
+charAvatarInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      tempCharAvatar = event.target.result;
+      charAvatarPreview.style.backgroundImage = `url(${tempCharAvatar})`;
+      charAvatarPreview.textContent = '';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// 5. 保存按钮（智能判断是新建还是更新）
+saveCharacterBtn.addEventListener('click', async () => {
+  const realName = charRealName.value.trim();
+  const nickname = charNickname.value.trim();
+  const persona = charPersona.value.trim();
+
+  if (!nickname && !realName) {
+    customAlert('请至少输入真名或昵称');
+    return;
+  }
+
+  // ★★★ 关键修复1：强制保存当前聊天ID到临时变量，防止被清空 ★★★
+  const savedChatId = currentChatId;
+  const savedEditingId = currentEditingId;
+
+  let contacts = await getData('customContacts') || [];
+
+const stickerArea = document.getElementById('charStickerSelectArea');
+const selectedLibs = Array.from(stickerArea.querySelectorAll('.sticker-select-checkbox:checked'))
+                          .map(cb => parseInt(cb.value));
+
+// ★★★ 新增：读取记忆挂载设置 ★★★
+const memoryMount = parseInt(document.getElementById('charMemoryMount').value) || 5;
+
+// 生成微信号
+let wechatId = '';
+  const nameForWxId = realName || nickname || '';
+  if (nameForWxId.trim()) {
+    try {
+      const py = window.pinyinPro.pinyin(nameForWxId, { toneType: 'none', type: 'array' }).join('');
+      wechatId = 'char_' + py.toLowerCase();
+    } catch (e) {
+      wechatId = 'char_' + nameForWxId.toLowerCase().replace(/\s+/g, '');
+    }
+  }
+
+  // ★★★ 关键修复2：用临时变量判断编辑还是新建 ★★★
+if (savedEditingId) {
+  // 编辑现有角色
+  const index = contacts.findIndex(c => c.id === savedEditingId);
+  if (index !== -1) {
+    contacts[index] = {
+      ...contacts[index],
+      realName, 
+      nickname, 
+      persona, 
+      avatar: tempCharAvatar,
+      allowedStickerLibs: selectedLibs,
+      wechatId: wechatId,
+      memoryMount: memoryMount // ★★★ 新增：保存挂载数量 ★★★
+    };
+  }
+} else {
+  // 新建角色
+  const newId = Date.now();
+  contacts.push({
+    id: newId,
+    realName,
+    nickname: nickname || realName,
+    persona,
+    avatar: tempCharAvatar,
+    allowedStickerLibs: selectedLibs,
+    worldBookIds: [],
+    wechatId: wechatId,
+    timeAwareness: true,
+    memoryMount: memoryMount // ★★★ 新增：保存挂载数量 ★★★
+  });
+    
+    // ★★★ 关键修复3：新建完成后弹出成功提示 ★★★
+    console.log('✅ 新建角色成功，ID:', newId);
+  }
+
+  // 保存到数据库
+  await saveData('customContacts', contacts);
+
+  // 刷新通讯录列表
+  renderCustomContacts(contacts);
+
+  // 清除覆盖数据
+  if (savedEditingId) {
+    const overrides = await getData('contactOverrides') || {};
+    delete overrides[savedEditingId];
+    await saveData('contactOverrides', overrides);
+  }
+
+  // ★★★ 关键修复4：根据来源智能返回 ★★★
+  if (savedChatId && savedEditingId) {
+    // 情况A：从聊天页进入编辑 -> 返回资料页
+    const updatedContact = contacts.find(c => c.id === savedEditingId);
+    if (updatedContact) {
+      document.getElementById('chatTitle').textContent = updatedContact.nickname;
+      
+      const cpAvatar = document.getElementById('cpAvatar');
+      const cpNickname = document.getElementById('cpNickname');
+      
+      if (updatedContact.avatar) {
+        cpAvatar.style.backgroundImage = `url(${updatedContact.avatar})`;
+        cpAvatar.innerHTML = '';
+      } else {
+        cpAvatar.style.backgroundImage = '';
+        cpAvatar.style.backgroundColor = '#ccc';
+        cpAvatar.innerHTML = updatedContact.nickname[0] || '?';
+      }
+      cpNickname.textContent = updatedContact.nickname;
+      
+      let sessions = await getData('chat_sessions') || [];
+      const sessionIndex = sessions.findIndex(s => s.id === savedChatId);
+      if (sessionIndex !== -1) {
+        sessions[sessionIndex].name = updatedContact.nickname;
+        sessions[sessionIndex].avatar = updatedContact.avatar;
+        await saveData('chat_sessions', sessions);
+        await renderChatList();
+      }
+    }
+    showPage(document.getElementById('contactProfilePage'));
+  } else {
+    // 情况B：从通讯录新建 -> 返回主界面并弹提示
+    showPage(mainApp);
+    // ★★★ 延迟弹窗，确保页面切换完成后再显示 ★★★
+setTimeout(async () => {
+  await customAlert('角色创建成功！');
+}, 100);
+  }
+});
+
+// 6. 渲染列表（修改了onclick事件，指向打开主页函数）
+function renderCustomContacts(contacts) {
+  if (!contacts) return;
+  
+  // ★★★ 小鱼修改：过滤掉群聊，只显示单人好友 ★★★
+  const visibleContacts = contacts.filter(c => !c.isGroup);
+
+  customContactsList.innerHTML = visibleContacts.map(contact => {
+    // ★★★ 修改：如果没有头像，使用指定的默认图片 ★★★
+    const displayAvatar = contact.avatar || 'https://iili.io/fkc3RwJ.jpg';
+    
+    // 统一使用图片样式渲染
+    const avatarHtml = `<div class="contact-icon" style="background-image: url(${displayAvatar}); background-size: cover; border-radius: 4px;"></div>`;
+
+    // ★★★ 修改：点击进入 openContactProfile (角色主页) ★★★
+    return `
+      <div class="contact-item" onclick="openContactProfile(${contact.id})">
+        ${avatarHtml}
+        <div style="display:flex; flex-direction:column; justify-content:center;">
+          <span class="contact-name">${contact.nickname}</span>
+          <span style="font-size: 12px; color: #999; margin-left: 14px;">${contact.realName ? '真名: ' + contact.realName : ''}</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 7. 加载入口
+const originalLoadUserData = loadUserData;
+loadUserData = async function() {
+  await originalLoadUserData();
+  try {
+    const contacts = await getData('customContacts') || [];
+    renderCustomContacts(contacts);
+  } catch (e) {
+    console.log('暂无自定义联系人');
+  }
+};
+
+/* 小鱼新增：聊天功能核心逻辑 */
+const startChatBtn = document.getElementById('startChatBtn');
+const selectContactOverlay = document.getElementById('selectContactOverlay');
+const selectContactList = document.getElementById('selectContactList');
+const closeSelectContact = document.getElementById('closeSelectContact');
+const chatRoomPage = document.getElementById('chatRoomPage');
+const chatBackBtn = document.getElementById('chatBackBtn');
+const chatTitle = document.getElementById('chatTitle');
+const chatMessagesContainer = document.getElementById('chatMessagesContainer');
+const chatInput = document.getElementById('chatInput');
+const chatSendBtn = document.getElementById('chatSendBtn');
+const chatAiBtn = document.getElementById('chatAiBtn');
+const chatListContainer = document.getElementById('chatListContainer');
+
+let currentChatId = null;
+let userAvatarUrl = '';
+
+// ★★★ 小鱼新增：聊天会话令牌（核心修复）★★★
+// 每次进入一个新的聊天界面，都刷新一次这个编号。
+// 旧聊天的异步回复回来时，如果编号对不上，就禁止它往当前界面渲染。
+let activeChatSessionToken = 0;
+
+// ★ 小鱼新增：草稿箱状态
+let wxDrafts = []; // 结构: [[msg1, msg2], [msg1, msg2]] (因为微信AI回复可能是多条分句)
+let wxCurrentDraftIdx = 0;
+
+// 1. 点击加号，显示/隐藏右上角黑色菜单
+const topRightMenu = document.getElementById('topRightMenu');
+startChatBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // 防止冒泡关闭菜单
+    if (topRightMenu.style.display === 'none') {
+        topRightMenu.style.display = 'block';
+    } else {
+        topRightMenu.style.display = 'none';
+    }
+});
+
+// 点击屏幕其他地方关闭菜单
+document.addEventListener('click', () => {
+    topRightMenu.style.display = 'none';
+});
+
+// 封装一个关闭函数
+function hideSelectContactModal() {
+    selectContactOverlay.style.display = 'none';
+}
+
+// 右上角 X 按钮
+closeSelectContact.addEventListener('click', hideSelectContactModal);
+
+// 新增的底部取消按钮
+document.getElementById('cancelSelectContactBtn').addEventListener('click', hideSelectContactModal);
+
+// 点击遮罩层（弹窗外部的灰色区域）也能关闭
+selectContactOverlay.addEventListener('click', (e) => {
+    if (e.target === selectContactOverlay) {
+        hideSelectContactModal();
+    }
+});
+
+// 2. 开始聊天（进入聊天室）
+async function startChat(contactOrId) {
+    selectContactOverlay.style.display = 'none';
+    const id = contactOrId.id || contactOrId;
+    currentChatId = id;
+    
+    // ★★★ 核心修改：默认加载最近 50 条 ★★★
+    window.currentMsgLimit = 50; 
+    
+    // 强制从数据库恢复草稿箱
+    await loadWxDrafts(id);
+    
+    const contact = await getContactDetails(id);
+    chatTitle.textContent = contact.nickname;
+
+    // 优先加载聊天专属头像
+    const chatProfiles = await getData('my_chat_profiles') || {};
+    const myProfile = chatProfiles[id];
+    
+    if (myProfile && myProfile.avatar) {
+        userAvatarUrl = myProfile.avatar; 
+    } else {
+        userAvatarUrl = await getData('avatar') || ''; 
+    }
+    
+    await renderMessages(contact.id);
+    showPage(chatRoomPage);
+    scrollToBottom();
+    
+    // 加载背景
+    const contacts = await getData('customContacts') || [];
+    const currentContact = contacts.find(c => c.id === id);
+    if (currentContact && currentContact.chatBackground) {
+        applyChatBackground(currentContact.chatBackground);
+    } else {
+        applyChatBackground(null);
+    }
+}
+
+// ★★★ 小鱼新增：微信时间格式化工具 (核心逻辑) ★★★
+function formatWeChatTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    // 获取具体时间组件
+    const year = date.getFullYear();
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const hour = date.getHours();
+    const minute = date.getMinutes();
+    const weekDay = date.getDay(); // 0-6, 0是周日
+    
+    // 补零函数
+    const pad = n => n.toString().padStart(2, '0');
+    const timeStr = `${pad(hour)}:${pad(minute)}`;
+    
+    // 计算时段 (凌晨/上午/下午/晚上)
+    let period = "";
+    if (hour >= 0 && hour < 6) period = "凌晨";
+    else if (hour >= 6 && hour < 12) period = "上午";
+    else if (hour >= 12 && hour < 13) period = "中午";
+    else if (hour >= 13 && hour < 18) period = "下午";
+    else period = "晚上";
+
+    // 计算日期差 (用于判断昨天、一周内)
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const targetDay = new Date(year, date.getMonth(), day);
+    const diffTime = today - targetDay;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // 1. 如果是今天
+    if (diffDays === 0) {
+        return timeStr; // 今天只显示时间，如 10:30
+    }
+    
+    // 2. 如果是昨天
+    if (diffDays === 1) {
+        return `昨天 ${period} ${timeStr}`; // 如 昨天 上午 10:30
+    }
+    
+    // 3. 如果是一周内 (且不是昨天)
+    if (diffDays > 1 && diffDays < 7) {
+        const weeks = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
+        return `${weeks[weekDay]} ${period} ${timeStr}`; // 如 星期二 下午 14:00
+    }
+    
+    // 4. 如果是跨年了
+    if (year !== now.getFullYear()) {
+        return `${year}年${month}月${day}日 ${period} ${timeStr}`; // 如 2024年12月31日 晚上 22:42
+    }
+    
+    // 5. 其他情况 (今年内，超过一周)
+    return `${month}月${day}日 ${period} ${timeStr}`; // 如 3月15日 晚上 20:00
+}
+
+// ★★★ 小鱼重构：消息渲染函数 (适配群聊) ★★★
+async function renderMessages(chatId) {
+    const allMessages = await getData('chat_messages_' + chatId) || [];
+    
+    // ★★★ 核心新增：判断是否为群聊 ★★★
+    const contacts = await getData('customContacts') || [];
+    const contact = contacts.find(c => c.id === chatId);
+    const isGroup = contact ? !!contact.isGroup : false;
+    
+    // 小鱼新增：读取"显示群成员昵称"开关状态，并缓存到全局变量
+    if (isGroup) {
+        const savedState = await getData('showGroupNickname_' + chatId);
+        window.currentShowNicknameState = savedState !== null ? savedState : true;
+    } else {
+        window.currentShowNicknameState = false; // 单聊不显示昵称
+    }
+    
+    // ★★★ 核心新增：如果是群聊，建立 名字->头像 映射表 ★★★
+    let memberAvatarMap = {};
+    if (isGroup) {
+        const memberIds = contact.memberIds || [];
+        const members = contacts.filter(c => memberIds.includes(c.id));
+        members.forEach(m => {
+            memberAvatarMap[m.nickname] = m.avatar;
+            if (m.realName) memberAvatarMap[m.realName] = m.avatar;
+        });
+    }
+    
+    // 1. 预处理为"渲染块 (Blocks)"
+    let blocks = [];
+    let currentOfflineBlock = null;
+
+    allMessages.forEach(msg => {
+        if (msg.isHidden || msg.type === 'system_separator') return;
+
+        const source = msg.source || 'online';
+
+        if (source === 'offline') {
+            if (!currentOfflineBlock) {
+                currentOfflineBlock = {
+                    type: 'offline_group',
+                    messages: [],
+                    timestamp: msg.timestamp 
+                };
+                blocks.push(currentOfflineBlock);
+            }
+            currentOfflineBlock.messages.push(msg);
+        } else {
+            currentOfflineBlock = null;
+            blocks.push({
+                type: 'online_msg',
+                message: msg,
+                timestamp: msg.timestamp
+            });
+        }
+    });
+
+    // 2. 分页处理
+    if (typeof window.currentMsgLimit === 'undefined') window.currentMsgLimit = 50;
+    
+    const totalBlocks = blocks.length;
+    const blocksToRender = blocks.slice(-window.currentMsgLimit);
+    const hasMore = totalBlocks > window.currentMsgLimit;
+    
+    const scrollContainer = chatMessagesContainer;
+    const oldScrollHeight = scrollContainer.scrollHeight;
+    const oldScrollTop = scrollContainer.scrollTop;
+    const isNearBottom = oldScrollTop + scrollContainer.clientHeight >= oldScrollHeight - 100;
+    
+    chatMessagesContainer.innerHTML = '';
+    
+    // 3. 渲染"查看更多"
+if (hasMore) {
+    const loadMoreBtn = document.createElement('div');
+    loadMoreBtn.className = 'load-more-btn'; // ★ 添加类名用于查找
+    loadMoreBtn.style.textAlign = 'center';
+    loadMoreBtn.style.padding = '10px';
+    loadMoreBtn.style.fontSize = '12px';
+    loadMoreBtn.style.color = '#576B95';
+    loadMoreBtn.style.cursor = 'pointer';
+    loadMoreBtn.innerHTML = `查看更多消息 (${totalBlocks - window.currentMsgLimit}条)`;
+    
+    loadMoreBtn.onclick = async () => {
+        // ★★★ 核心修复：立即移除所有旧按钮 ★★★
+        document.querySelectorAll('.load-more-btn').forEach(btn => btn.remove());
+        
+        const oldLimit = window.currentMsgLimit;
+        window.currentMsgLimit += 50;
+        
+        const newBlocksStart = Math.max(0, totalBlocks - window.currentMsgLimit);
+        const newBlocksEnd = totalBlocks - oldLimit;
+        const newBlocks = blocks.slice(newBlocksStart, newBlocksEnd);
+        
+        if (newBlocks.length === 0) return;
+        
+        const preLoadHeight = scrollContainer.scrollHeight;
+        const preScrollTop = scrollContainer.scrollTop;
+        
+        const fragment = document.createDocumentFragment();
+        
+        let lastRenderedTime = newBlocks.length > 0 ? newBlocks[0].timestamp : 0;
+        const FIVE_MINUTES = 5 * 60 * 1000;
+        
+        newBlocks.forEach(block => {
+            const currentBlockTime = block.timestamp;
+            
+            if (currentBlockTime - lastRenderedTime > FIVE_MINUTES) {
+                const timeDiv = document.createElement('div');
+                timeDiv.className = 'chat-timestamp';
+                timeDiv.textContent = formatWeChatTime(currentBlockTime);
+                fragment.appendChild(timeDiv);
+            }
+            lastRenderedTime = currentBlockTime;
+            
+            const tempContainer = document.createElement('div');
+            chatMessagesContainer.appendChild(tempContainer);
+            
+            if (block.type === 'online_msg') {
+                let avatarToUse = contact ? contact.avatar : '';
+                if (isGroup && block.message.role === 'assistant' && block.message.senderName) {
+                    avatarToUse = memberAvatarMap[block.message.senderName] || '';
+                }
+                appendMessageToUI(block.message, avatarToUse, isGroup);
+            } else if (block.type === 'offline_group') {
+                renderOfflineBlockUI(block.messages, contact ? contact.avatar : '', isGroup, memberAvatarMap);
+            }
+            
+            while (tempContainer.nextSibling) {
+                fragment.appendChild(tempContainer.nextSibling);
+            }
+            tempContainer.remove();
+        });
+        
+        if (newBlocksStart > 0) {
+            const newBtn = document.createElement('div');
+            newBtn.className = 'load-more-btn';
+            newBtn.style.cssText = loadMoreBtn.style.cssText;
+            newBtn.innerHTML = `查看更多消息 (${newBlocksStart}条)`;
+            newBtn.onclick = loadMoreBtn.onclick;
+            fragment.insertBefore(newBtn, fragment.firstChild);
+        }
+        
+        chatMessagesContainer.insertBefore(fragment, chatMessagesContainer.firstChild);
+        
+        const postLoadHeight = scrollContainer.scrollHeight;
+        scrollContainer.scrollTop = preScrollTop + (postLoadHeight - preLoadHeight);
+    };
+    chatMessagesContainer.appendChild(loadMoreBtn);
+}
+
+    const otherAvatar = contact ? contact.avatar : '';
+    
+    if (blocksToRender.length === 0 && !hasMore) return;
+
+    let lastRenderedTime = 0;
+    const FIVE_MINUTES = 5 * 60 * 1000;
+
+    // 4. 循环渲染 Block
+    blocksToRender.forEach(block => {
+        let currentBlockTime = block.timestamp;
+        
+        if (currentBlockTime - lastRenderedTime > FIVE_MINUTES) {
+            const timeDiv = document.createElement('div');
+            timeDiv.className = 'chat-timestamp';
+            timeDiv.textContent = formatWeChatTime(currentBlockTime);
+            chatMessagesContainer.appendChild(timeDiv);
+        }
+        lastRenderedTime = currentBlockTime;
+
+        if (block.type === 'online_msg') {
+    // ★★★ 核心修改：传入 isGroup 参数 ★★★
+    let avatarToUse = contact ? contact.avatar : '';
+    if (isGroup && block.message.role === 'assistant' && block.message.senderName) {
+        avatarToUse = memberAvatarMap[block.message.senderName] || '';
+    }
+    appendMessageToUI(block.message, avatarToUse, isGroup);
+} else if (block.type === 'offline_group') {
+    // ★★★ 核心修正：将 memberAvatarMap 传给子函数 ★★★
+    renderOfflineBlockUI(block.messages, contact ? contact.avatar : '', isGroup, memberAvatarMap);
+}
+    });
+
+    // 5. 草稿箱检测
+    let lastVisibleMsg = null;
+
+    for (let i = blocksToRender.length - 1; i >= 0; i--) {
+        const block = blocksToRender[i];
+        if (block.type === 'online_msg') {
+            if (!block.message.isHidden && block.message.type !== 'system_separator') {
+                lastVisibleMsg = block.message;
+                break;
+            }
+        } else if (block.type === 'offline_group') {
+            if (block.messages.length > 0) {
+                lastVisibleMsg = block.messages[block.messages.length - 1];
+                break;
+            }
+        }
+    }
+
+    if (lastVisibleMsg && lastVisibleMsg.role === 'assistant' && (lastVisibleMsg.source || 'online') !== 'offline') {
+        renderDraftToolbar();
+    }
+    
+    // 6. 恢复滚动
+    setTimeout(() => {
+        if (isNearBottom) {
+            scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        }
+    }, 0);
+}
+
+// ★★★ 小鱼重构：渲染线下消息块 (修复群聊头像显示) ★★★
+function renderOfflineBlockUI(messages, otherAvatar, isGroupChat = false, memberAvatarMap = {}) {
+    if (messages.length === 0) return;
+
+    const visibleMessages = messages.filter(m => !m.isHidden && m.type !== 'system_separator');
+    
+    if (visibleMessages.length === 0) {
+        console.log('⚠️ 线下消息组已无可见内容，跳过渲染折叠框');
+        return;
+    }
+    
+    const toggleBtn = document.createElement('div');
+    toggleBtn.className = 'offline-toggle-btn';
+    
+    const firstTime = new Date(visibleMessages[0].timestamp).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    const lastTime = new Date(visibleMessages[visibleMessages.length - 1].timestamp).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+    
+    toggleBtn.innerHTML = `<span>线下见面 ${firstTime} ~ ${lastTime} (${visibleMessages.length}条)</span>`;
+    
+    const offlineBox = document.createElement('div');
+    offlineBox.className = 'offline-container';
+    
+    // ★★★ 核心修复：使用传入的 memberAvatarMap 同步查找头像 ★★★
+    visibleMessages.forEach((msg) => {
+        let avatarToUse = otherAvatar;
+        
+        if (isGroupChat && msg.role === 'assistant' && msg.senderName) {
+            // 直接从映射表取值，不再使用异步 getData，确保渲染时头像立即可用
+            avatarToUse = memberAvatarMap[msg.senderName] || otherAvatar;
+        }
+        
+        appendMessageToUI(msg, avatarToUse, isGroupChat);
+        const lastChild = chatMessagesContainer.lastChild;
+        if (lastChild) {
+            offlineBox.appendChild(lastChild);
+        }
+    });
+
+    toggleBtn.onclick = function() {
+        const isHidden = !offlineBox.classList.contains('show');
+        if (isHidden) {
+            offlineBox.classList.add('show');
+            this.innerHTML = '<span>收起这段线下聊天</span>';
+        } else {
+            offlineBox.classList.remove('show');
+            this.innerHTML = `<span>线下见面 ${firstTime} ~ ${lastTime} (${visibleMessages.length}条)</span>`;
+        }
+    };
+
+    chatMessagesContainer.appendChild(toggleBtn);
+    chatMessagesContainer.appendChild(offlineBox);
+}
+
+// ★ 小鱼修复：渲染草稿箱工具栏（支持点击拍一拍显示）
+function renderDraftToolbar() {
+    const existingToolbar = document.querySelector('.wx-draft-toolbar');
+    if (existingToolbar) existingToolbar.remove();
+
+    const toolbar = document.createElement('div');
+    toolbar.className = 'wx-draft-toolbar';
+    toolbar.style.display = 'none'; 
+    toolbar.style.alignItems = 'center';
+    toolbar.style.gap = '10px';
+    toolbar.style.padding = '5px 0 15px 55px';
+    toolbar.style.marginTop = '-5px';
+    toolbar.style.fontSize = '12px';
+    toolbar.style.color = '#999';
+
+    let navHtml = '';
+    if (wxDrafts && wxDrafts.length > 1) {
+        navHtml = `
+            <div style="display:flex; align-items:center; gap:6px; background:rgba(0,0,0,0.05); padding:2px 8px; border-radius:10px;">
+                <div onclick="switchWxDraft(-1)" style="cursor:pointer; padding:4px 8px; font-weight:bold; user-select:none;">❮</div>
+                <div style="min-width:30px; text-align:center; font-variant-numeric:tabular-nums;">${wxCurrentDraftIdx + 1} / ${wxDrafts.length}</div>
+                <div onclick="switchWxDraft(1)" style="cursor:pointer; padding:4px 8px; font-weight:bold; user-select:none;">❯</div>
+            </div>
+        `;
+    }
+
+    const refreshHtml = `
+        <div onclick="regenerateLastWeChat()" title="重新生成" style="width:24px; height:24px; border-radius:50%; background:rgba(0,0,0,0.05); display:flex; align-items:center; justify-content:center; cursor:pointer;">
+            <svg viewBox="0 0 24 24" style="width:14px; height:14px; fill:#666;">
+                <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+            </svg>
+        </div>
+    `;
+
+    toolbar.innerHTML = navHtml + refreshHtml;
+    chatMessagesContainer.appendChild(toolbar);
+
+    // ★★★ 关键修改：获取上一条消息，无论是气泡、心声还是拍一拍 ★★★
+// 小鱼修复：因为可能有隐藏消息（在DOM里不存在），所以 previousElementSibling 获取到的
+// 就是视觉上的“最后一条可见消息”，这个逻辑其实是对的。
+// 但为了保险，我们确保它绑定到了正确的元素上。
+
+const lastElement = toolbar.previousElementSibling;
+
+if (lastElement && (
+    lastElement.classList.contains('message-bubble') || 
+    lastElement.classList.contains('inner-voice-wrapper') || 
+    lastElement.classList.contains('system-text-message') 
+)) {
+    // 先移除旧的监听器（防止重复绑定，虽然这里是新建元素，但是个好习惯）
+    // 绑定点击事件
+    lastElement.onclick = (e) => {
+        if (typeof isMultiSelectMode !== 'undefined' && isMultiSelectMode) return;
+        
+        // 阻止冒泡，防止触发其他点击事件
+        e.stopPropagation();
+
+        // 切换显示/隐藏
+        if (toolbar.style.display === 'none') {
+            toolbar.style.display = 'flex';
+            toolbar.style.animation = 'none';
+            toolbar.offsetHeight; // 触发重绘
+            toolbar.style.animation = 'fadeIn 0.3s ease-out forwards';
+        } else {
+            toolbar.style.display = 'none';
+        }
+    };
+    
+    // 确保拍一拍文字看起来可以点击
+    if (lastElement.classList.contains('system-text-message')) {
+        lastElement.style.cursor = 'pointer';
+    }
+}
+}
+
+// ★新增：分组渲染辅助函数
+function renderMessageGroup(messages, source, otherAvatar) {
+    if (messages.length === 0) return;
+
+    if (source === 'offline') {
+        // === 线下消息组：创建折叠框 ===
+        
+        // ★★★ 核心修复：先收集"真实可见"的消息，再判断是否需要显示折叠框 ★★★
+        const visibleMessages = messages.filter(m => !m.isHidden && m.type !== 'system_separator');
+        
+        // 如果过滤后没有可见消息，就不显示折叠框，直接退出
+        if (visibleMessages.length === 0) {
+            console.log('⚠️ 线下消息组已无可见内容，跳过渲染折叠框');
+            return;
+        }
+        
+        const toggleBtn = document.createElement('div');
+        toggleBtn.className = 'offline-toggle-btn';
+        
+        // ★ 修正：使用过滤后的消息来计算时间（防止隐藏消息干扰）
+        const firstTime = new Date(visibleMessages[0].timestamp).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        const lastTime = new Date(visibleMessages[visibleMessages.length - 1].timestamp).toLocaleString('zh-CN', {month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit'});
+        
+        // ★ 修正：显示真实可见消息的数量
+        toggleBtn.innerHTML = `<span>线下见面 ${firstTime} ~ ${lastTime} (${visibleMessages.length}条)</span>`;
+        
+        const offlineBox = document.createElement('div');
+        offlineBox.className = 'offline-container';
+        
+        // ★ 修正：只渲染可见消息
+        visibleMessages.forEach((msg) => {
+            appendMessageToUI(msg, otherAvatar);
+            const lastChild = chatMessagesContainer.lastChild;
+            if (lastChild) {
+                offlineBox.appendChild(lastChild);
+            }
+        });
+
+        toggleBtn.onclick = function() {
+            const isHidden = !offlineBox.classList.contains('show');
+            if (isHidden) {
+                offlineBox.classList.add('show');
+                this.innerHTML = '<span>收起这段线下聊天</span>';
+            } else {
+                offlineBox.classList.remove('show');
+                // ★ 修正：收起时也显示真实数量
+                this.innerHTML = `<span>线下见面 ${firstTime} ~ ${lastTime} (${visibleMessages.length}条)</span>`;
+            }
+        };
+
+        chatMessagesContainer.appendChild(toggleBtn);
+        chatMessagesContainer.appendChild(offlineBox);
+
+    } else {
+        // === 线上消息组：直接显示（不变） ===
+        messages.forEach((msg) => {
+            appendMessageToUI(msg, otherAvatar);
+        });
+    }
+}
+
+// 4. 将单条消息添加到界面 (包含多选框结构)
+let longPressTimer;
+let currentSelectedMsgTimestamp = null;
+let currentQuoteMsg = null; // ★★★ 小鱼新增：记录当前正在引用的消息
+let isMultiSelectMode = false;
+let selectedTimestamps = new Set();
+
+// ★★★ 小鱼新增：触发引用功能 ★★★
+async function quoteCurrentMessage() {
+    if (!currentSelectedMsgTimestamp) return;
+    hideContextMenu(); // 关闭菜单
+
+    const key = 'chat_messages_' + currentChatId;
+    const messages = await getData(key) || [];
+    const msg = messages.find(m => m.timestamp == currentSelectedMsgTimestamp);
+    
+    if (msg) {
+        // 解析发送者名字
+        let senderName = '对方';
+        if (msg.role === 'user') {
+            senderName = await getData('userName') || '我';
+        } else if (msg.senderName) {
+            senderName = msg.senderName;
+        } else {
+            const contacts = await getData('customContacts') || [];
+            const contact = contacts.find(c => c.id === currentChatId);
+            if (contact) senderName = contact.nickname;
+        }
+
+        // 解析内容摘要
+        let contentText = msg.content;
+        if (msg.type === 'sticker') {
+            if (msg.content.startsWith('data:image')) contentText = '[图片]';
+            else contentText = '[表情]';
+        } else if (msg.type === 'voice') contentText = '[语音]';
+        else if (msg.type === 'pat') contentText = msg.content;
+        else if (msg.type === 'transfer') contentText = '[转账]';
+        else if (msg.type === 'inner_voice') contentText = '[心声] ' + msg.content;
+        
+        // 记录引用数据
+        currentQuoteMsg = {
+            senderName: senderName,
+            content: contentText
+        };
+        
+        // 显示预览UI
+        const previewText = `${senderName}: ${contentText}`;
+        document.getElementById('quotePreviewText').textContent = previewText;
+        document.getElementById('quotePreviewContainer').style.display = 'block';
+        
+        // 自动聚焦输入框
+        document.getElementById('chatInput').focus();
+    }
+}
+
+// ★★★ 小鱼新增：取消引用 ★★★
+window.cancelQuote = function() {
+    currentQuoteMsg = null;
+    const previewContainer = document.getElementById('quotePreviewContainer');
+    if (previewContainer) previewContainer.style.display = 'none';
+};
+
+// ★★★ 小鱼修正版 V4：转账图标精修版 (距离缩进+完美对齐) ★★★
+function appendMessageToUI(msg, otherAvatar, isGroupChat = false) {
+    // 跳过隐藏消息
+    if (msg.isHidden || msg.type === 'system_separator') return;
+    
+    // 系统消息/拍一拍
+    if (msg.type === 'pat' || msg.type === 'system_text') {
+        const div = document.createElement('div');
+        div.className = 'system-text-message';
+        div.textContent = msg.content;
+        div.dataset.timestamp = msg.timestamp;
+        
+        // 绑定事件
+        div.addEventListener('touchstart', (e) => {
+            if (isMultiSelectMode) return;
+            longPressTimer = setTimeout(() => showContextMenu(e, div, msg.timestamp), 500);
+        });
+        div.addEventListener('touchend', () => clearTimeout(longPressTimer));
+        div.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+        div.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!isMultiSelectMode) showContextMenu(e, div, msg.timestamp); });
+        div.addEventListener('click', (e) => {
+            if (isMultiSelectMode) {
+                e.stopPropagation();
+                toggleMessageSelection(div, msg.timestamp);
+            }
+        });
+
+        chatMessagesContainer.appendChild(div);
+        return; 
+    }
+    
+    // 特殊处理：心声类型
+    if (msg.type === 'inner_voice') {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'inner-voice-wrapper message-bubble';
+        wrapper.dataset.timestamp = msg.timestamp;
+        
+        let toggleText = '查看心声';
+        if (isGroupChat && msg.senderName) {
+            toggleText = `查看${msg.senderName}的心声`;
+        }
+        
+        wrapper.innerHTML = `
+            <div class="inner-voice-main">
+                <div class="inner-voice-toggle" onclick="
+                    if (!document.querySelector('.chat-messages').classList.contains('multi-select-mode')) {
+                        const content = this.nextElementSibling;
+                        const isShowing = content.classList.toggle('show');
+                        this.textContent = isShowing ? '收起心声' : this.dataset.defaultText;
+                    }
+                " data-default-text="${toggleText}">${toggleText}</div>
+                <div class="inner-voice-content">${msg.content}</div>
+            </div>
+            <div class="msg-checkbox"><div class="msg-checkbox-icon"></div></div>
+        `;
+        
+        if (!isGroupChat && currentChatId) {
+            getData('customContacts').then(contacts => {
+                const contact = (contacts || []).find(c => c.id === currentChatId);
+                if (contact) {
+                    const toggleBtn = wrapper.querySelector('.inner-voice-toggle');
+                    const customText = `查看${contact.nickname}的心声`;
+                    if (toggleBtn) {
+                        toggleBtn.textContent = customText;
+                        toggleBtn.dataset.defaultText = customText;
+                    }
+                }
+            });
+        }
+        
+        const mainContent = wrapper.querySelector('.inner-voice-main');
+        mainContent.addEventListener('touchstart', (e) => {
+            if (isMultiSelectMode) return;
+            longPressTimer = setTimeout(() => { showContextMenu(e, wrapper, msg.timestamp); }, 500);
+        });
+        mainContent.addEventListener('touchend', () => clearTimeout(longPressTimer));
+        mainContent.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+        mainContent.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!isMultiSelectMode) showContextMenu(e, wrapper, msg.timestamp); });
+        wrapper.addEventListener('click', (e) => { if (isMultiSelectMode) { e.stopPropagation(); toggleMessageSelection(wrapper, msg.timestamp); } });
+        
+    chatMessagesContainer.appendChild(wrapper);
+
+    // ★ 新增：心声消息也恢复已保存的翻译结果
+    if (msg.translation) {
+        const innerVoiceContentEl = wrapper.querySelector('.inner-voice-content');
+        const innerMain = wrapper.querySelector('.inner-voice-main');
+
+        // 在心声文字末尾加翻译图标标记
+        if (innerVoiceContentEl && !innerVoiceContentEl.querySelector('.translated-mark')) {
+            const mark = document.createElement('span');
+            mark.className = 'translated-mark';
+            mark.innerHTML = TRANSLATE_ICON_SVG;
+            innerVoiceContentEl.appendChild(mark);
+        }
+
+        // 点击心声内容区域折叠/展开翻译
+        if (innerVoiceContentEl && !innerVoiceContentEl.dataset.translateBound) {
+            innerVoiceContentEl.dataset.translateBound = '1';
+            innerVoiceContentEl.addEventListener('click', (e) => {
+                const p = wrapper.querySelector('.translation-panel');
+                if (!p) return;
+                e.stopPropagation();
+                p.classList.toggle('show');
+                const mk = wrapper.querySelector('.translated-mark');
+                if (mk) mk.style.opacity = p.classList.contains('show') ? '0.5' : '1';
+            });
+        }
+
+        // 创建翻译结果面板（默认折叠，不加 show）
+const restoredPanel = document.createElement('div');
+restoredPanel.className = 'voice-text-panel translation-panel';
+restoredPanel.style.cssText = 'color:#333; cursor:pointer; user-select:none;';
+restoredPanel.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#576B95" style="vertical-align:middle; margin-right:4px; flex-shrink:0;"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg><span class="translation-text">${msg.translation}</span>`;
+
+// 末尾图标设为"未展开"状态
+if (innerVoiceContentEl) {
+    const mk = innerVoiceContentEl.querySelector('.translated-mark');
+    if (mk) mk.style.opacity = '1';
+}
+
+// 点击面板本身折叠/展开
+restoredPanel.addEventListener('click', (e) => {
+    e.stopPropagation();
+    restoredPanel.classList.toggle('show');
+    const mk = wrapper.querySelector('.translated-mark');
+    if (mk) mk.style.opacity = restoredPanel.classList.contains('show') ? '0.5' : '1';
+});
+
+        // 插入到 inner-voice-main 里，宽度与心声气泡一致
+restoredPanel.style.width = '100%';
+restoredPanel.style.boxSizing = 'border-box';
+
+const wrapperDiv = document.createElement('div');
+wrapperDiv.style.cssText = `width:75%; display:flex; justify-content:center; margin-top:4px;`;
+wrapperDiv.appendChild(restoredPanel);
+
+if (innerMain) {
+    innerMain.appendChild(wrapperDiv);
+} else {
+    wrapper.appendChild(wrapperDiv);
+}
+    }
+
+    return; 
+}
+
+    // --- 普通气泡逻辑 ---
+    const isSelf = msg.role === 'user';
+    const bubble = document.createElement('div');
+    bubble.dataset.timestamp = msg.timestamp;
+
+    if (msg.senderName) {
+        bubble.dataset.senderName = msg.senderName;
+    }
+
+    const groupClass = isGroupChat ? 'is-group' : '';
+    bubble.className = `message-bubble ${isSelf ? 'self' : 'other'} ${groupClass}`;
+
+    let avatar = isSelf ? userAvatarUrl : otherAvatar;
+    if (!avatar) avatar = 'https://iili.io/fkc3RwJ.jpg';
+
+    const avatarStyle = `background-image: url(${avatar})`;
+    const avatarText = '';
+
+    let nameHtml = '';
+    if (isGroupChat && !isSelf && msg.senderName) {
+        const showNickname = window.currentShowNicknameState !== undefined ? window.currentShowNicknameState : true;
+        if (showNickname) {
+            nameHtml = `<div class="chat-sender-name">${msg.senderName}</div>`;
+        }
+    }
+    
+    let contentHtml = '';
+    let contentStyle = ''; 
+    let additionalBubbleClass = ''; 
+    
+    // 1. 图片处理
+    if (msg.type === 'sticker') {
+        if (msg.content.startsWith('data:image')) {
+            const descText = msg.ai_description || 'AI正在分析画面...';
+            contentHtml = `
+                <div class="img-flip-container">
+                    <div class="img-flipper">
+                        <div class="img-front clickable-img-front">
+                            <img src="${msg.content}" style="max-width: 140px; max-height: 140px; border-radius: 4px; display: block;">
+                        </div>
+                        <div class="img-back clickable-img-back">${descText}</div>
+                    </div>
+                </div>
+            `;
+            contentStyle = 'background: transparent; padding: 0; overflow: visible;';
+        } else {
+            contentHtml = `<img src="${msg.content}" style="max-width: 120px; max-height: 120px; border-radius: 4px; display: block;">`;
+            contentStyle = 'background: transparent; padding: 0;';
+        }
+    } 
+// 2. 转账处理 (★ 核心修改点：支持转账说明显示 ★)
+else if (msg.type === 'transfer') {
+    const amount = parseFloat(msg.amount || 0).toFixed(2);
+    const status = msg.transferStatus || 'pending'; // pending, accepted, returned
+    
+    let iconSvg = '';
+    
+// ★ 核心修改：如果有转账说明，优先显示说明，否则显示"请收款"
+let descText = msg.transferNote ? msg.transferNote : '请收款';
+
+// ★ 新增：如果是群聊且是我发出的转账，前缀加上“转账给XXX”
+if (isSelf && isGroupChat && msg.targetName && !msg.isReceipt) {
+    descText = `转账给${msg.targetName}` + (msg.transferNote ? `-${msg.transferNote}` : '');
+}
+
+let processedClass = ''; // 用于标记是否变色
+
+    // 图标 1: 待收款 (双向箭头)
+    const iconPending = `
+        <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+            <circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/>
+            <path d="M27 18 H15 l4.5 -4.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M15 24 H27 l-4.5 4.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+
+    // 图标 2: 已接收 (对勾)
+    const iconAccepted = `
+        <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+            <circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/>
+            <polyline points="12 21 18 27 30 15" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+
+    // 图标 3: 已退还 (侧放U型箭头)
+    const iconReturned = `
+        <svg width="42" height="42" viewBox="0 0 42 42" fill="none">
+            <circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/>
+            <path d="M24 28 A 5 5 0 0 0 24 18 L 13 18" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M17 14 L 13 18 L 17 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+
+    // 根据状态设置
+    if (msg.isReceipt) {
+        // 如果是收款回执气泡
+        if (status === 'returned') {
+            iconSvg = iconReturned;
+            descText = '已退还';
+        } else {
+            iconSvg = iconAccepted;
+            descText = '已收款';
+        }
+        processedClass = 'transfer-processed';
+    } else if (status === 'accepted') {
+        iconSvg = iconAccepted;
+        descText = '已被接收'; // 状态改变后，覆盖说明文字
+        processedClass = 'transfer-processed'; 
+    } else if (status === 'returned') {
+        iconSvg = iconReturned;
+        descText ='已被退还'; // 状态改变后，覆盖说明文字
+        processedClass = 'transfer-processed'; 
+    } else {
+        // 待收款状态：使用上面定义的 descText (即转账说明或请收款)
+        iconSvg = iconPending;
+    }
+
+    contentHtml = `
+        <div class="transfer-bubble">
+            <div class="transfer-content-top">
+                <div class="transfer-icon-circle">
+                    ${iconSvg}
+                </div>
+                <div class="transfer-text-col">
+                    <span class="transfer-amt">¥${amount}</span>
+                    <span class="transfer-desc">${descText}</span>
+                </div>
+            </div>
+            <div class="transfer-footer">微信转账</div>
+        </div>
+    `;
+    contentStyle = 'background: transparent !important; padding: 0 !important; border: none !important; box-shadow: none !important;';
+    additionalBubbleClass = `transfer-mode ${processedClass}`;
+}
+    // 3. 语音与文本处理
+    else {
+        const voiceMatch = (typeof msg.content === 'string') ? msg.content.match(/^\[VOICE:(\d+):(.+)\]$/) : null;
+
+        if (voiceMatch) {
+            const duration = parseInt(voiceMatch[1]);
+            const text = voiceMatch[2];
+            const width = Math.min(80 + duration * 6, 240);
+            
+            const waveIcon = isSelf ? 
+                `<svg class="voice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 12h.01" stroke-width="4" /><path d="M14 7.5c-1.5 1-2 2.5-2 4.5s.5 3.5 2 4.5" /><path d="M11 4.5c-3 2-4 4.5-4 7.5s1 5.5 4 7.5" /></svg>` :
+                `<svg class="voice-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h.01" stroke-width="4" /><path d="M10 7.5c1.5 1 2 2.5 2 4.5s-.5 3.5-2 4.5" /><path d="M13 4.5c3 2 4 4.5 4 7.5s-1 5.5-4 7.5" /></svg>`;
+
+            contentHtml = `
+                <div class="voice-wrapper">
+                    <div class="voice-bubble" style="width: ${width}px" data-duration="${duration}" onclick="playVoice(this); event.stopPropagation();">
+                        <span class="voice-duration">${duration}"</span>
+                        ${waveIcon}
+                    </div>
+                    <div class="voice-text-panel">${text}</div>
+                </div>
+            `;
+            contentStyle = 'background: transparent; padding: 0; box-shadow: none; border: none;'; 
+            bubble.dataset.voiceText = text; 
+            additionalBubbleClass = 'voice-mode';
+        } else {
+            contentHtml = msg.content || '';
+        }
+    }
+
+    // 组合最终的类名
+const finalClass = additionalBubbleClass;
+
+const alignSelf = isSelf ? 'flex-end' : 'flex-start';
+
+// ★★★ 小鱼新增：构建独立的引用气泡 (显示在回复消息下方) ★★★
+let quoteHtml = '';
+if (msg.quote) {
+    quoteHtml = `
+        <div class="quote-bubble" style="background: rgba(200, 200, 200, 0.5); padding: 4px 8px; border-radius: 4px; font-size: 12px; color: #555; margin-top: 4px; max-width: 100%; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; word-break: break-all; align-self: ${alignSelf};">
+            ${msg.quote.senderName}: ${msg.quote.content}
+        </div>
+    `;
+}
+
+bubble.innerHTML = `
+    <div class="msg-avatar" style="${avatarStyle}">${avatarText}</div>
+    
+    <div style="display: flex; flex-direction: column; align-items: ${alignSelf}; max-width: 70%;">
+        ${nameHtml}
+        <div class="msg-content ${finalClass}" style="${contentStyle}; max-width: 100%;">${contentHtml}</div>
+        ${quoteHtml}
+    </div>
+    
+    <div class="msg-checkbox"><div class="msg-checkbox-icon"></div></div>
+`;
+    
+    // 绑定事件
+    const contentDiv = bubble.querySelector('.msg-content');
+    contentDiv.addEventListener('touchstart', (e) => { if (isMultiSelectMode) return; longPressTimer = setTimeout(() => showContextMenu(e, bubble, msg.timestamp), 500); });
+    contentDiv.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    contentDiv.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+    contentDiv.addEventListener('contextmenu', (e) => { e.preventDefault(); if (!isMultiSelectMode) showContextMenu(e, bubble, msg.timestamp); });
+
+    const rollbackHtml = `
+        <div class="msg-rollback-container">
+            <div class="msg-rollback-btn" onclick="rollbackToMessage(${msg.timestamp}, event)">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11 6L5 12L11 18V6Z"/>
+                    <path d="M18 6L12 12L18 18V6Z"/>
+                </svg>
+            </div>
+        </div>
+    `;
+    bubble.insertAdjacentHTML('beforeend', rollbackHtml);
+
+    bubble.addEventListener('click', (e) => {
+    if (isMultiSelectMode) {
+        e.stopPropagation();
+        toggleMessageSelection(bubble, msg.timestamp);
+        return;
+    }
+    
+// ★★★ 新增：如果是AI发来的转账，点击打开详情页 (无论是否已收款) ★★★
+if (msg.type === 'transfer' && !isSelf && !msg.isReceipt) {
+    // 增加判断：只有点击的区域属于气泡内容（卡片本身）时才触发，点击头像或空白处不触发
+    if (e.target.closest('.msg-content')) {
+        e.stopPropagation(); // 阻止显示回溯按钮
+        
+        // ★★★ 核心修复：点击时实时去数据库捞取最新状态，防止缓存旧数据 ★★★
+        (async () => {
+            const key = 'chat_messages_' + currentChatId;
+            const allMsgs = await getData(key) || [];
+            // 通过时间戳找到最新的那个消息对象
+            const freshMsg = allMsgs.find(m => m.timestamp === msg.timestamp);
+            
+            // 如果找到了就用新的(状态已更新)，没找到就用旧的兜底
+            openReceiveMoneyPage(freshMsg || msg);
+        })();
+        
+        return;
+    }
+}
+
+    if (!e.target.closest('.msg-avatar') && !e.target.closest('.img-flip-container')) {
+        const btnContainer = bubble.querySelector('.msg-rollback-container');
+        if (btnContainer) {
+            const isHidden = getComputedStyle(btnContainer).display === 'none';
+            document.querySelectorAll('.msg-rollback-container').forEach(el => el.style.display = 'none');
+            if (isHidden) {
+                btnContainer.style.display = 'flex';
+            }
+        }
+    }
+});
+
+    chatMessagesContainer.appendChild(bubble);
+
+// ★ 新增：如果该消息有已保存的翻译结果，自动恢复显示
+if (msg.translation) {
+    // 兼容普通气泡和心声气泡的文字容器
+    const msgContentEl = bubble.querySelector('.msg-content') || bubble.querySelector('.inner-voice-content');
+    if (msgContentEl && !msgContentEl.querySelector('.translated-mark')) {
+        const mark = document.createElement('span');
+        mark.className = 'translated-mark';
+        mark.innerHTML = TRANSLATE_ICON_SVG;
+        msgContentEl.appendChild(mark);
+
+        // 点击原气泡可折叠/展开翻译
+        if (!msgContentEl.dataset.translateBound) {
+            msgContentEl.dataset.translateBound = '1';
+            msgContentEl.addEventListener('click', (e) => {
+                const p = bubble.querySelector('.translation-panel');
+                if (!p) return;
+                e.stopPropagation();
+                p.classList.toggle('show');
+                const mk = bubble.querySelector('.translated-mark');
+                if (mk) mk.style.opacity = p.classList.contains('show') ? '0.5' : '1';
+            });
+        }
+    }
+
+    // 创建翻译结果面板（默认折叠，不加 show）
+const restoredPanel = document.createElement('div');
+restoredPanel.className = 'voice-text-panel translation-panel';
+restoredPanel.style.cssText = 'color:#333; cursor:pointer; user-select:none;';
+restoredPanel.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#576B95" style="vertical-align:middle; margin-right:4px; flex-shrink:0;"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg><span class="translation-text">${msg.translation}</span>`;
+
+// 末尾图标也同步设为"未展开"状态（不透明度高一点提示可点击）
+if (msgContentEl) {
+    const mk = msgContentEl.querySelector('.translated-mark');
+    if (mk) mk.style.opacity = '1';
+}
+
+restoredPanel.addEventListener('click', (e) => {
+    e.stopPropagation();
+    restoredPanel.classList.toggle('show');
+    const mk = bubble.querySelector('.translated-mark');
+    if (mk) mk.style.opacity = restoredPanel.classList.contains('show') ? '0.5' : '1';
+});
+
+    // 插入到气泡末尾 (心声居中对齐)
+    let alignDir = msg.role === 'user' ? 'flex-end' : 'flex-start';
+    if (msg.type === 'inner_voice') alignDir = 'center';
+
+    const wrapperDiv = document.createElement('div');
+    wrapperDiv.style.cssText = `width:100%; display:flex; justify-content:${alignDir}; margin-top:4px; padding:0 50px;`;
+    wrapperDiv.appendChild(restoredPanel);
+    
+    const innerMain = bubble.querySelector('.inner-voice-main');
+    if (innerMain) {
+        innerMain.appendChild(wrapperDiv); // 心声插入到主体内
+    } else {
+        bubble.style.flexWrap = 'wrap';
+        bubble.appendChild(wrapperDiv); // 普通气泡插入
+    }
+}
+    
+    if (msg.type === 'sticker' && msg.content.startsWith('data:image')) {
+        const flipContainer = bubble.querySelector('.img-flip-container');
+        const frontEl = bubble.querySelector('.clickable-img-front');
+        const backEl = bubble.querySelector('.clickable-img-back');
+
+        if (flipContainer) {
+            let startX = 0;
+            flipContainer.addEventListener('touchstart', (e) => { if (isMultiSelectMode) return; startX = e.changedTouches[0].screenX; }, { passive: true });
+            flipContainer.addEventListener('touchend', (e) => {
+                if (isMultiSelectMode) return;
+                const diff = startX - e.changedTouches[0].screenX;
+                if (diff > 30) flipContainer.classList.add('flipped');
+                else if (diff < -30) flipContainer.classList.remove('flipped');
+            }, { passive: true });
+            if (frontEl) frontEl.onclick = (e) => { if (!isMultiSelectMode) { e.stopPropagation(); openFullScreenViewer(msg, false); } };
+            if (backEl) backEl.onclick = (e) => { if (!isMultiSelectMode) { e.stopPropagation(); openFullScreenViewer(msg, true); } };
+        }
+    }
+}
+
+// ★★★ 小鱼新增：回溯功能核心逻辑 ★★★
+window.rollbackToMessage = async function(targetTimestamp, event) {
+    event.stopPropagation(); // 阻止冒泡，防止触发气泡点击
+    
+    // ★★★ 修改：提示文案更准确 ★★★
+    if (!await customConfirm('确定要回溯到这条消息吗？\n\n⚠️ 注意：\n1. 该消息会被保留\n2. 该消息之后的所有消息将被删除\n3. 此操作无法撤销')) {
+        return;
+    }
+
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    
+    // ★★★ 核心修改：改为 <= （保留目标消息本身）★★★
+    const newMessages = messages.filter(m => m.timestamp <= targetTimestamp);
+    
+    // 保存数据库
+    await saveData(key, newMessages);
+    
+    // 清空草稿箱（防止逻辑冲突）
+    wxDrafts = [];
+    await saveData('chat_drafts_' + currentChatId, null);
+    
+    // 刷新界面
+    document.getElementById('chatMessagesContainer').innerHTML = ''; // 清空DOM
+    await renderMessages(currentChatId); // 重新渲染
+    scrollToBottom();
+    
+    // 更新首页预览
+    const lastMsg = newMessages[newMessages.length - 1];
+    if (lastMsg) {
+        let preview = lastMsg.content;
+        if (lastMsg.type === 'sticker') preview = '[表情]';
+        else if (lastMsg.type === 'pat') preview = '[拍一拍]';
+        await updateChatList(currentChatId, preview, lastMsg.timestamp);
+    } else {
+        await updateChatList(currentChatId, '', Date.now());
+    }
+};
+
+// ★★★ 小鱼新增：来源标记，用于判断返回哪里 ★★★
+let isProfileFromContactList = false;
+
+// ★★★ 小鱼新增：从通讯录列表打开角色主页 ★★★
+window.openContactProfile = async function(id) {
+    isProfileFromContactList = true; // 标记来源：通讯录
+    currentChatId = id; // 设置当前操作ID
+    await loadAndShowProfile(id);
+};
+
+// 辅助函数：加载并显示资料页
+async function loadAndShowProfile(id) {
+    window.currentProfileId = id; // ★★★ 小鱼新增：把当前查看的角色ID存到全局变量里 ★★★
+    const contact = await getContactDetails(id);
+    if (!contact) return;
+
+    const cpAvatar = document.getElementById('cpAvatar');
+    const cpNickname = document.getElementById('cpNickname');
+    const cpWechatId = document.getElementById('cpWechatId');
+
+    if (cpAvatar) {
+        // ★★★ 修改：默认头像逻辑 ★★★
+        const displayAvatar = contact.avatar || 'https://iili.io/fkc3RwJ.jpg';
+        cpAvatar.style.backgroundImage = `url(${displayAvatar})`;
+        cpAvatar.innerHTML = '';
+        
+        // ★★★ 小鱼修改：显示真名作为主标题 ★★★
+        cpNickname.textContent = contact.realName || contact.nickname;
+
+        // ★★★ 小鱼修改：如果没有微信号，临时生成一个 ★★★
+        let displayWxId = contact.wechatId;
+        if (!displayWxId) {
+          const nameForWxId = contact.realName || contact.nickname || '';
+          if (nameForWxId.trim() && window.pinyinPro) {
+            try {
+              const py = window.pinyinPro.pinyin(nameForWxId, { toneType: 'none', type: 'array' }).join('');
+              displayWxId = 'char_' + py.toLowerCase();
+            } catch (e) {
+              displayWxId = '未设置';
+            }
+          } else {
+            displayWxId = '未设置';
+          }
+        }
+        cpWechatId.textContent = '微信号：' + displayWxId;
+        
+        showPage(document.getElementById('contactProfilePage'));
+    }
+}
+
+// ★★★ 小鱼修改：智能头像点击处理（单击/双击/长按） ★★★
+let avatarClickTimer = null;
+let avatarLongPressTimer = null;
+
+document.addEventListener('touchstart', (e) => {
+    const avatar = e.target.closest('.msg-avatar');
+    if (!avatar) return;
+    
+    const bubble = avatar.closest('.message-bubble');
+    if (!bubble || bubble.classList.contains('self') || isMultiSelectMode) return;
+    
+    const senderName = bubble.dataset.senderName;
+    if (!senderName) return;
+    
+    avatarLongPressTimer = setTimeout(() => {
+        const input = document.getElementById('chatInput');
+        input.value += `@${senderName} `;
+        input.focus();
+        if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+}, { passive: true });
+
+document.addEventListener('touchend', () => {
+    clearTimeout(avatarLongPressTimer);
+}, { passive: true });
+
+document.addEventListener('touchmove', () => {
+    clearTimeout(avatarLongPressTimer);
+}, { passive: true });
+
+document.addEventListener('click', async (e) => {
+    const avatar = e.target.closest('.msg-avatar');
+    if (!avatar) return;
+    
+    const bubble = avatar.closest('.message-bubble');
+    if (!bubble || bubble.classList.contains('self') || isMultiSelectMode) return; 
+    
+if (avatarClickTimer) {
+    clearTimeout(avatarClickTimer);
+    avatarClickTimer = null;
+    
+    const senderName = bubble.dataset.senderName;
+    triggerPatAction(senderName);
+} else {
+        avatarClickTimer = setTimeout(async () => {
+            avatarClickTimer = null;
+            isProfileFromContactList = false; 
+            
+            let targetId = currentChatId;
+            const senderName = bubble.dataset.senderName;
+            if (senderName) {
+                const contacts = await getData('customContacts') || [];
+                const member = contacts.find(c => c.nickname === senderName || c.realName === senderName);
+                if (member) targetId = member.id;
+            }
+            
+            await loadAndShowProfile(targetId);
+        }, 300);
+    }
+});
+
+// ★★★ 终极版：执行拍一拍 (含后缀 + 震动) ★★★
+async function triggerPatAction(targetNickname = null) {
+    if (!currentChatId) return;
+
+    let targetName = '"对方"';
+    
+    if (targetNickname) {
+        targetName = `"${targetNickname}"`;
+    } else {
+        const contacts = await getData('customContacts') || [];
+        const contact = contacts.find(c => c.id === currentChatId);
+        targetName = contact ? `"${contact.nickname}"` : '"对方"';
+    }
+    
+    const myPatSuffix = (await getData('pat')) || ''; 
+    const patText = `我拍了拍${targetName}${myPatSuffix}`;
+
+    const msg = {
+        role: 'user',
+        type: 'pat',
+        content: patText,
+        timestamp: Date.now()
+    };
+
+    appendMessageToUI(msg);
+    scrollToBottom();
+    await saveMessage(currentChatId, msg);
+    await updateChatList(currentChatId, '[拍一拍]', Date.now());
+
+    // ★★★ 关键：这里控制屏幕震动 (50毫秒) ★★★
+    // 注意：苹果手机(iOS)因系统限制不支持网页震动，安卓手机支持
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
+// 资料页返回逻辑 (智能判断返回位置)
+const cpBackBtn = document.getElementById('cpBackBtn');
+if(cpBackBtn) {
+    cpBackBtn.addEventListener('click', () => {
+        if (isProfileFromContactList) {
+            showPage(mainApp); // 如果来自通讯录，返回主界面
+        } else {
+            showPage(document.getElementById('chatRoomPage')); // 如果来自聊天，返回聊天
+        }
+    });
+}
+
+// 资料页"发消息"按钮逻辑
+const cpSendBtn = document.getElementById('cpSendMessageBtn');
+if(cpSendBtn) {
+    cpSendBtn.addEventListener('click', () => {
+        // 无论从哪来，点击发消息都进入聊天，并加载历史记录
+        startChat(currentChatId);
+    });
+}
+
+// 显示操作菜单（小鱼修复版：自动避免溢出屏幕）
+function showContextMenu(event, bubbleElement, timestamp) {
+    event.preventDefault(); 
+    currentSelectedMsgTimestamp = timestamp;
+    
+    const menu = document.getElementById('msgContextMenu');
+    const overlay = document.getElementById('menuOverlay');
+    
+    // 1. 智能查找定位目标
+    let target = bubbleElement.querySelector('.msg-content');
+    if (!target) target = bubbleElement.querySelector('.inner-voice-toggle');
+    if (!target && bubbleElement.classList.contains('system-text-message')) {
+        target = bubbleElement;
+    }
+    if (!target) target = bubbleElement;
+    
+    const rect = target.getBoundingClientRect();
+    
+    // 2. 显示菜单（但位置先设为屏幕外，防止闪烁）
+    menu.style.display = 'grid'; 
+    menu.style.visibility = 'hidden'; // 暂时隐藏
+    overlay.style.display = 'block'; 
+    
+    // 3. 获取菜单实际尺寸（必须在显示后才能获取）
+    const menuRect = menu.getBoundingClientRect();
+    const menuWidth = menuRect.width;
+    const menuHeight = menuRect.height;
+    
+    // 4. 获取视口尺寸
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // 5. 计算初始位置（默认在目标上方居中）
+    let topPos = rect.top - menuHeight - 10; // 上方，留10px间隙
+    let leftPos = rect.left + rect.width / 2 - menuWidth / 2; // 水平居中
+    
+    // 6. 边界检测与修正
+    
+    // 6.1 垂直方向：如果顶部放不下，改为底部
+    if (topPos < 10) {
+        topPos = rect.bottom + 10; // 放在目标下方
+    }
+    // 如果底部也放不下，强制贴顶显示
+    if (topPos + menuHeight > viewportHeight - 10) {
+        topPos = viewportHeight - menuHeight - 10;
+    }
+    
+    // 6.2 水平方向：如果左侧溢出
+    if (leftPos < 10) {
+        leftPos = 10;
+    }
+    // 如果右侧溢出
+    if (leftPos + menuWidth > viewportWidth - 10) {
+        leftPos = viewportWidth - menuWidth - 10;
+    }
+    
+    // 7. 应用修正后的位置
+    menu.style.top = topPos + 'px';
+    menu.style.left = leftPos + 'px';
+    menu.style.transform = 'none'; // 移除原有的 translateX，避免冲突
+    
+    // 8. 显示菜单
+    menu.style.visibility = 'visible';
+    
+    if (navigator.vibrate) navigator.vibrate(50);
+}
+
+// ★★★ 新增/确认：隐藏菜单的函数 ★★★
+function hideContextMenu() {
+    document.getElementById('msgContextMenu').style.display = 'none';
+    document.getElementById('menuOverlay').style.display = 'none';
+}
+
+// ★★★ 关键：在脚本加载时就绑定点击空白关闭的事件 ★★★
+// 请将这行代码放在所有函数的外面，或者放在 window.onload 里
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('menuOverlay');
+    if (overlay) {
+        overlay.addEventListener('click', hideContextMenu);
+        // 防止触摸穿透
+        overlay.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // 阻止触摸事件传递到底层
+            hideContextMenu();
+        });
+    }
+});
+
+// 点击空白区域或滚动时的处理
+function handleOutsideClick() {
+    // 如果长按菜单正在显示，则关闭它
+    if (document.getElementById('msgContextMenu').style.display === 'flex') {
+        hideContextMenu();
+    }
+    // 注意：此处已移除退出多选模式的逻辑
+}
+
+// --- 多选功能模块 ---
+
+// 全局变量记录当前多选模式 ('delete' 或 'summary')
+let currentMultiSelectType = 'delete';
+
+// 进入多选模式 (纯净版，不再区分模式)
+function enterMultiSelectMode() {
+    hideContextMenu();
+    closeActionSheet(); // 关闭底部面板
+    
+    isMultiSelectMode = true;
+    selectedTimestamps.clear();
+    
+    // 切换顶部栏显示
+    document.querySelector('.nav-bar-normal').style.display = 'none';
+    document.querySelector('.nav-bar-multiselect').style.display = 'flex';
+    
+    // 界面变化：隐藏输入框，显示底部双按钮操作栏
+    chatMessagesContainer.classList.add('multi-select-mode');
+    document.querySelector('.chat-input-area').style.display = 'none';
+    document.getElementById('multiSelectBottomBar').style.display = 'flex';
+    
+    // 默认选中刚才长按的那一条
+    if (currentSelectedMsgTimestamp) {
+        const bubbles = document.querySelectorAll('.message-bubble, .system-text-message, .inner-voice-wrapper');
+        bubbles.forEach(b => {
+            if (b.dataset.timestamp == currentSelectedMsgTimestamp) {
+                toggleMessageSelection(b, currentSelectedMsgTimestamp);
+            }
+        });
+    } else {
+        updateMultiselectCounter();
+    }
+}
+
+// 退出多选模式
+function exitMultiSelectMode() {
+    if (!isMultiSelectMode) return;
+    
+    isMultiSelectMode = false;
+    selectedTimestamps.clear();
+    
+    // 切换顶部栏显示
+    document.querySelector('.nav-bar-normal').style.display = 'flex';
+    document.querySelector('.nav-bar-multiselect').style.display = 'none';
+    
+    // 界面恢复：隐藏底部栏，显示输入框
+    document.querySelectorAll('.message-bubble, .system-text-message, .inner-voice-wrapper').forEach(b => b.classList.remove('selected'));
+    chatMessagesContainer.classList.remove('multi-select-mode');
+    document.querySelector('.chat-input-area').style.display = 'flex';
+    document.getElementById('multiSelectBottomBar').style.display = 'none';
+}
+
+// 切换单条消息的选中状态
+function toggleMessageSelection(bubble, timestamp) {
+    if (selectedTimestamps.has(timestamp)) {
+        selectedTimestamps.delete(timestamp);
+        bubble.classList.remove('selected');
+    } else {
+        selectedTimestamps.add(timestamp);
+        bubble.classList.add('selected');
+    }
+    // 更新计数
+    updateMultiselectCounter();
+}
+
+// 更新多选计数
+function updateMultiselectCounter() {
+    const counter = document.getElementById('multiselectCounter');
+    const count = selectedTimestamps.size;
+    if (count > 0) {
+        counter.textContent = `已选择 ${count} 条消息`;
+    } else {
+        counter.textContent = '请选择消息';
+    }
+}
+
+// 执行多选删除
+async function deleteSelectedMessages() {
+    if (selectedTimestamps.size === 0) return;
+    
+    const confirmDelete = await customConfirm(`确定删除这 ${selectedTimestamps.size} 条消息吗？`);
+    if (!confirmDelete) return;
+
+    // 1. 数据库操作
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    
+    // ★★★ 核心新增：智能检测并删除关联的"（继续）"占位符 ★★★
+    const finalTimestampsToDelete = new Set(selectedTimestamps);
+    
+    // 检查是否删除了AI消息
+    const deletedAnyAI = messages.some(m => 
+        selectedTimestamps.has(m.timestamp) && m.role === 'assistant'
+    );
+    
+    if (deletedAnyAI) {
+        // 从后往前遍历，找到每条被删除的AI消息
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const msg = messages[i];
+            
+            // 如果这条消息即将被删除，且是AI回复
+            if (selectedTimestamps.has(msg.timestamp) && msg.role === 'assistant') {
+                // 向前查找最近的"（继续）"占位符
+                for (let j = i - 1; j >= 0; j--) {
+                    const prevMsg = messages[j];
+                    
+                    // 找到隐藏的"（继续）"就标记删除
+                    if (prevMsg.isHidden && prevMsg.content === '（继续）') {
+                        finalTimestampsToDelete.add(prevMsg.timestamp);
+                        console.log('✅ 检测到AI续写，自动删除前置占位符');
+                        break; // 找到就停止
+                    }
+                    
+                    // 如果遇到其他用户消息，说明没有关联的占位符，停止查找
+                    if (prevMsg.role === 'user' && !prevMsg.isHidden) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+    
+    // 执行删除（使用扩展后的删除列表）
+let newMessages = messages.filter(m => !finalTimestampsToDelete.has(m.timestamp));
+
+// ★★★ 小鱼新增：深度清洁逻辑 ★★★
+const hasVisibleMessages = newMessages.some(m => !m.isHidden && m.type !== 'system_separator');
+
+if (!hasVisibleMessages) {
+    // 如果删完后没有可见消息了，彻底清空数据库
+    newMessages = [];
+    // 彻底清空界面（包括残留的时间戳）
+    document.getElementById('chatMessagesContainer').innerHTML = '';
+    // 强制重置草稿箱
+    wxDrafts = [];
+    await saveData('chat_drafts_' + currentChatId, null);
+}
+
+await saveData(key, newMessages);
+
+// 2. 界面更新
+if (hasVisibleMessages) {
+    // 如果还有消息，只移除选中的元素
+    selectedTimestamps.forEach(ts => {
+        const el = document.querySelector(`[data-timestamp="${ts}"]`);
+        if (el) {
+            // 尝试移除关联的时间戳（简单的向前查找）
+            const prev = el.previousElementSibling;
+            if (prev && prev.classList.contains('chat-timestamp')) {
+                prev.remove();
+            }
+            el.remove();
+        }
+    });
+} else {
+    // 如果已清空，无需通过ID查找移除，上面 innerHTML='' 已经处理了
+}
+    
+    // 3. 更新首页会话预览
+    const lastVisibleMsg = [...newMessages].reverse().find(m => !m.isHidden && m.type !== 'system_separator');
+    if (lastVisibleMsg) {
+        let previewText = '';
+        if (lastVisibleMsg.type === 'sticker') previewText = '[图片]';
+        else if (lastVisibleMsg.type === 'pat') previewText = '[拍一拍]';
+        else previewText = lastVisibleMsg.content;
+        await updateChatList(currentChatId, previewText, lastVisibleMsg.timestamp);
+    } else {
+        await updateChatList(currentChatId, '[无消息]', Date.now());
+    }
+
+    exitMultiSelectMode();
+}
+
+// 刷新AI回复：删除上一次AI的所有回复，并重新生成
+async function refreshLastAIResponse() {
+    const refreshBtn = document.getElementById('chatRefreshBtn');
+    
+    // 先检查是否在聊天窗口
+    if (!currentChatId) {
+        customAlert('请先进入聊天窗口');
+        return;
+    }
+    
+    try {
+        // 1. 获取聊天记录
+        const key = 'chat_messages_' + currentChatId;
+        let messages = await getData(key) || [];
+        
+        if (messages.length === 0) {
+            customAlert('暂无消息');
+            return;
+        }
+        
+// 2. 找到最后一组AI回复
+let lastAiGroupTimestamps = [];
+
+for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+
+    // ★★★ 关键修复：遇到隐形的“（继续）”隔断时，立刻停止！保护上一段内容 ★★★
+    // 必须放在通用的 isHidden 判断之前
+    if (msg.isHidden && msg.content === '（继续）') {
+        break; // 遇到隔断，说明本次刷新到此为止，不要再往上删了
+    }
+    
+    // 如果是其他隐藏消息（如场景分隔符），标记删除，继续往前找
+    if (msg.isHidden || msg.type === 'system_separator') {
+        lastAiGroupTimestamps.push(msg.timestamp);
+        continue; 
+    }
+
+    // 如果是AI消息，标记删除
+    if (msg.role === 'assistant') {
+        lastAiGroupTimestamps.push(msg.timestamp);
+    } 
+    // 如果遇到普通用户消息，说明这一轮AI回复结束了，停止
+    else if (msg.role === 'user') {
+        break;
+    }
+}
+        
+        if (lastAiGroupTimestamps.length === 0) {
+            customAlert('没有AI回复可以刷新');
+            return;
+        }
+        
+        // 3. 删除这组AI消息（从数据库）
+        const newMessages = messages.filter(m => !lastAiGroupTimestamps.includes(m.timestamp));
+        await saveData(key, newMessages);
+        
+// 4. 删除这组AI消息（从界面）
+// 小鱼修复：同时选择普通气泡、心声折叠栏、以及【拍一拍系统消息】
+const uiElements = document.querySelectorAll('.message-bubble, .inner-voice-wrapper, .system-text-message');
+uiElements.forEach(el => {
+    if (lastAiGroupTimestamps.includes(parseInt(el.dataset.timestamp))) {
+        el.remove();
+    }
+});
+        
+        // 5. 开始旋转动画
+        refreshBtn.classList.add('spinning');
+        
+        // 6. 重新生成AI回复
+        await getAIResponse(currentChatId);
+        
+    } catch (error) {
+        console.error('刷新回复时出错:', error);
+        customAlert('刷新失败，请稍后再试');
+    }
+}
+
+// 切换底部功能面板
+function toggleActionSheet() {
+    const sheet = document.getElementById('chatActionSheet');
+    const inputArea = document.querySelector('.chat-input-area');
+    
+    // 切换类名来触发CSS动画
+    sheet.classList.toggle('open');
+    inputArea.classList.toggle('sheet-open');
+}
+
+// 关闭底部功能面板
+function closeActionSheet() {
+    const sheet = document.getElementById('chatActionSheet');
+    const inputArea = document.querySelector('.chat-input-area');
+    const scrollBtn = document.getElementById('scrollToBottomBtn'); // 小鱼新增
+    
+    sheet.classList.remove('open');
+    inputArea.classList.remove('sheet-open');
+    scrollBtn.classList.remove('sheet-open'); // 小鱼新增：按钮复位
+}
+
+// 触发重新生成（点击面板里的按钮时调用）
+function triggerRegenerate() {
+    closeActionSheet(); // 先关闭面板
+    refreshLastAIResponse(); // 再执行重生成
+}
+
+// 监听点击事件，点击聊天区域时关闭面板
+document.getElementById('chatMessagesContainer').addEventListener('click', () => {
+    closeActionSheet();
+});
+
+// 监听输入框聚焦，聚焦时关闭面板
+document.getElementById('chatInput').addEventListener('focus', () => {
+    closeActionSheet();
+});
+
+// 单条删除
+async function deleteCurrentMessage() {
+    if (!currentSelectedMsgTimestamp) return;
+    hideContextMenu();
+
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+
+    // 1. 找到要删除的消息，并收集所有关联的时间戳 (包括可能的隐藏续写占位符)
+    const msgToDelete = messages.find(m => m.timestamp == currentSelectedMsgTimestamp);
+    let timestampsToDelete = [currentSelectedMsgTimestamp];
+
+    if (msgToDelete && msgToDelete.role === 'assistant') {
+        const msgIndex = messages.findIndex(m => m.timestamp == currentSelectedMsgTimestamp);
+        for (let j = msgIndex - 1; j >= 0; j--) {
+            const prevMsg = messages[j];
+            if (prevMsg.isHidden && prevMsg.content === '（继续）') {
+                timestampsToDelete.push(prevMsg.timestamp);
+                break;
+            }
+            if (prevMsg.role === 'user' && !prevMsg.isHidden) {
+                break;
+            }
+        }
+    }
+
+    // 2. 从数据库中彻底删除这些消息
+let newMessages = messages.filter(m => !timestampsToDelete.includes(m.timestamp));
+
+// ★★★ 小鱼新增：深度清洁逻辑 ★★★
+// 检查剩余消息中是否还有“可见消息”
+const hasVisibleMessages = newMessages.some(m => !m.isHidden && m.type !== 'system_separator');
+
+if (!hasVisibleMessages) {
+    // 如果没有可见消息了，说明剩下的全是隐藏垃圾（如AI指令），彻底清空！
+    newMessages = []; 
+    // 既然空了，直接清空整个界面，防止残留时间戳
+    document.getElementById('chatMessagesContainer').innerHTML = '';
+    // 强制重置草稿箱
+    wxDrafts = [];
+    await saveData('chat_drafts_' + currentChatId, null);
+}
+
+await saveData(key, newMessages);
+
+// 3. 界面更新
+if (hasVisibleMessages) {
+    // 如果还有消息，仅移除当前元素（保持丝滑）
+    const targetElement = document.querySelector(`[data-timestamp="${currentSelectedMsgTimestamp}"]`);
+    if (targetElement) {
+        // 顺便检查一下它的上一个兄弟元素是不是时间戳，是的话也移除（防止时间戳孤零零留下）
+        const prev = targetElement.previousElementSibling;
+        if (prev && prev.classList.contains('chat-timestamp')) {
+            prev.remove();
+        }
+        
+        targetElement.style.transition = 'opacity 0.2s, height 0.2s';
+        targetElement.style.opacity = '0';
+        setTimeout(() => targetElement.remove(), 200);
+    }
+} else {
+    // 如果已经清空了，显示“暂无消息”占位符（可选，或者直接留白）
+    // updateChatList 会处理会话列表的预览
+}
+
+    // 4. 更新首页会话列表的预览
+    const lastVisibleMsg = [...newMessages].reverse().find(m => !m.isHidden && m.type !== 'system_separator');
+    if (lastVisibleMsg) {
+        let preview = '';
+        if (lastVisibleMsg.type === 'sticker') preview = '[表情]';
+        else if (lastVisibleMsg.type === 'pat') preview = '[拍一拍]';
+        else preview = lastVisibleMsg.content;
+        await updateChatList(currentChatId, preview, lastVisibleMsg.timestamp);
+    } else {
+        await updateChatList(currentChatId, '[无消息]', Date.now());
+    }
+}
+
+// 5. 发送消息逻辑 (支持分句发送、表情解析和自动AI回复)
+chatSendBtn.addEventListener('click', async () => {
+    // ★ 小鱼终极修复：发送新消息时，彻底清空草稿箱，开启全新回合
+    wxDrafts = [];
+    wxCurrentDraftIdx = 0;
+    await saveData('chat_drafts_' + currentChatId, null); 
+
+    // ★★★ 新增：视觉清理 —— 立即移除界面上残留的旧草稿箱工具栏 ★★★
+    const existingToolbar = document.querySelector('.wx-draft-toolbar');
+    if (existingToolbar) existingToolbar.remove();
+
+    const currentInput = chatInput.value.trim();
+    
+    if (!currentInput && splitMsgQueue.length === 0) return;
+    if (!currentChatId) return;
+    
+    // ★★★ 核心新增：在发送前检查是否需要插入分隔符 ★★★
+    await insertSceneSeparator(currentChatId, 'online');
+    
+    // 准备要发送的消息列表
+    let messagesToSend = [...splitMsgQueue];
+    if (currentInput) {
+        messagesToSend.push(currentInput);
+    }
+    
+    // 清空状态
+    chatInput.value = '';
+    splitMsgQueue = [];
+    renderSplitQueue();
+    chatSendBtn.classList.remove('visible');
+    
+    // 批量发送
+let lastContent = '';
+for (let content of messagesToSend) {
+    let msgType = 'text';
+    let finalContent = content;
+    let stickerDesc = '';
+
+    // ★★★ 1. 检测是否为图片数据 (Base64) ★★★
+    if (content.startsWith('data:image')) {
+        msgType = 'sticker'; // 复用 sticker 类型来显示图片
+        finalContent = content;
+        stickerDesc = '用户图片';
+    }
+    // ★★★ 2. 检测是否为表情占位符 [表情：名称] ★★★
+    else {
+        const stickerMatch = content.match(/^\[表情：(.+)\]$/);
+        if (stickerMatch) {
+            const desc = stickerMatch[1];
+            const stickerUrl = await findStickerUrlByDesc(desc);
+            if (stickerUrl) {
+                msgType = 'sticker';
+                finalContent = stickerUrl;
+                stickerDesc = desc;
+            }
+        }
+    }
+
+const userMsg = {
+    role: 'user',
+    type: msgType,
+    content: finalContent,
+    desc: stickerDesc,
+    timestamp: Date.now() + Math.random()
+};
+
+// ★★★ 小鱼新增：附加引用信息 ★★★
+if (currentQuoteMsg) {
+    userMsg.quote = currentQuoteMsg;
+    cancelQuote(); // 发送后清空引用状态和预览UI
+}
+
+// 1. 显示
+        appendMessageToUI(userMsg);
+        // 2. 保存
+        await saveMessage(currentChatId, userMsg);
+        
+        // 如果是表情，列表预览显示为[表情]
+        lastContent = (msgType === 'sticker') ? '[表情]' : content;
+        
+        // 稍微延迟，模拟发送间隔
+        await new Promise(r => setTimeout(r, 100));
+    }
+    
+    scrollToBottom();
+    
+    // 3. 更新会话列表
+    if (lastContent) {
+        await updateChatList(currentChatId, lastContent, Date.now());
+    }
+    
+    // ★★★ 关键修改：如果是“立即回复”模式，发送完所有消息后，立即触发AI ★★★
+    if (aiReplyMode === 'immediate') {
+        chatAiBtn.classList.add('btn-pulse');
+        setTimeout(async () => {
+            try {
+                await getAIResponse(currentChatId);
+            } catch (e) {
+                console.error("自动回复失败", e);
+            } finally {
+                chatAiBtn.classList.remove('btn-pulse');
+            }
+        }, 500);
+    }
+});
+
+// ★★★ 小鱼重构：构建 API 消息的核心函数 (物理隔离版：单聊逻辑原封不动) ★★★
+async function buildApiMessages(chatId) {
+    const contact = await getContactDetails(chatId);
+    if (!contact) throw new Error("找不到联系人");
+    
+    // 1. 获取聊天记录 (公共步骤)
+    let messages = await getData('chat_messages_' + chatId) || [];
+    
+    // 定义变量，用于最后返回
+    let finalSystemPrompt = "";
+    let availableStickers = []; 
+
+    // ============================================================
+    // 分支 A：群聊模式 (这是新增的功能)
+    // ============================================================
+    if (contact.isGroup) {
+// 获取群成员
+const allContacts = await getData('customContacts') || [];
+const memberIds = contact.memberIds || [];
+const members = allContacts.filter(c => memberIds.includes(c.id));
+
+// ★★★ 核心修复：同时读取群聊总结记忆和成员个人记忆 ★★★
+let groupMemoryPrompt = "";
+
+// 1. 获取群聊专属总结记忆
+const groupMountCount = await getData('groupMemoryMount_' + chatId);
+const finalGroupMountCount = groupMountCount !== null ? parseInt(groupMountCount) : 5; // ★ 增加 parseInt 保底
+
+if (finalGroupMountCount > 0) {
+    try {
+        const groupMemories = await requestMemoriesFromWebBox(chatId, finalGroupMountCount);
+        if (groupMemories && groupMemories.length > 0) {
+            // ★★★ 核心修复：反转数组，确保从旧到新排列 ★★★
+            const sortedGroupMemories = groupMemories.reverse();
+            groupMemoryPrompt += `\n## 【群聊历史总结记忆】\n以下是群内发生过的核心事件：\n`;
+            groupMemoryPrompt += sortedGroupMemories.map((m, i) => `${i+1}. ${m.content}`).join('\n');
+            groupMemoryPrompt += `\n`;
+        }
+    } catch (e) {
+        console.error(`获取群聊记忆失败`, e);
+    }
+}
+
+// 2. 获取各成员的个人记忆
+let personalMemoryPrompt = "";
+for (const member of members) {
+    const mountCount = member.memoryMount !== undefined ? parseInt(member.memoryMount) : 5;
+    if (mountCount > 0) {
+        try {
+            const memories = await requestMemoriesFromWebBox(member.id, mountCount);
+            if (memories && memories.length > 0) {
+                // ★★★ 核心修复：反转数组，确保从旧到新排列 ★★★
+                const sortedMemories = memories.reverse();
+                personalMemoryPrompt += `\n### [${member.nickname} 的个人记忆]\n`;
+                personalMemoryPrompt += sortedMemories.map(m => `- ${m.content}`).join('\n');
+            }
+        } catch (e) {
+            console.error(`获取${member.nickname}的记忆失败`, e);
+        }
+    }
+}
+
+if (personalMemoryPrompt) {
+    groupMemoryPrompt += `\n## 【成员个人记忆库】\n以下是各成员与用户的私下羁绊和记忆，请在扮演时自然体现：\n${personalMemoryPrompt}\n`;
+}
+
+// 2. 构建成员列表 (小鱼优化：强调真名与昵称的关系)
+const memberListStr = members.map(m => {
+    // 如果有真名且真名不等于昵称，格式化为：真名 (群内显示昵称: 昵称)
+    const nameStr = (m.realName && m.realName !== m.nickname) 
+        ? `${m.realName} (群内显示昵称: ${m.nickname})` 
+        : m.nickname;
+    return `- **${nameStr}**: ${m.persona || '无特殊设定'}`;
+}).join('\n');
+
+    // 3. 获取用户资料 (用于群聊上下文)
+    const [gName, gGender, gPersona] = await Promise.all([
+        getData('userName'), getData('gender'), getData('userPersona')
+    ]);
+    const userName = gName || '用户';
+
+    // 4. 时间感知
+    let timePromptContent = "";
+    const now = new Date();
+    timePromptContent = `当前时间：${now.toLocaleString('zh-CN', { hour12: false })}`;
+
+    // ★★★ 5. 小鱼新增：智能收集表情包（去重+归属标记） ★★★
+    const allStickerLibs = await getData('stickerLibs') || [];
+    const stickerOwnershipMap = new Map(); // 格式: {库ID: [角色名数组]}
+    const allStickerData = new Map(); // 格式: {库ID: {库名, 表情列表}}
+    
+    // 遍历所有成员，收集表情包归属
+    members.forEach(m => {
+        const allowedLibIds = m.allowedStickerLibs || [];
+        allowedLibIds.forEach(libId => {
+            if (!stickerOwnershipMap.has(libId)) {
+                stickerOwnershipMap.set(libId, []);
+            }
+            stickerOwnershipMap.get(libId).push(m.nickname);
+            
+            // 同时收集表情包数据
+            if (!allStickerData.has(libId)) {
+                const lib = allStickerLibs.find(l => l.id === libId);
+                if (lib) {
+                    allStickerData.set(libId, {
+                        name: lib.name,
+                        stickers: lib.stickers || []
+                    });
+                }
+            }
+        });
+    });
+    
+    // 构建表情包说明文本
+    let stickerPrompt = "";
+    if (allStickerData.size > 0) {
+        const stickerSections = [];
+        
+        allStickerData.forEach((libData, libId) => {
+            const owners = stickerOwnershipMap.get(libId);
+            const stickerNames = libData.stickers
+                .filter(s => s.desc && s.desc.trim())
+                .map(s => s.desc.trim());
+            
+            if (stickerNames.length === 0) return; // 跳过空库
+            
+            // 填充 availableStickers（供后续解析使用）
+            libData.stickers.forEach(s => {
+                if (s.desc && s.desc.trim()) {
+                    availableStickers.push({ name: s.desc.trim(), url: s.url });
+                }
+            });
+            
+            // 构建归属说明
+            let ownerText = "";
+            if (owners.length === 1) {
+                ownerText = `【${owners[0]}专属】`;
+            } else if (owners.length === members.length) {
+                ownerText = `【全体共有】`;
+            } else {
+                ownerText = `【${owners.join('、')}共有】`;
+            }
+            
+            stickerSections.push(`${ownerText} ${libData.name}: [${stickerNames.join(', ')}]`);
+        });
+        
+                if (stickerSections.length > 0) {
+            stickerPrompt = `
+**表情包使用规则 (极度重要)**：
+${stickerSections.join('\n')}
+
+- **使用方法**: {"type": "face", "content": "表情名称"}
+- **绝对禁令**: 必须完全匹配上述列表中的名称，**绝对禁止**捏造不存在的表情名！只有对应角色才能使用其专属/共有的表情。`;
+        }
+    }
+    
+    if (!stickerPrompt) {
+        stickerPrompt = `**表情包使用规则**：
+- 群内目前**没有任何**自定义表情包。
+- **绝对禁令**：**绝对禁止**任何角色使用 {"type": "face"} 格式！`;
+    }
+
+                // 6. 群聊专用 Prompt (重构版：格式要求置顶，防掉格式)
+    finalSystemPrompt = `
+你现在正在模拟一个微信群聊。你的任务是同时扮演群内的多个角色。
+
+# 【最高优先级：回复格式要求 (JSON Array)】
+你必须严格遵守以下 JSON 数组格式输出，绝对不要包含 markdown 代码块标记(\`\`\`json)或其他多余文本。
+[
+  {"name": "角色昵称", "type": "text", "content": "普通文本内容"},
+  {"name": "角色昵称", "type": "voice", "content": "(语气形容) 语音内容"},
+  {"name": "角色昵称", "type": "face", "content": "表情名称"},
+  {"name": "角色昵称", "type": "virtual_image", "content": "画面的详细视觉描述"},
+  {"name": "角色昵称", "type": "pat", "content": "拍一拍后缀"},
+  {"name": "角色昵称", "type": "img_desc", "content": "对用户发送图片的画面描述"},
+  {"name": "角色昵称", "type": "transfer_send", "amount": "66.66", "content": "转账说明文字"},
+  {"name": "角色昵称", "type": "transfer_accept", "content": "谢谢(接受转账)"},
+  {"name": "角色昵称", "type": "transfer_return", "content": "无功不受禄(拒绝转账)"}
+{"name": "角色昵称", "type": "quote", "quoteSender": "被引用者名字", "quoteContent": "被引用的原文", "content": "回复内容"}
+]
+
+**字段与功能指令详解**:
+1. **"name" (身份铁律)**: 必填。必须是下方【群成员名单】中的名字。**绝对禁止扮演真人用户("${userName}")**。
+2. **"type" & "content"**:
+   - **voice**: content 必须以括号开头描述语气，如 "(开心) 哈哈"。
+   - **virtual_image**: 当角色想发照片时，content 填画面描述，系统会转为图片。
+   - **img_desc**: 若用户最新发了图片，必须包含此类型，content 简述画面内容。
+   - **transfer_send**: 发起转账。必须包含 "amount" (数字字符串，如 "100.00") 和 "content" (转账附言，必填)。
+   - **transfer_accept / transfer_return**: 接收或退回用户的转账。
+   
+${stickerPrompt}
+
+---
+
+# 【群成员名单及人设】
+${memberListStr}
+
+# 【用户资料 (群成员之一)】
+- 昵称：${userName}
+- 性别：${gGender || '未知'}
+- 设定：${gPersona || '无'}
+
+${groupMemoryPrompt}
+
+# 【行为准则】
+1. **多角色互动**: 角色之间可以互相聊天、吐槽，不要只围着用户转，营造热闹的群聊氛围。
+2. **发言频率**: 一次回复包含 1-5 条消息。
+3. **环境感知**: ${timePromptContent}
+`;
+}
+// ============================================================
+// 分支 B：单聊模式 (这里完全保留了你原先的逻辑和代码结构)
+// ============================================================
+else {
+    // ★★★ 修复：从角色数据读取记忆挂载数量 ★★★
+    let memoryPrompt = "";
+    const mountCount = contact.memoryMount !== undefined ? parseInt(contact.memoryMount) : 5; // 强制转为数字
+    
+if (mountCount > 0) {
+    try {
+        const memories = await requestMemoriesFromWebBox(chatId, mountCount);
+        if (memories && memories.length > 0) {
+            // ★★★ 核心修复：反转数组，确保最旧的在前，最新的在后 ★★★
+            const sortedMemories = memories.reverse();
+            const memList = sortedMemories.map((m, i) => `${i+1}. ${m.content}`).join('\n');
+            memoryPrompt = `
+# 【长期记忆 (Long-term Memory)】
+以下是你们之前的互动记忆，请在对话中自然体现这些信息，不要生硬复述：
+${memList}
+`;
+        }
+    } catch (e) {
+        console.error('记忆挂载失败', e);
+    }
+}
+
+        // ★★★ 新增：跨群聊记忆挂载逻辑 ★★★
+        const isGroupMountEnabled = await getData('groupMountEnabled_' + chatId);
+if (isGroupMountEnabled) {
+    const mountedGroups = await getData('mountedGroupIds_' + chatId) || [];
+    const savedGroupMountLimit = await getData('groupMountLimit_' + chatId);
+    const groupMountLimit = savedGroupMountLimit !== null ? savedGroupMountLimit : 30;
+    const savedGroupChatLimit = await getData('groupChatLimit_' + chatId);
+    const groupChatLimit = savedGroupChatLimit !== null ? savedGroupChatLimit : 30;
+
+    if (mountedGroups.length > 0) {
+        try {
+            let allGroupMemories = [];
+            let allGroupChats = [];
+            const contacts = await getData('customContacts') || [];
+            
+            // 获取长期记忆
+            if (groupMountLimit > 0) {
+                const promises = mountedGroups.map(gid => requestMemoriesFromWebBox(gid, groupMountLimit));
+                const results = await Promise.all(promises);
+
+                results.forEach((mems, index) => {
+                    const gid = mountedGroups[index];
+                    const gContact = contacts.find(c => String(c.id) === String(gid));
+                    const gName = gContact ? gContact.nickname : '未知群聊';
+                    
+                    mems.forEach(m => {
+                        allGroupMemories.push({
+                            ...m,
+                            groupName: gName,
+                            sortTime: m.timestamp || m.id || 0 
+                        });
+                    });
+                });
+
+                allGroupMemories.sort((a, b) => a.sortTime - b.sortTime);
+                const topMemories = allGroupMemories.slice(0, groupMountLimit);
+
+                if (topMemories.length > 0) {
+                    memoryPrompt += `\n# 【关联的群聊长期记忆】\n以下是你在其他群聊中发生的核心事件总结：\n`;
+                    memoryPrompt += topMemories.map((m, i) => `${i+1}. [${m.groupName}] ${m.content}`).join('\n');
+                    memoryPrompt += `\n`;
+                }
+            }
+
+            // 获取短期记忆（原始聊天记录）
+if (groupChatLimit > 0) {
+    for (const gid of mountedGroups) {
+        const gContact = contacts.find(c => String(c.id) === String(gid));
+        const gName = gContact ? gContact.nickname : '未知群聊';
+        const gMessages = await getData('chat_messages_' + gid) || [];
+        
+        gMessages.filter(m => !m.isHidden && m.type !== 'system_separator')
+            .forEach(m => {
+                allGroupChats.push({
+                    ...m,
+                    groupName: gName,
+                    isGroupChat: true
+                });
+            });
+    }
+    
+    // 按时间排序后取最新的N条
+    allGroupChats.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    allGroupChats = allGroupChats.slice(-groupChatLimit);
+}
+
+            // 混合排序（将在历史记录处理时进行）
+            window.crossGroupChats = allGroupChats;
+
+        } catch (e) {
+            console.error('群聊记忆挂载获取失败', e);
+        }
+    }
+}
+
+        // --- 1. 世界书 (原逻辑) ---
+        let worldBookPrompt = "";
+        if (contact.worldBookIds && contact.worldBookIds.length > 0) {
+            const rawWb = localStorage.getItem('wechat_world_book_shared');
+            const allEntries = rawWb ? JSON.parse(rawWb) : [];
+            const activeEntries = allEntries.filter(e => contact.worldBookIds.includes(e.id));
+            if (activeEntries.length > 0) {
+                worldBookPrompt = activeEntries.map(e => `[${e.title}]: ${e.content}`).join('\n');
+            }
+        }
+
+        // --- 2. 用户资料准备 (原逻辑) ---
+        const chatProfiles = await getData('my_chat_profiles') || {};
+        const chatProfile = chatProfiles[chatId] || {}; 
+        const [globalName, globalGender, globalRegion, globalPhone, globalWechatId, globalSign, globalPersona] = await Promise.all([
+              getData('userName'), getData('gender'), getData('region'),
+              getData('phone'), getData('wechatId'), getData('signature'), getData('userPersona')
+            ]);
+
+        const myName = chatProfile.nickname || globalName || '用户'; 
+        const myGender = chatProfile.gender || globalGender;
+        const myRegion = chatProfile.region || globalRegion;
+        const myPersona = chatProfile.persona || globalPersona;
+
+        // --- 3. 表情包准备 (原逻辑) ---
+        let stickerPrompt = "";
+        if (contact.allowedStickerLibs && contact.allowedStickerLibs.length > 0) {
+            const allLibs = await getData('stickerLibs') || [];
+            const targetLibs = allLibs.filter(lib => contact.allowedStickerLibs.includes(lib.id));
+            targetLibs.forEach(lib => {
+                if (lib.stickers) {
+                    lib.stickers.forEach(s => {
+                        if (s.desc && s.desc.trim()) {
+                            availableStickers.push({ name: s.desc.trim(), url: s.url });
+                        }
+                    });
+                }
+            });
+        }
+        
+                if (availableStickers.length > 0) {
+            const stickerNames = availableStickers.map(s => s.name).join(', ');
+            const stickerExamples = availableStickers.slice(0, 3).map(s => s.name).join('、');
+            stickerPrompt = `**表情包使用规则 (极度重要)**：
+- 你拥有的可用表情：[${stickerNames}]
+- **发送格式**：{"type": "face", "content": "表情名称"}
+- **绝对禁令**：content 必须且只能是上述列表中的精确名称，**绝对禁止**捏造不存在的表情名！`;
+        } else {
+            stickerPrompt = `**表情包使用规则**：
+- 你目前**没有任何**自定义表情包。
+- **绝对禁令**：**绝对禁止**使用 {"type": "face"} 格式！`;
+        }
+
+// --- 4. 心声与时间 (修复版：从数据库读取) ---
+const savedInnerVoiceState = await getData('innerVoice_' + chatId);
+const innerVoiceEnabled = savedInnerVoiceState === true;
+
+const innerVoicePrompt = innerVoiceEnabled ? `
+# 3. 【特殊指令：心声模式 (ON)】
+系统检测到"心声开关"已打开。
+**规则**：
+1. 本次回复的 JSON 数组中，**必须**包含至少 1 条 {"type": "inner_voice", ...} 消息。
+2. 心声内容应反映角色真实的潜台词、吐槽、阴暗面或对用户的真实看法（可与表面对话形成反差）。` : '';
+
+// ★★★ 核心修改：时间信息不再放入 System Prompt，改为稍后追加到消息列表末尾 ★★★
+let timePromptContent = ""; // 保留变量，但内容为空
+
+        // --- 5. 构建单聊 System Prompt (原汁原味) ---
+        const charTrueName = (contact.realName && contact.realName.trim()) ? contact.realName : contact.nickname;
+        
+        // ★★★ 小鱼修改：强化昵称与真名的区分 ★★★
+        let nameInstruction = `- **你的真实身份**：你是 "${charTrueName}"（这是你的真名）。`;
+        if (contact.realName && contact.realName !== contact.nickname) {
+            nameInstruction += `\n- **关于备注昵称**：用户在微信通讯录中给你的备注是 "${contact.nickname}"，这仅用于界面显示和消息归属标记。**在对话中你必须使用真名 "${charTrueName}"**，绝对不要在聊天内容中提及或使用备注昵称 "${contact.nickname}"。`;
+        } else {
+            nameInstruction += `\n- **身份确认**：你在通讯录中的显示名称也是 "${charTrueName}"。`;
+        }
+
+// ★★★ 核心修复：根据开关动态决定是否在格式示例中暴露 inner_voice ★★★
+const innerVoiceFormatLine = innerVoiceEnabled ? '\n  {"type": "inner_voice", "content": "内心独白"},' : '';
+
+let rawSystemPrompt = `
+# 1. 【最高优先级】回复格式要求 (Output Format)
+你必须严格遵守以下 JSON 数组格式输出，不要包含 markdown 代码块标记：
+[
+  {"type": "text", "content": "对话内容"},
+  {"type": "face", "content": "表情名称"},
+  {"type": "voice", "content": "语音内容"},
+  {"type": "virtual_image", "content": "画面的详细视觉描述"},${innerVoiceFormatLine}
+  {"type": "pat", "content": "拍一拍后缀"},
+  {"type": "call_invite", "content": "发起语音通话"},
+  {"type": "img_desc", "content": "对用户发送图片的画面描述"},
+  {"type": "moment", "content": "发朋友圈的文字内容"},
+  {"type": "moment_like", "postId": "帖子ID"},
+  {"type": "moment_comment", "postId": "帖子ID", "content": "评论内容"}
+{"type": "quote", "quoteSender": "被引用者名字", "quoteContent": "被引用的原文", "content": "你的回复内容"}
+]
+**朋友圈互动说明**：
+- 当你看到系统提示用户或其他角色发了朋友圈时，你可以选择点赞或评论
+- 点赞格式：{"type": "moment_like", "postId": "帖子的时间戳ID"}
+- 评论格式：{"type": "moment_comment", "postId": "帖子的时间戳ID", "content": "你的评论内容"}
+- 注意：postId 必须是系统提示中给出的准确数字
+- 如果系统提示中额外提供了【关系提示】，你必须优先按照“你眼中的发帖人关系”来决定评论语气、亲密度、是否主动互动
+- 如果存在双向关系，说明双方都认可该关系，你可以更自然地体现这种熟悉度
+**特殊指令说明**：
+- **发送图片**：如果你想给用户发照片、截图或风景图，请使用 {"type": "virtual_image", "content": "这里写画面的详细描述"}。系统会自动将其转换为一张图片卡片显示给用户。
+- **发朋友圈**：如果你想更新自己的朋友圈动态，请使用 {"type": "moment", "content": "文案"}。该消息不会出现在聊天窗口，而是直接发布到朋友圈。
+- **引用回复**：如果你想引用用户之前说过的某句话进行回复，请使用 {"type": "quote", "quoteSender": "发送者名字", "quoteContent": "被引用的原文（尽量简短）", "content": "你的回复"}。系统会在你的回复下方显示一个灰色的引用气泡。
+**特殊规则**：若用户最新一条消息包含图片，你**必须**在回复数组中包含一项 {"type": "img_desc", ...}，详细描述你看到的画面内容（50字以内），用于系统记忆。
+**格式禁忌**：绝对不要在 content 中包含 [线上]、[线下]、[系统提示] 等标签。
+
+# 2. 核心规则 (Core Rules)
+${nameInstruction}
+- **场景**：当前处于 **线上聊天模式（微信对话）**。请使用文字聊天的语气（而非面对面）。
+- **节奏**：模拟真人习惯，一次性回复 3-8 条短消息，避免长篇大论。
+- **★★★ 关于昵称的特别说明 ★★★**：
+  * 系统内部使用"昵称"字段用于界面显示和消息归属判断（例如标记"这是谁发的消息"）。
+  * **你在对话中绝对不要提及或使用昵称，必须使用真名 "${charTrueName}"**。
+  * 如果用户直接询问"你的名字是什么"或类似问题，你应该回答你的真名 "${charTrueName}"。
+
+- **语音消息规范**：
+  1. **格式**：{"type": "voice", "content": "实际说的话"}
+  2. **声音描述**：必须用括号标注，如 "(语气温柔)" "(声音低沉磁性)" "(带着笑意)"
+  3. **使用场景**：只在情感强烈、需要传达语气时使用，普通对话仍然用文字。
+  4. **示例**：
+     - {"type": "voice", "content": "(语气温和)你还好吗？"}
+     - {"type": "voice", "content": "(声音低沉磁性)我想你了。"}
+- **处理转账**: 若用户发来转账，你可以决定接收或退回。
+   - 接收转账: {"type": "transfer_accept", "content": "谢谢"}
+   - 退回转账: {"type": "transfer_return", "content": "无功不受禄"}
+- **发起转账**: 如果你想给用户钱（如发红包、退款、给零花钱），请使用：
+   - 格式: {"type": "transfer_send", "amount": "88.00", "content": "转账说明文字"}
+   - **关键规则**:
+     * amount: 必须是数字字符串，最多两位小数，如 "66.66"
+     * content: **必填项**，用于填写转账附言（如"生日快乐"、"感谢你的帮助"），最多60个字
+     * 转账说明会同时显示在转账卡片和对方的收款页面，请认真填写有温度的文字
+   - 示例:
+     * {"type": "transfer_send", "amount": "520.00", "content": "今天是你的生日，小小心意不成敬意"}
+     * {"type": "transfer_send", "amount": "100.00", "content": "周末加班辛苦了，请你喝咖啡"}
+
+- **拍一拍规范 (★★★ 严格限制 ★★★)**：
+  1. **绝对禁止滥用**：**严禁**在每一轮回复的末尾都习惯性地添加拍一拍！这会让对话显得非常机械和令人反感。
+  2. **使用频率**：请将使用频率控制在 **10% 以下**。只有在用户先拍了你，或者情境**极度**需要（如极度的撒娇、安慰或挑逗）时才可偶尔使用。
+  3. **默认行为**：在 90% 的情况下，请**只发送文本和表情**，不要发送拍一拍。
+  4. **格式**：{"type": "pat", "content": "后缀"}。
+${stickerPrompt}
+
+${innerVoicePrompt}
+
+# 3. 你的角色人设 (Character Persona)
+${contact.persona || '无特殊设定'}
+
+# 4. 用户人设 (User Profile)
+- 名字：${myName}
+- 性别：${myGender || '未知'}
+- 地区：${myRegion || '未知'}
+- 备注/设定：${myPersona || '无'}
+(请根据用户资料进行互动)
+
+# 5. 世界书与设定 (World Book)
+${worldBookPrompt || '无额外世界观设定'}
+
+${memoryPrompt}
+
+# 6. 环境与时间 (Environment)
+${timePromptContent || '(无特殊时间设定)'}
+- **场景切换**：若看到 [线下] 标签，说明那是面对面发生的；回到 [线上] 则变为微信交流。
+`;
+
+        // 关键词替换
+        processedSystemPrompt = rawSystemPrompt;
+        processedSystemPrompt = processedSystemPrompt.replace(/\{\{char\}\}/gi, charTrueName);
+        processedSystemPrompt = processedSystemPrompt.replace(/代码助手/g, charTrueName);
+        processedSystemPrompt = processedSystemPrompt.replace(/<char>/gi, charTrueName);
+        processedSystemPrompt = processedSystemPrompt.replace(/\{\{user\}\}/gi, myName);
+        processedSystemPrompt = processedSystemPrompt.replace(/<user>/gi, myName);
+        processedSystemPrompt = processedSystemPrompt.replace(/\buser\b/gi, myName);
+        
+        finalSystemPrompt = processedSystemPrompt;
+    }
+
+    // ============================================================
+    // 历史记录处理 (这是唯一必须对单聊/群聊都做的公共修改)
+    // ============================================================
+    
+    // 1. 读取上下文轮数限制
+const contextLimit = (await getData('contextLimit_' + chatId)) || 20;
+let recentMessages = messages
+    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+    .slice(-contextLimit);
+
+// ★★★ 核心修复：混入群聊记忆并插入场景切换标记 ★★★
+if (window.crossGroupChats && window.crossGroupChats.length > 0) {
+    const allMixed = [...recentMessages, ...window.crossGroupChats]
+        .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    
+    // 插入场景切换标记
+    const lastGroupIndex = allMixed.map(m => m.isGroupChat).lastIndexOf(true);
+    if (lastGroupIndex !== -1 && lastGroupIndex < allMixed.length - 1) {
+        allMixed.splice(lastGroupIndex + 1, 0, {
+            role: 'user',
+            content: '[系统提示：场景已切换为私聊，请基于当前场景继续对话]',
+            timestamp: allMixed[lastGroupIndex].timestamp + 0.5,
+            isHidden: true,
+            type: 'system_separator'
+        });
+    }
+    
+    recentMessages = allMixed;
+    delete window.crossGroupChats;
+}
+
+// 3. 组装最终消息
+// ★★★ 核心重构：构建带时间戳的消息列表 ★★★
+const apiMessages = [{ role: 'system', content: finalSystemPrompt }];
+
+let lastDisplayedTime = null; // 记录上一条显示的时间戳
+
+// ★★★ 核心修复：改用 for...of 循环以支持 await ★★★
+for (let index = 0; index < recentMessages.length; index++) {
+    const msg = recentMessages[index];
+    const source = msg.source || 'online';
+    const sourceLabel = source === 'offline' ? '[线下]' : '[线上]';
+    
+    // 跳过"继续"指令的特殊处理
+    if (msg.isHidden && msg.content === '（继续）') {
+        apiMessages.push({ role: 'user', content: "（请继续上一条的发言...）" });
+        continue;
+    }
+
+    // ★★★ 核心新增：检查是否需要插入时间提示 ★★★
+    if (contact.timeAwareness !== false && msg.timestamp) {
+        const currentTime = formatWeChatTime(msg.timestamp);
+        
+        // 如果时间戳发生变化，插入一条系统提示
+        if (currentTime !== lastDisplayedTime) {
+            apiMessages.push({
+                role: 'system',
+                content: `[时间提示] 以下消息发送于: ${currentTime}`
+            });
+            lastDisplayedTime = currentTime;
+        }
+    }
+
+    // 构建消息前缀（群聊需要显示发送者名字）
+    let prefix = "";
+    if (contact.isGroup && msg.role === 'assistant' && msg.senderName) {
+        prefix = `${msg.senderName}: `;
+    }
+
+    // 处理朋友圈隐藏消息（多模态：文字+图片数组）
+    if (msg.type === 'moment_hidden') {
+      // ★★★ 核心修复：实时从数据库读取最新的点赞和评论 ★★★
+      const momentId = msg.momentId || msg.timestamp;
+      let moments = await getData('moments_posts') || [];
+      const currentPost = moments.find(p => String(p.id) === String(momentId));
+      
+      // 判断这条朋友圈消息之后是否已经存在AI回复
+      const msgIndexInAll = messages.findIndex(m => m.timestamp === msg.timestamp);
+      const msgsAfter = messages.slice(msgIndexInAll + 1);
+      const hasAiReplyAfter = msgsAfter.some(m => 
+        m.role === 'assistant' && !m.isHidden
+      );
+
+      if (hasAiReplyAfter) {
+        // 下一轮及以后：把图片替换为文字描述，节省token
+        let textOnly = '';
+        if (Array.isArray(msg.content)) {
+          // 提取文字部分
+          const textPart = msg.content.find(p => p.type === 'text');
+          textOnly = textPart ? textPart.text : '[朋友圈动态]';
+
+          // 如果有已识别的图片描述，追加进去
+          if (msg.imageDescriptions && msg.imageDescriptions.length > 0) {
+            textOnly += ' 图片内容：' + msg.imageDescriptions.join('；');
+          } else {
+            textOnly += '（图片已省略）';
+          }
+        } else {
+          textOnly = typeof msg.content === 'string' ? msg.content : '[朋友圈动态]';
+        }
+
+        // ★★★ 核心新增：追加最新的互动信息 ★★★
+        if (currentPost) {
+          const likes = currentPost.likes || [];
+          const comments = currentPost.comments || [];
+          
+          if (likes.length > 0) {
+            textOnly += ` 当前点赞：${likes.join('、')}。`;
+          }
+          if (comments.length > 0) {
+            const commentList = comments.map(c => `${c.authorName}: ${c.content}`).join('；');
+            textOnly += ` 当前评论：${commentList}。`;
+          }
+        }
+
+        apiMessages.push({
+          role: 'user',
+          content: textOnly
+        });
+      } else {
+        // 同一轮（AI尚未回复）：发送原始多模态内容，让AI看到图片
+        let finalContent = msg.content;
+        
+        // ★★★ 核心新增：如果是数组格式，更新文字部分以包含最新互动 ★★★
+        if (Array.isArray(msg.content) && currentPost) {
+          const textPartIndex = msg.content.findIndex(p => p.type === 'text');
+          if (textPartIndex !== -1) {
+            let updatedText = msg.content[textPartIndex].text;
+            
+            const likes = currentPost.likes || [];
+            const comments = currentPost.comments || [];
+            
+            if (likes.length > 0) {
+              updatedText += ` 当前点赞：${likes.join('、')}。`;
+            }
+            if (comments.length > 0) {
+              const commentList = comments.map(c => `${c.authorName}: ${c.content}`).join('；');
+              updatedText += ` 当前评论：${commentList}。`;
+            }
+            
+            // 创建新数组，替换文字部分
+            finalContent = [...msg.content];
+            finalContent[textPartIndex] = { type: 'text', text: updatedText };
+          }
+        }
+        // ★★★ 如果是字符串格式，也追加互动信息 ★★★
+        else if (typeof msg.content === 'string' && currentPost) {
+          let updatedText = msg.content;
+          
+          const likes = currentPost.likes || [];
+          const comments = currentPost.comments || [];
+          
+          if (likes.length > 0) {
+            updatedText += ` 当前点赞：${likes.join('、')}。`;
+          }
+          if (comments.length > 0) {
+            const commentList = comments.map(c => `${c.authorName}: ${c.content}`).join('；');
+            updatedText += ` 当前评论：${commentList}。`;
+          }
+          
+          finalContent = updatedText;
+        }
+        
+        apiMessages.push({
+          role: 'user',
+          content: finalContent
+        });
+      }
+      continue;
+    }
+
+    // 处理图片消息
+    if (msg.type === 'sticker' && msg.content && msg.content.startsWith('data:image')) {
+        const descText = msg.ai_description ? `：${msg.ai_description}` : '';
+        const textContent = `${prefix}${sourceLabel} [发送了一张图片${descText}]`;
+
+        if (msg.ai_description) {
+            apiMessages.push({ role: msg.role, content: textContent });
+            continue;
+        }
+
+        const isRecent = index > recentMessages.length - 5; 
+        if (isRecent) {
+            const sizeInMB = (msg.content.length * 0.75) / (1024 * 1024);
+            if (sizeInMB > 5) {
+                apiMessages.push({ role: msg.role, content: textContent + " (文件过大)" });
+                continue;
+            }
+            
+            apiMessages.push({
+                role: msg.role,
+                content: [
+                    { type: "text", text: textContent },
+                    { type: "image_url", image_url: { url: msg.content } }
+                ]
+            });
+            continue;
+        } else {
+            apiMessages.push({ role: msg.role, content: textContent });
+            continue;
+        }
+    }
+
+    // 处理其他类型消息
+    let content = msg.content;
+
+    if (msg.type === 'transfer') {
+        if (msg.isReceipt) {
+            content = `[已领取了你的转账 ¥${msg.amount}]`;
+        } else {
+            let noteText = "";
+            if (msg.transferNote) {
+                noteText = ` (说明: "${msg.transferNote}")`;
+            }
+            content = `[向你转账了 ¥${msg.amount} 元${noteText}]`;
+        }
+    }
+    else if (typeof content === 'string' && content.startsWith('[VOICE:')) {
+        const voiceMatch = content.match(/^\[VOICE:\d+:(.+)\]$/);
+        const voiceText = voiceMatch ? voiceMatch[1] : '语音';
+        content = `[语音:${voiceText}]`;
+    } else if (msg.type === 'sticker') {
+        content = `[发送了表情: ${msg.desc || '图片'}]`;
+    } else if (msg.type === 'inner_voice') {
+    content = `[内心独白: ${msg.content}]`;
+}
+
+// ★★★ 小鱼新增：将引用信息加入AI上下文 ★★★
+if (msg.quote) {
+    content = `[引用了 ${msg.quote.senderName} 的消息: "${msg.quote.content}"]\n` + content;
+}
+
+// 添加最终消息
+apiMessages.push({ 
+    role: msg.role, 
+    content: prefix + sourceLabel + " " + content 
+});
+}
+
+// ★★★ 核心新增：在消息列表末尾追加时间感知信息 ★★★
+if (contact.timeAwareness !== false) {
+    const now = new Date();
+    const nowStr = now.toLocaleString('zh-CN', { hour12: false });
+
+    // ===== 新增：星期几 =====
+    const weekdayMap = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+    const weekdayStr = weekdayMap[now.getDay()];
+
+    let lunarStr = "";
+    let festivalList = [];
+
+    try {
+        // ===== 1. 农历信息 + 农历节日 =====
+        if (typeof Lunar !== 'undefined') {
+            const lunar = Lunar.fromDate(now);
+            lunarStr = ` (农历:${lunar.getMonthInChinese()}月${lunar.getDayInChinese()})`;
+
+            const lunarFestivals = lunar.getFestivals ? (lunar.getFestivals() || []) : [];
+            if (lunarFestivals.length > 0) {
+                festivalList.push(...lunarFestivals);
+            }
+
+            // 如果 Lunar 库支持节气，也一起带上
+            if (lunar.getJieQi) {
+                const jieQi = lunar.getJieQi();
+                if (jieQi) {
+                    festivalList.push(jieQi);
+                }
+            }
+        }
+
+        // ===== 2. 公历节日（重点：补上愚人节） =====
+        const month = now.getMonth() + 1;
+        const day = now.getDate();
+        const solarKey = `${month}-${day}`;
+
+        const solarFestivalMap = {
+            '1-1': '元旦',
+            '2-14': '情人节',
+            '3-8': '妇女节',
+            '3-12': '植树节',
+            '4-1': '愚人节',
+            '5-1': '劳动节',
+            '5-4': '青年节',
+            '6-1': '儿童节',
+            '7-1': '建党节',
+            '8-1': '建军节',
+            '9-10': '教师节',
+            '10-1': '国庆节',
+            '10-31': '万圣节',
+            '12-24': '平安夜',
+            '12-25': '圣诞节'
+        };
+
+        if (solarFestivalMap[solarKey]) {
+            festivalList.push(solarFestivalMap[solarKey]);
+        }
+
+        // 去重，防止重复显示
+        festivalList = [...new Set(festivalList)];
+
+    } catch (e) {
+        console.warn("节日/农历计算失败，已忽略", e);
+    }
+
+    let festivalStr = "";
+    if (festivalList.length > 0) {
+        festivalStr = ` [节日:${festivalList.join('、')}]`;
+    }
+
+    let timeDiffDesc = "这是你们的第一条消息。";
+
+    // ★★★ 核心修改：从后往前查找最后一条用户消息 ★★★
+    let lastUserMsg = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+        // 跳过隐藏消息和系统消息
+        if (msg.isHidden || msg.type === 'system_separator') continue;
+        // 找到第一条用户消息就停止
+        if (msg.role === 'user') {
+            lastUserMsg = msg;
+            break;
+        }
+    }
+
+    if (lastUserMsg) {
+        const diffMs = now.getTime() - lastUserMsg.timestamp;
+        const diffMins = Math.floor(diffMs / 60000);
+        let durationStr = "";
+        
+        if (diffMins < 1) durationStr = "不到1分钟";
+        else if (diffMins < 60) durationStr = `${diffMins}分钟`;
+        else if (diffMins < 1440) durationStr = `${Math.floor(diffMins / 60)}小时`;
+        else durationStr = `${Math.floor(diffMins / 1440)}天`;
+
+        // 判断是线下还是线上场景
+        if (lastUserMsg.source === 'offline') {
+            timeDiffDesc = `距离用户上次线下见面发言，已经过去了 ${durationStr}。`;
+        } else {
+            if (diffMins < 1) {
+                timeDiffDesc = "用户刚刚发来消息（不到1分钟）。";
+            } else if (diffMins < 5) {
+                timeDiffDesc = `用户 ${durationStr} 前发来消息，请及时回复。`;
+            } else if (diffMins < 60) {
+                timeDiffDesc = `距离用户上次发言已过去 ${durationStr}，对方可能在等待回复。`;
+            } else if (diffMins < 1440) {
+                timeDiffDesc = `用户已经 ${durationStr} 没有说话了。`;
+            } else {
+                timeDiffDesc = `用户已经 ${durationStr} 没有联系你了，可能需要主动关心。`;
+            }
+        }
+    }
+    
+    // 构建时间提示消息（作为最后一条"系统消息"）
+    const timeHint = `[系统提示] 当前时间: ${nowStr}，${weekdayStr}${lunarStr}${festivalStr}。${timeDiffDesc} 请根据此时间、星期、节日氛围调整作息状态和对话内容；如果今天是特殊节日，请自然体现对应的节日氛围。`;
+    
+    apiMessages.push({
+        role: 'system',
+        content: timeHint
+    });
+}
+
+return { apiMessages, availableStickers, contact };
+}
+
+// ★★★ 核心函数：获取 AI 回复 (小鱼修复版：支持多图识别) ★★★
+async function getAIResponse(chatId) {
+    const requestSessionToken = activeChatSessionToken;
+    const originalChatTitle = chatTitle.textContent;
+
+    // ★★★ 小鱼新增：统一判断“当前是不是还在这个聊天会话里” ★★★
+    const canUpdateCurrentUI = () => {
+        return currentChatId === chatId &&
+               activeChatSessionToken === requestSessionToken &&
+               document.getElementById('chatRoomPage').style.display !== 'none';
+    };
+
+    try {
+        // ★★★ 新增：开始前先清一次旧闪烁，避免残留 ★★★
+        if (canUpdateCurrentUI()) {
+            chatTitle.classList.remove('typing-blink-effect');
+            chatTitle.textContent = originalChatTitle;
+        }
+
+        // 1. 获取聊天记录
+        const key = 'chat_messages_' + chatId;
+        let messages = await getData(key) || [];
+        
+        // --- 阶段 A: 智能识图预处理 (批量检查) ---
+        const mainConfig = await getApiConfigForWechat('wechat');
+        const imgConfig = await getApiConfigForWechat('imageRecognition');
+        
+        if (JSON.stringify(mainConfig) !== JSON.stringify(imgConfig)) {
+            let pendingImages = [];
+            
+            for (let i = messages.length - 1; i >= 0; i--) {
+                const msg = messages[i];
+                if (msg.role === 'assistant' && !msg.isHidden) break;
+                
+                if (msg.role === 'user' &&
+                    msg.type === 'sticker' &&
+                    msg.content.startsWith('data:image') &&
+                    !msg.ai_description) {
+                    pendingImages.unshift({ index: i, msg: msg });
+                }
+            }
+            
+            if (pendingImages.length > 0) {
+                console.log(`检测到 ${pendingImages.length} 张待识别图片...`);
+                
+                for (let k = 0; k < pendingImages.length; k++) {
+                    const item = pendingImages[k];
+                    
+                    if (canUpdateCurrentUI()) {
+                        chatTitle.textContent = `正在识别图片 (${k + 1}/${pendingImages.length})...`;
+                        chatTitle.classList.add('typing-blink-effect');
+                    }
+                    
+                    try {
+                        const visionMessages = [
+                            { role: "system", content: "你是一个视觉助手。请用简练的语言(50字以内)客观描述这张图片的内容，不要发散，不要带感情色彩。" },
+                            { 
+                                role: "user", 
+                                content: [
+                                    { type: "text", text: "请描述这张图片" },
+                                    { type: "image_url", image_url: { url: item.msg.content } }
+                                ]
+                            }
+                        ];
+                        
+                        const description = await callAIAPI(visionMessages, imgConfig);
+                        console.log(`图片 ${k+1} 识别完成:`, description);
+                        
+                        messages[item.index].ai_description = description;
+                        await saveData(key, messages);
+                        
+                        if (canUpdateCurrentUI()) {
+                            const imgBubble = document.querySelector(`[data-timestamp="${item.msg.timestamp}"]`);
+                            if (imgBubble) {
+                                const backEl = imgBubble.querySelector('.img-back');
+                                if (backEl) backEl.textContent = description;
+                            }
+                        }
+                        
+                    } catch (err) {
+                        console.error(`图片 ${k+1} 识别失败:`, err);
+                    }
+                }
+            }
+        }
+
+        // --- 阶段 B: 常规回复流程 ---
+        messages = await getData(key) || [];
+        const lastDbMsg = messages[messages.length - 1];
+        
+        const lastMsgNeedsBarrier = lastDbMsg && (
+            (lastDbMsg.role === 'assistant' && !lastDbMsg.isHidden) ||
+            (lastDbMsg.type === 'moment_hidden' && lastDbMsg.isHidden)
+        );
+
+        if (lastMsgNeedsBarrier) {
+            const hiddenSeparator = {
+                role: 'user',
+                content: '（继续）',
+                type: 'text',
+                timestamp: Date.now(),
+                isHidden: true
+            };
+            await saveMessage(chatId, hiddenSeparator);
+            
+            if (canUpdateCurrentUI()) {
+                wxDrafts = [];
+                wxCurrentDraftIdx = 0;
+                await saveData('chat_drafts_' + chatId, null);
+                const existingToolbar = document.querySelector('.wx-draft-toolbar');
+                if (existingToolbar) existingToolbar.remove();
+            }
+        }
+
+        const { apiMessages, availableStickers, contact } = await buildApiMessages(chatId);
+
+        if (canUpdateCurrentUI()) {
+            chatTitle.textContent = '对方正在输入...';
+            chatTitle.classList.add('typing-blink-effect');
+        }
+
+        const wechatApiConfig = await getApiConfigForWechat('wechat');
+        let response = await callAIAPI(apiMessages, wechatApiConfig);
+        
+        await handleAIResponsePayload(response, contact, availableStickers, chatId, requestSessionToken);
+    
+        const autoInterval = (await getData('autoSummary_' + chatId)) || 0;
+        if (autoInterval > 0) {
+            let currentCount = (await getData('chat_turn_count_' + chatId)) || 0;
+            currentCount++;
+            console.log(`当前对话轮数: ${currentCount}/${autoInterval}`);
+            
+            if (currentCount >= autoInterval) {
+                if (currentChatId === chatId) {
+                    await summarizeMemory(true);
+                }
+                currentCount = 0;
+                await saveData('chat_turn_count_' + chatId, currentCount);
+            } else {
+('_turn_count_' + chatId, currentCount);
+            }
+        }
+    
+    } catch (error) {
+        console.error('AI 回复失败:', error);
+        const contacts = await getData('customContacts') || [];
+        const contact = contacts.find(c => c.id === chatId);
+        
+        const errorMsg = {
+            role: 'assistant',
+            content: '抱歉，我现在无法回复，请稍后再试',
+            timestamp: Date.now()
+        };
+
+            await saveMessage(chatId, errorMsg);
+
+    if (canUpdateCurrentUI()) {
+        appendMessageToUI(errorMsg, contact ? contact.avatar : '');
+        // ★ 小鱼修复：即使 AI 报错，也要把重试/草稿箱工具栏挂上去
+        renderDraftToolbar();
+        scrollToBottom();
+    }
+} finally {
+        // ★★★ 修改：只要还是当前聊天，就无条件清理闪烁 ★★★
+        if (currentChatId === chatId) {
+            chatTitle.textContent = originalChatTitle;
+            chatTitle.classList.remove('typing-blink-effect');
+        }
+    }
+}
+
+// ★★★ 小鱼新增：Token 估算函数 (简单的本地估算) ★★★
+function estimateTokens(text) {
+    if (!text) return 0;
+    // 粗略算法：汉字算 1.5-2 token，英文单词算 1.3 token
+    // 这里使用更通用的估算：
+    // 1. 计算中文字符数
+    const chineseChars = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    // 2. 计算非中文字符数
+    const otherChars = text.length - chineseChars;
+    // 3. 估算公式: 汉字*2 + 其他*1 (稍微保守一点的估计，防止超限)
+    return Math.ceil(chineseChars * 2 + otherChars * 1.1);
+}
+
+// ★★★ 小鱼终极修复：查看上下文按钮（改用事件委托，彻底解决动态渲染问题）★★★
+document.addEventListener('click', async (e) => {
+    // 判断是否点击了"查看上下文"按钮（兼容静态和动态ID）
+    const btn = e.target.closest('#viewContextBtn, #viewContextBtn_Dynamic');
+    if (btn && currentChatId) {
+        try {
+            const { apiMessages } = await buildApiMessages(currentChatId);
+            
+            const editor = document.getElementById('ctxEditor');
+            const totalCharsEl = document.getElementById('ctxTotalChars');
+            const totalTokensEl = document.getElementById('ctxTotalTokens');
+            
+            // 1. 格式化 JSON 并填入编辑器
+            const formattedJson = JSON.stringify(apiMessages, null, 2);
+            editor.value = formattedJson;
+            
+            // 2. 更新统计
+            updateCtxStats();
+            
+            // 3. 监听输入，实时更新统计
+            editor.oninput = updateCtxStats;
+
+            // 4. 显示弹窗
+            document.getElementById('contextModal').style.display = 'flex';
+            
+        } catch (error) {
+            customAlert('生成上下文失败: ' + error.message);
+            console.error(error);
+        }
+    }
+});
+
+// 更新统计信息的辅助函数
+function updateCtxStats() {
+    const text = document.getElementById('ctxEditor').value;
+    const totalChars = text.length;
+    const totalTokens = estimateTokens(text);
+    
+    document.getElementById('ctxTotalChars').textContent = totalChars;
+    document.getElementById('ctxTotalTokens').textContent = totalTokens + " Tokens";
+}
+
+// ★★★ 新增：强制使用当前编辑的内容发送给 AI ★★★
+document.getElementById('forceSendContextBtn').addEventListener('click', async () => {
+    if (!currentChatId) return;
+    
+    // 记录原始标题，用于 finally 恢复
+    // 注意：这里要获取当前显示的标题（通常是对方名字），而不是 '对方正在输入...'
+    // 如果当前已经是 '对方正在输入...'，尝试从 contact 获取，或者直接保留原逻辑
+    const originalChatTitle = chatTitle.textContent === '对方正在输入...' ? '聊天中' : chatTitle.textContent;
+
+    try {
+        const editorContent = document.getElementById('ctxEditor').value;
+        let customMessages;
+        
+        // 1. 尝试解析用户修改后的 JSON
+        try {
+            customMessages = JSON.parse(editorContent);
+            if (!Array.isArray(customMessages)) throw new Error("必须是数组格式");
+        } catch (e) {
+            customAlert("JSON 格式错误，请检查语法！\n" + e.message);
+            return;
+        }
+        
+        // 2. 关闭弹窗
+        document.getElementById('contextModal').style.display = 'none';
+        
+        // 3. 强制调用 API
+        // ★★★ 核心修复：开启闪烁 ★★★
+        chatTitle.textContent = '对方正在输入...';
+        chatTitle.classList.add('typing-blink-effect'); // <--- 添加这行
+        
+        // 获取表情包列表 (为了解析回复)
+        const contact = await getContactDetails(currentChatId);
+        const { availableStickers } = await buildApiMessages(currentChatId); // 仅获取表情列表
+        
+        const wechatApiConfig = await getApiConfigForWechat();
+        let response = await callAIAPI(customMessages, wechatApiConfig);
+        
+        // 4. 解析并显示回复
+        await handleAIResponsePayload(response, contact, availableStickers, currentChatId, activeChatSessionToken);
+        
+    } catch (e) {
+        console.error('强制发送失败:', e);
+        customAlert('发送失败: ' + e.message);
+    } finally {
+        // ★★★ 核心修复：移除闪烁并恢复标题 ★★★
+        // 如果 handleAIResponsePayload 成功执行，它会把标题改成 contact.nickname
+        // 如果失败，我们需要手动恢复
+        if (chatTitle.textContent === '对方正在输入...') {
+            chatTitle.textContent = originalChatTitle;
+        }
+        chatTitle.classList.remove('typing-blink-effect'); // <--- 添加这行
+    }
+});
+
+
+// ★★★ 小鱼重构：处理 AI 响应 (支持群聊多角色分发) ★★★
+async function handleAIResponsePayload(response, contact, availableStickers, chatId, sessionToken = null) {
+    let responseMsgs = [];
+    try {
+        let cleanStr = response.replace(/```json/g, '').replace(/```/g, '');
+        const firstBracket = cleanStr.indexOf('[');
+        const lastBracket = cleanStr.lastIndexOf(']');
+        
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+            cleanStr = cleanStr.substring(firstBracket, lastBracket + 1);
+            responseMsgs = JSON.parse(cleanStr);
+        } else {
+            throw new Error("没有找到JSON数组括号");
+        }
+        if (!Array.isArray(responseMsgs)) throw new Error("解析结果不是数组");
+    } catch (e) {
+        console.warn("JSON解析失败，尝试降级处理:", e);
+        let cleanText = response.replace(/\[(线上|线下)\]\s*/g, '').trim();
+        const lines = cleanText.split(/\n+/).filter(line => line.trim());
+        responseMsgs = lines.map(line => ({ type: 'text', content: line.trim() }));
+    }
+
+    const processedMsgs = [];
+    const emojiRegex = /\[发送了表情:\s*([^\]]+)\]/g;
+    responseMsgs.forEach(msg => {
+        if (msg.type === 'text' && msg.content.includes('[发送了表情:')) {
+            const parts = msg.content.split(emojiRegex);
+            for (let i = 0; i < parts.length; i++) {
+                const part = parts[i].trim();
+                if (!part) continue;
+                if (i % 2 === 0) processedMsgs.push({ type: 'text', content: part });
+                else processedMsgs.push({ type: 'face', content: part });
+            }
+        } else {
+            processedMsgs.push(msg);
+        }
+    });
+
+    const chatTitleEl = document.getElementById('chatTitle');
+    const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+    // ★★★ 小鱼新增：判断是否允许渲染到“当前可见聊天界面” ★★★
+    const canRenderToCurrentUI = () => {
+        return currentChatId === chatId &&
+               (sessionToken === null || activeChatSessionToken === sessionToken) &&
+               document.getElementById('chatRoomPage').style.display !== 'none';
+    };
+
+    let memberAvatarMap = {};
+    if (contact.isGroup) {
+        const allContacts = await getData('customContacts') || [];
+        const memberIds = contact.memberIds || [];
+        const members = allContacts.filter(c => memberIds.includes(c.id));
+        members.forEach(m => {
+            memberAvatarMap[m.nickname] = m.avatar;
+            if (m.realName) memberAvatarMap[m.realName] = m.avatar;
+        });
+    }
+
+    let notificationMsgs = [];
+
+    for (let i = 0; i < processedMsgs.length; i++) {
+        let msgType = processedMsgs[i].type || 'text';
+        let msgContent = processedMsgs[i].content;
+        let senderName = processedMsgs[i].name;
+        
+        if (msgType !== 'moment_like' && (!msgContent || String(msgContent).trim() === '')) continue;
+
+        if (canRenderToCurrentUI()) {
+            chatTitleEl.textContent = '对方正在输入...';
+            chatTitleEl.classList.add('typing-blink-effect');
+        }
+        
+        await sleep(Math.random() * 700 + 800);
+
+        let currentAvatar = contact.avatar;
+        if (contact.isGroup && senderName) {
+            currentAvatar = memberAvatarMap[senderName] || '';
+        }
+
+// --- 语音通话被拒绝 (支持多句) ---
+if (msgType === 'call_reject') {
+    // 仅在第一条拒绝消息时执行挂断UI操作
+    if (typeof isCallActive !== 'undefined' && isCallActive) {
+        if (typeof stopCallRing === 'function') stopCallRing(); // ★ 修复：AI拒接时立即停止铃声
+        if (typeof callVibrateInterval !== 'undefined') clearInterval(callVibrateInterval);
+        
+        const callOverlay = document.getElementById('voiceCallOverlay');
+        const floatingWindow = document.getElementById('floatingCallWindow');
+        if (callOverlay) callOverlay.style.display = 'none';
+        if (floatingWindow) floatingWindow.style.display = 'none'; // ★ 拒接时隐藏小窗
+        isCallActive = false;
+        
+        const recordMsg = {
+            role: 'user',
+            type: 'text',
+            content: '对方已拒绝 ᯅ',
+            timestamp: Date.now() - 1
+        };
+        await saveMessage(chatId, recordMsg);
+        if (canRenderToCurrentUI()) {
+            appendMessageToUI(recordMsg, currentAvatar, contact.isGroup);
+        }
+    }
+    // 将所有拒接消息转换为普通文本，发送到聊天界面
+    msgType = 'text';
+}
+
+// --- 语音通话被接通 (支持多句轮播及记录保存) ---
+if (msgType === 'call_accept') {
+    if (typeof isCallActive !== 'undefined' && isCallActive) {
+        // 仅在第一条接通消息时初始化计时器
+        if (typeof callStartTime !== 'undefined' && callStartTime === 0) {
+            if (typeof stopCallRing === 'function') stopCallRing(); // ★ 修复：AI接通时立即停止铃声
+            if (typeof callVibrateInterval !== 'undefined') clearInterval(callVibrateInterval);
+            
+            const statusEl = document.getElementById('callStatus');
+            const hangupSpan = document.querySelector('#callHangupBtn span');
+            const floatingTimeEl = document.getElementById('floatingCallTime'); // ★ 获取小窗时间元素
+            
+            if (statusEl) statusEl.textContent = '00:00';
+            if (floatingTimeEl) floatingTimeEl.textContent = '00:00';
+            if (hangupSpan) hangupSpan.textContent = '挂断';
+            
+            callStartTime = Date.now();
+            callTimerInterval = setInterval(() => {
+                const duration = Math.floor((Date.now() - callStartTime) / 1000);
+                const m = String(Math.floor(duration / 60)).padStart(2, '0');
+                const s = String(duration % 60).padStart(2, '0');
+                if (statusEl) statusEl.textContent = `${m}:${s}`;
+                if (floatingTimeEl) floatingTimeEl.textContent = `${m}:${s}`; // ★ 同步更新小窗时间
+            }, 1000);
+        }
+        
+        // 逐句更新字幕
+        const subtitleEl = document.getElementById('callSubtitle');
+        if (subtitleEl) {
+            subtitleEl.style.display = 'block';
+            subtitleEl.textContent = msgContent;
+            subtitleEl.style.color = 'white';
+        }
+        
+        // ★ 新增：将 AI 的话存入通话记录面板
+        if (typeof currentCallHistory !== 'undefined') {
+            currentCallHistory.push({
+                role: 'ai',
+                name: contact.realName || contact.nickname,
+                content: msgContent
+            });
+            if (typeof renderCallHistory === 'function') renderCallHistory();
+        }
+    }
+    continue; // 接通的话语只显示在字幕，不发到聊天界面
+}
+
+        // --- 朋友圈发帖 ---
+        if (msgType === 'moment') {
+    let moments = await getData('moments_posts') || [];
+    const newMomentId = Date.now();
+
+    // 计算发帖人ID
+    let posterId = contact.id;
+    if (contact.isGroup && senderName) {
+        const allContacts = await getData('customContacts') || [];
+        const member = allContacts.find(c => c.nickname === senderName || c.realName === senderName);
+        if (member) {
+            posterId = member.id;
+        }
+    }
+
+    const newMoment = {
+        id: newMomentId,
+        authorId: posterId, // ★ 核心新增：记录发帖人ID
+        authorName: senderName || contact.nickname,
+        authorAvatar: currentAvatar || 'https://iili.io/fkc3RwJ.jpg',
+        content: msgContent,
+        timestamp: newMomentId
+    };
+
+    moments.unshift(newMoment);
+    await saveData('moments_posts', moments);
+
+    // ★ 核心新增：把这条朋友圈分发给“同标签组”的其他角色，并附加关系提示
+    const targetContacts = await getSameTagVisibleCharacters(posterId);
+
+    for (const viewer of targetContacts) {
+        const relationPrompt = await getMomentRelationPrompt(viewer.id, posterId);
+
+        let momentTextDesc = `[系统提示：${newMoment.authorName} 刚发了一条朋友圈（帖子ID: ${newMoment.id}）`;
+        if (msgContent) {
+            momentTextDesc += `，内容是："${msgContent}"`;
+        }
+        momentTextDesc += `。你已经在朋友圈看到了这条动态。`;
+
+if (relationPrompt) {
+    momentTextDesc += ` 补充背景：${relationPrompt}`;
+}
+
+        momentTextDesc += ` 你可以选择点赞或评论这条朋友圈。如果你和发帖人关系亲近，可以更自然、更主动；如果关系疏远或复杂，也请按人设克制回应。切勿把这条背景信息当作对方直接给你发来的私聊消息。]`;
+
+        const chatKey = 'chat_messages_' + viewer.id;
+        let chatMsgs = await getData(chatKey) || [];
+
+        chatMsgs.push({
+            role: 'user',
+            type: 'moment_hidden',
+            content: momentTextDesc,
+            momentId: newMoment.id,
+            timestamp: newMoment.id,
+            isHidden: true,
+            source: 'online'
+        });
+
+        await saveData(chatKey, chatMsgs);
+    }
+
+    continue;
+}
+
+        // --- 朋友圈点赞 ---
+if (msgType === 'moment_like') {
+    const postId = processedMsgs[i].postId;
+    if (!postId) continue;
+    
+    let moments = await getData('moments_posts') || [];
+    const postIndex = moments.findIndex(p => String(p.id) === String(postId));
+    
+    if (postIndex !== -1) {
+        const post = moments[postIndex];
+        post.likes = post.likes || [];
+        const aiName = senderName || contact.nickname;
+        if (!post.likes.includes(aiName)) {
+            post.likes.push(aiName);
+            await saveData('moments_posts', moments);
+            
+            // ★ 新增：将点赞动作写入未读消息池
+            await addMomentUnreadMsg({
+                type: 'like',
+                postId: postId,
+                authorName: aiName,
+                authorAvatar: currentAvatar || 'https://iili.io/fkc3RwJ.jpg',
+                timestamp: Date.now()
+            });
+
+            if (document.getElementById('momentsPage').style.display !== 'none') {
+                await renderMomentsFeed();
+            }
+        }
+    }
+    continue;
+}
+
+// --- 朋友圈评论 ---
+if (msgType === 'moment_comment') {
+    const postId = processedMsgs[i].postId;
+    const commentContent = processedMsgs[i].content;
+    if (!postId || !commentContent) continue;
+    
+    let moments = await getData('moments_posts') || [];
+    const postIndex = moments.findIndex(p => String(p.id) === String(postId));
+    
+    if (postIndex !== -1) {
+        const post = moments[postIndex];
+        post.comments = post.comments || [];
+        const aiName = senderName || contact.nickname;
+        
+        post.comments.push({
+            id: Date.now(),
+            authorName: aiName,
+            authorAvatar: currentAvatar || 'https://iili.io/fkc3RwJ.jpg',
+            content: commentContent,
+            timestamp: Date.now()
+        });
+        
+        await saveData('moments_posts', moments);
+        
+        // ★ 新增：将评论动作写入未读消息池
+        await addMomentUnreadMsg({
+            type: 'comment',
+            postId: postId,
+            authorName: aiName,
+            authorAvatar: currentAvatar || 'https://iili.io/fkc3RwJ.jpg',
+            content: commentContent,
+            timestamp: Date.now()
+        });
+
+        if (document.getElementById('momentsPage').style.display !== 'none') {
+            await renderMomentsFeed();
+        }
+    }
+    continue;
+}
+
+        // --- 图片描述 ---
+        if (msgType === 'img_desc') {
+            const key = 'chat_messages_' + chatId;
+            let allMsgs = await getData(key) || [];
+            let savedDesc = false;
+
+            for (let k = allMsgs.length - 1; k >= 0; k--) {
+                if (allMsgs[k].role === 'user' &&
+                    allMsgs[k].type === 'sticker' &&
+                    typeof allMsgs[k].content === 'string' &&
+                    allMsgs[k].content.startsWith('data:image')) {
+                    allMsgs[k].ai_description = msgContent;
+                    await saveData(key, allMsgs);
+
+                    if (canRenderToCurrentUI()) {
+                        const imgBubble = document.querySelector(`[data-timestamp="${allMsgs[k].timestamp}"]`);
+                        if (imgBubble) {
+                            const backEl = imgBubble.querySelector('.img-back');
+                            if (backEl) backEl.textContent = msgContent;
+                        }
+                    }
+                    savedDesc = true;
+                    break;
+                }
+
+                if (allMsgs[k].type === 'moment_hidden' && Array.isArray(allMsgs[k].content)) {
+                    if (!allMsgs[k].imageDescriptions) {
+                        allMsgs[k].imageDescriptions = [];
+                    }
+                    const imgCount = allMsgs[k].content.filter(p => p.type === 'image_url').length;
+                    if (allMsgs[k].imageDescriptions.length < imgCount) {
+                        allMsgs[k].imageDescriptions.push(msgContent);
+                        await saveData(key, allMsgs);
+                    }
+                    savedDesc = true;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        // --- AI主动发起转账 ---
+        if (msgType === 'transfer_send') {
+            const amount = parseFloat(processedMsgs[i].amount || 0).toFixed(2);
+            const note = processedMsgs[i].content || '转账给您';
+            
+            const aiMsg = {
+                role: 'assistant',
+                type: 'transfer',
+                amount: amount,
+                transferNote: note,
+                content: `[转账] ¥${amount} (说明: ${note})`,
+                transferStatus: 'pending',
+                timestamp: Date.now(),
+                senderName: senderName
+            };
+
+            await saveMessage(chatId, aiMsg);
+            if (canRenderToCurrentUI()) {
+                appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                scrollToBottom();
+            }
+            notificationMsgs.push('[转账]');
+            continue;
+        }
+
+        // --- AI接收/退回转账 ---
+        if (msgType === 'transfer_accept' || msgType === 'transfer_return') {
+            const key = 'chat_messages_' + chatId;
+            let allMsgs = await getData(key) || [];
+            
+            let targetMsgIndex = -1;
+            for (let k = allMsgs.length - 1; k >= 0; k--) {
+                if (allMsgs[k].role === 'user' && allMsgs[k].type === 'transfer' && !allMsgs[k].transferStatus) {
+                    if (contact.isGroup) {
+                        if (allMsgs[k].targetName === senderName) {
+                            targetMsgIndex = k;
+                            break;
+                        }
+                    } else {
+                        targetMsgIndex = k;
+                        break;
+                    }
+                }
+            }
+
+            if (targetMsgIndex !== -1) {
+                const targetMsg = allMsgs[targetMsgIndex];
+                const isAccept = msgType === 'transfer_accept';
+                
+                targetMsg.transferStatus = isAccept ? 'accepted' : 'returned';
+                await saveData(key, allMsgs);
+
+                if (canRenderToCurrentUI()) {
+                    const userBubble = document.querySelector(`[data-timestamp="${targetMsg.timestamp}"]`);
+                    if (userBubble) {
+                        const descEl = userBubble.querySelector('.transfer-desc');
+                        if (descEl) descEl.textContent = isAccept ? '已被接收' : '已被退还';
+                        
+                        const iconContainer = userBubble.querySelector('.transfer-icon-circle');
+                        if (iconContainer) {
+                            iconContainer.innerHTML = isAccept
+                                ? `<svg width="42" height="42" viewBox="0 0 42 42" fill="none"><circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/><polyline points="12 21 18 27 30 15" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+                                : `<svg width="42" height="42" viewBox="0 0 42 42" fill="none"><circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/><path d="M24 28 A 5 5 0 0 0 24 18 L 13 18" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 14 L 13 18 L 17 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+                        }
+                        
+                        const contentDiv = userBubble.querySelector('.msg-content');
+                        if (contentDiv) {
+                            contentDiv.classList.add('transfer-processed');
+                        }
+                    }
+                }
+
+                const aiMsg = {
+                    role: 'assistant',
+                    type: 'transfer',
+                    amount: targetMsg.amount,
+                    transferStatus: isAccept ? 'accepted' : 'returned',
+                    content: isAccept ? `[已收款 ¥${targetMsg.amount}]` : `[已退还 ¥${targetMsg.amount}]`,
+                    isReceipt: true,
+                    timestamp: Date.now(),
+                    senderName: senderName
+                };
+
+                await saveMessage(chatId, aiMsg);
+                if (canRenderToCurrentUI()) {
+                    appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                    scrollToBottom();
+                }
+            }
+
+            notificationMsgs.push(msgType === 'transfer_accept' ? '[已收款]' : '[已退还]');
+            continue;
+        }
+
+        // --- 拍一拍 ---
+        if (msgType === 'pat') {
+            let suffix = msgContent.replace(/^拍了拍/, '').trim();
+            let patText = `"${senderName || contact.nickname}" 拍了拍我${suffix}`;
+            const aiMsg = {
+                role: 'assistant',
+                type: 'pat',
+                content: patText,
+                timestamp: Date.now(),
+                senderName: senderName
+            };
+
+            await saveMessage(chatId, aiMsg);
+            if (canRenderToCurrentUI()) {
+                appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                scrollToBottom();
+                if (navigator.vibrate) navigator.vibrate(50);
+            }
+            notificationMsgs.push('[拍一拍]');
+        }
+        // --- 虚拟图片 ---
+        else if (msgType === 'virtual_image') {
+            const base64Img = getVirtualImageBase64();
+            const aiMsg = {
+                role: 'assistant',
+                type: 'sticker',
+                content: base64Img,
+                ai_description: msgContent,
+                desc: 'AI图片',
+                timestamp: Date.now(),
+                senderName: senderName
+            };
+
+            await saveMessage(chatId, aiMsg);
+            if (canRenderToCurrentUI()) {
+                appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                scrollToBottom();
+            }
+            notificationMsgs.push('[图片]');
+        }
+        // --- 语音 ---
+        else if (msgType === 'voice') {
+            const voicePattern = /^\(([^)]+)\)(.+)$/;
+            const match = msgContent.match(voicePattern);
+            let actualText = msgContent;
+            if (match) {
+                actualText = match[2].trim();
+            }
+            let duration = Math.ceil(actualText.length / 3);
+            if (duration < 1) duration = 1;
+            if (duration > 60) duration = 60;
+
+            const voiceContent = `[VOICE:${duration}:${actualText}]`;
+            const aiMsg = {
+                role: 'assistant',
+                type: 'text',
+                content: voiceContent,
+                timestamp: Date.now(),
+                senderName: senderName
+            };
+
+            if (canRenderToCurrentUI()) {
+                chatTitleEl.textContent = '对方正在录音...';
+                chatTitleEl.classList.add('typing-blink-effect');
+            }
+            await sleep(Math.min(duration * 300, 2000));
+
+            await saveMessage(chatId, aiMsg);
+            if (canRenderToCurrentUI()) {
+                appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                chatTitleEl.textContent = contact.nickname;
+                chatTitleEl.classList.remove('typing-blink-effect');
+                scrollToBottom();
+            }
+            notificationMsgs.push('[语音]');
+        }
+// --- 表情 ---
+else if (msgType === 'face') {
+    // 小鱼修复：支持同名表情随机抽取，不再永远使用第一个
+    const matchedStickers = availableStickers.filter(s => s.name === msgContent);
+    
+    let finalType = 'text';
+    let finalContent = `[${msgContent}]`;
+
+    if (matchedStickers.length > 0) {
+        // 如果有多个同名表情，随机选一个
+        const randomIndex = Math.floor(Math.random() * matchedStickers.length);
+        const sticker = matchedStickers[randomIndex];
+
+        finalType = 'sticker';
+        finalContent = sticker.url;
+    }
+
+    const aiMsg = {
+        role: 'assistant',
+        type: finalType,
+        content: finalContent,
+        desc: finalType === 'sticker' ? msgContent : '',
+        timestamp: Date.now(),
+        senderName: senderName
+    };
+
+    await saveMessage(chatId, aiMsg);
+    if (canRenderToCurrentUI()) {
+        appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+        scrollToBottom();
+    }
+    notificationMsgs.push('[表情]');
+}
+
+// ★★★ 小鱼新增：引用回复处理 ★★★
+else if (msgType === 'quote') {
+    const quoteSender = processedMsgs[i].quoteSender || '对方';
+    const quoteContent = processedMsgs[i].quoteContent || '';
+    const replyContent = msgContent || '';
+    
+    if (!replyContent) continue; // 如果没有回复内容就跳过
+    
+    const aiMsg = {
+        role: 'assistant',
+        type: 'text',
+        content: replyContent,
+        quote: {
+            senderName: quoteSender,
+            content: quoteContent
+        },
+        timestamp: Date.now(),
+        senderName: senderName
+    };
+    
+    appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+    await saveMessage(chatId, aiMsg);
+    scrollToBottom();
+    
+    notificationMsgs.push(`[引用] ${replyContent}`);
+}
+
+        // --- 文本 ---
+        else if (msgType === 'text') {
+            const sentences = msgContent.match(/[^。！？\.\!\?]+[。！？\.\!\?]*/g) || [msgContent];
+            for (let j = 0; j < sentences.length; j++) {
+                const sentence = sentences[j].trim();
+                if (!sentence) continue;
+                
+                notificationMsgs.push(sentence);
+                
+                if (j > 0) {
+                    if (canRenderToCurrentUI()) {
+                        chatTitleEl.textContent = '对方正在输入...';
+                        chatTitleEl.classList.add('typing-blink-effect');
+                    }
+                    await sleep(Math.random() * 500 + 500);
+                }
+
+                const aiMsg = {
+                    role: 'assistant',
+                    type: 'text',
+                    content: sentence,
+                    timestamp: Date.now(),
+                    senderName: senderName
+                };
+
+                await saveMessage(chatId, aiMsg);
+                if (canRenderToCurrentUI()) {
+                    appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                    chatTitleEl.textContent = contact.nickname;
+                    chatTitleEl.classList.remove('typing-blink-effect');
+                    scrollToBottom();
+                }
+            }
+        }
+        // --- 其他类型 ---
+        else {
+            const aiMsg = {
+                role: 'assistant',
+                type: msgType,
+                content: msgContent.trim(),
+                timestamp: Date.now(),
+                senderName: senderName
+            };
+
+            await saveMessage(chatId, aiMsg);
+            if (canRenderToCurrentUI()) {
+                appendMessageToUI(aiMsg, currentAvatar, contact.isGroup);
+                scrollToBottom();
+            }
+            notificationMsgs.push(msgContent.trim());
+        }
+
+        if (canRenderToCurrentUI()) {
+            chatTitleEl.textContent = contact.nickname;
+            chatTitleEl.classList.remove('typing-blink-effect');
+        }
+
+        if (i < processedMsgs.length - 1) {
+            await sleep(Math.random() * 400 + 200);
+        }
+    }
+
+    // 只有当前还在这个聊天时，才操作当前草稿工具栏
+    if (canRenderToCurrentUI()) {
+        renderDraftToolbar();
+    }
+
+    if (processedMsgs.length > 0) {
+        const lastMsg = processedMsgs[processedMsgs.length - 1];
+        let previewText = '';
+        if (lastMsg.type === 'face' || lastMsg.type === 'sticker') previewText = '[表情]';
+        else if (lastMsg.type === 'pat') previewText = '[拍了拍你]';
+        else previewText = lastMsg.content || '';
+        await updateChatList(chatId, previewText, Date.now());
+    }
+
+    const chatRoomPage = document.getElementById('chatRoomPage');
+    const isNotInCurrentChat = (chatRoomPage.style.display === 'none') || (currentChatId !== chatId);
+
+    if (isNotInCurrentChat && notificationMsgs.length > 0) {
+        showHeadsUpNotification(chatId, contact.nickname, notificationMsgs, contact.avatar);
+    }
+}
+
+// ★★★ 辅助：复制完整 JSON (保持原有功能) ★★★
+async function copyContextToClipboard() {
+    if (!currentChatId) return;
+    const { apiMessages } = await buildApiMessages(currentChatId);
+    const content = JSON.stringify(apiMessages, null, 2);
+    
+    const tempInput = document.createElement('textarea');
+    tempInput.value = content;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempInput);
+    
+    customAlert('完整 JSON 已复制到剪贴板');
+}
+
+// ★★★ 小鱼新增：微信专用API配置获取函数 (★ 修改：支持传入 featureType) ★★★
+async function getApiConfigForWechat(featureType = 'wechat') {
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('获取API配置超时'));
+        }, 10000);
+        
+        const handler = async (event) => {
+            if (!event.data || event.data.action !== 'api-settings-response') {
+                return;
+            }
+            
+            cleanup();
+            
+            // 直接使用父窗口返回的配置（父窗口已经根据 featureType 选好了是主还是副）
+            const config = event.data.payload;
+            console.log(`微信收到API配置 (${featureType}):`, config ? '成功' : '空');
+            resolve(config);
+        };
+        
+        function cleanup() {
+            clearTimeout(timeoutId);
+            window.removeEventListener('message', handler);
+        }
+        
+        window.addEventListener('message', handler);
+        // ★★★ 关键修改：告诉父窗口具体的功能类型，让父窗口决定给哪个API ★★★
+        window.parent.postMessage({ 
+            action: 'get-api-settings',
+            featureType: featureType // ★ 使用传入的类型，默认为 'wechat'
+        }, '*');
+    });
+}
+
+// ★★★ 新增：从 WebBox 请求角色记忆 ★★★
+function requestMemoriesFromWebBox(characterId, count) {
+    return new Promise((resolve, reject) => {
+        if (window.parent === window) {
+            resolve([]); // 不在 WebBox 中
+            return;
+        }
+
+        const requestId = 'mem_req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        
+        const timeout = setTimeout(() => {
+            window.removeEventListener('message', handleResponse);
+            console.warn('获取记忆超时');
+            resolve([]); 
+        }, 3000);
+
+        const handleResponse = (event) => {
+            if (event.data && event.data.action === 'memory-response' && event.data.requestId === requestId) {
+                clearTimeout(timeout);
+                window.removeEventListener('message', handleResponse);
+                resolve(event.data.memories || []);
+            }
+        };
+
+        window.addEventListener('message', handleResponse);
+
+                        window.parent.postMessage({
+            action: 'request-memories',
+            requestId: requestId,
+            data: {
+                characterId: String(characterId), // ★★★ 核心修复：强制转为字符串，解决IndexedDB严格类型匹配查不到数据的问题 ★★★
+                count: parseInt(count) || 5
+            }
+        }, '*');
+    });
+}
+
+// 调用 AI API 的通用函数
+async function callAIAPI(messages, customSettings = null) {
+    // ★★★ 核心修改：如果传入了自定义配置，直接使用；否则请求主界面配置 ★★★
+    if (customSettings) {
+        return await executeApiCall(messages, customSettings);
+    }
+    
+    return new Promise((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+            cleanup();
+            reject(new Error('获取API配置超时，请检查主界面是否已打开'));
+        }, 10000);
+        
+        const handler = async (event) => {
+            if (!event.data || event.data.action !== 'api-settings-response') {
+                return;
+            }
+            
+            cleanup();
+            
+            const settings = event.data.payload;
+            console.log('收到API配置:', settings);
+            
+                        // ★★★ 核心修改：调用提取出来的执行函数 ★★★
+            try {
+                const result = await executeApiCall(messages, settings);
+                resolve(result);
+            } catch (error) {
+                console.error('API调用异常:', error);
+                reject(error);
+            }
+        };
+        
+        function cleanup() {
+            clearTimeout(timeoutId);
+            window.removeEventListener('message', handler);
+        }
+        
+        window.addEventListener('message', handler);
+        console.log('向父窗口请求API配置...');
+        window.parent.postMessage({ 
+            action: 'get-api-settings',
+            featureType: 'wechat' 
+        }, '*');
+    });
+}
+
+// ★★★ 小鱼新增：实际执行API调用的函数（从callAIAPI中提取） ★★★
+async function executeApiCall(messages, settings) {
+    if (!settings || !settings.apiKey) {
+        throw new Error('请先在主界面设置API密钥');
+    }
+    
+    const defaultUrls = {
+        'openai': 'https://api.openai.com/v1/chat/completions',
+        'deepseek': 'https://api.deepseek.com/v1/chat/completions',
+        'custom': settings.baseUrl
+    };
+    
+    const apiUrl = settings.baseUrl || defaultUrls[settings.type];
+    if (!apiUrl) {
+        throw new Error('API地址未配置');
+    }
+    
+    const model = settings.model || (settings.type === 'deepseek' ? 'deepseek-chat' : 'gpt-3.5-turbo');
+    
+    console.log('准备调用API:', apiUrl, '模型:', model);
+    
+    const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${settings.apiKey}`
+        },
+        body: JSON.stringify({
+            model: model,
+            messages: messages,
+            temperature: 0.7,
+        })
+    });
+    
+    console.log('API响应状态:', response.status);
+    
+    if (!response.ok) {
+        let errorMsg = response.statusText;
+        try {
+            const errorData = await response.json();
+            errorMsg = errorData.error?.message || errorMsg;
+        } catch (e) {
+            // 忽略解析错误
+        }
+        throw new Error(`API调用失败: ${errorMsg}`);
+    }
+    
+    const data = await response.json();
+    console.log('API返回数据:', data);
+    
+    if (data.choices && data.choices[0] && data.choices[0].message) {
+        return data.choices[0].message.content;
+    } else {
+        throw new Error('API返回格式错误');
+    }
+}
+
+// 辅助：保存消息到 IndexedDB
+async function saveMessage(chatId, msg) {
+    const key = 'chat_messages_' + chatId;
+    const messages = await getData(key) || [];
+    messages.push(msg);
+    await saveData(key, messages);
+}
+
+// 辅助：更新首页会话列表 (已修复图片预览显示问题)
+async function updateChatList(chatId, lastContent, time) {
+    const key = 'chat_messages_' + chatId;
+    const messages = await getData(key) || [];
+    
+    // 找到最后一条可见消息
+    const lastVisibleMsg = [...messages].reverse().find(m => !m.isHidden && m.type !== 'system_separator');
+
+    let previewContent = '';
+    let previewTime = time;
+
+    if (lastVisibleMsg) {
+        // 1. 语音消息
+        const voiceMatch = (typeof lastVisibleMsg.content === 'string') 
+            ? lastVisibleMsg.content.match(/^\[VOICE:(\d+):(.+)\]$/) 
+            : null;
+        
+        if (voiceMatch) {
+            const duration = voiceMatch[1];
+            previewContent = `[语音]`; // 微信列表通常只显示[语音]，不显示秒数，保持简洁
+        } 
+        // 2. 图片/表情消息 (核心修改部分)
+        else if (lastVisibleMsg.type === 'sticker') {
+            // ★★★ 核心修复：通过内容是否以 data:image 开头来区分是【图片】还是【表情】
+            if (lastVisibleMsg.content && lastVisibleMsg.content.startsWith('data:image')) {
+                previewContent = '[图片]';
+            } else {
+                const descText = lastVisibleMsg.desc || '表情';
+                previewContent = `[动画表情]${descText !== '表情' ? ' ' + descText : ''}`;
+            }
+        } 
+        // 3. 拍一拍
+        else if (lastVisibleMsg.type === 'pat') {
+            previewContent = lastVisibleMsg.content;
+        } 
+        // 4. 普通文本
+        else {
+            previewContent = lastVisibleMsg.content;
+        }
+        
+        previewTime = lastVisibleMsg.timestamp;
+    } else {
+        // 如果没有可见消息，使用传入的 lastContent (通常用于刚创建会话或刚清空时)
+        previewContent = lastContent;
+    }
+
+    let sessions = await getData('chat_sessions') || [];
+    // 先移除旧的会话条目
+    sessions = sessions.filter(s => s.id !== chatId);
+    
+    const contacts = await getData('customContacts') || [];
+    const contact = contacts.find(c => c.id === chatId);
+    
+    if (contact) {
+        // 重新插入更新后的条目
+        sessions.unshift({
+            id: chatId,
+            name: contact.nickname,
+            avatar: contact.avatar,
+            content: previewContent,
+            time: previewTime,
+            isTop: sessions.find(s => s.id === chatId)?.isTop || false // 保持置顶状态
+        });
+        
+        // 重新排序：置顶的在通过时间排序
+        sessions.sort((a, b) => {
+            if (a.isTop !== b.isTop) return (b.isTop ? 1 : 0) - (a.isTop ? 1 : 0);
+            return b.time - a.time;
+        });
+
+        await saveData('chat_sessions', sessions);
+        renderChatList();
+    }
+}
+
+// ★★★ 小鱼重构：生成头像 DOM 字符串 (支持用户头像显示) ★★★
+async function getAvatarDom(contact, allContacts) {
+    const DEFAULT_IMG = 'https://iili.io/fkc3RwJ.jpg';
+
+    // 1. 如果是单人
+    if (!contact.isGroup) {
+        // ★★★ 修改：使用默认图片 ★★★
+        const url = contact.avatar || DEFAULT_IMG;
+        return `<div class="avatar" style="background-image: url(${url}); background-size: cover; display: flex; align-items: center; justify-content: center; color: white;"></div>`;
+    }
+
+    // 2. 如果是群聊，生成九宫格
+    const memberIds = contact.memberIds || [];
+    
+    const memberPromises = memberIds.map(async id => {
+        if (id === 'user_self') {
+            const userAvatar = await getData('avatar');
+            const userName = await getData('userName') || '我';
+            // ★★★ 修改：如果是自己且没头像，也用默认图 ★★★
+            return {
+                id: 'user_self',
+                avatar: userAvatar || DEFAULT_IMG,
+                nickname: userName
+            };
+        } else {
+            const m = allContacts.find(c => c.id === id);
+            if (m) {
+                // ★★★ 修改：如果是成员且没头像，用默认图 ★★★
+                return { ...m, avatar: m.avatar || DEFAULT_IMG };
+            }
+            return null;
+        }
+    });
+    
+    const members = (await Promise.all(memberPromises)).filter(Boolean);
+    
+    if (members.length === 0) {
+         return `<div class="avatar" style="background-color: #ccc; display: flex; align-items: center; justify-content: center; color: white;">群</div>`;
+    }
+
+    const showMembers = members.slice(0, 9);
+    const count = showMembers.length;
+    let gridClass = count <= 4 ? 'mode-2' : 'mode-3';
+    
+    let html = `<div class="wechat-group-avatar ${gridClass}">`;
+    showMembers.forEach(m => {
+        // 这里的 m.avatar 已经在上面处理过默认值了
+        html += `<div style="background-image: url(${m.avatar});"></div>`;
+    });
+    html += `</div>`;
+    
+    return html;
+}
+
+async function renderChatList() {
+    const sessions = await getData('chat_sessions') || [];
+    const allContacts = await getData('customContacts') || [];
+    chatListContainer.innerHTML = '';
+    
+    if (sessions.length === 0) {
+        chatListContainer.innerHTML = '<div style="text-align: center; margin-top: 100px; color: #999; font-size: 14px;">暂无消息<br>点击右上角 + 号开始聊天</div>';
+        return;
+    }
+
+    const updatedSessions = sessions.map(session => {
+        const contact = allContacts.find(c => c.id === session.id);
+        const name = contact ? contact.nickname : session.name;
+        return { ...session, name, contactObj: contact };
+    });
+    
+    // ★ 改用 for...of 以支持 await
+    for (const session of updatedSessions) {
+        const date = new Date(session.time);
+        const timeStr = `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
+        
+        const div = document.createElement('div');
+        div.className = 'chat-item';
+        if (session.isTop) div.style.backgroundColor = '#F7F7F7';
+        
+        const contactForAvatar = session.contactObj || { isGroup: false, avatar: session.avatar, nickname: session.name };
+        const avatarHtml = await getAvatarDom(contactForAvatar, allContacts); // ★ 加上 await
+
+        div.innerHTML = `
+            ${avatarHtml}
+            <div class="chat-info">
+                <div class="chat-header">
+                    <span class="chat-name">${session.name}</span>
+                    <span class="chat-time">${timeStr}</span>
+                </div>
+                <div class="chat-preview">${session.content}</div>
+            </div>
+        `;
+        
+        div.onclick = async () => {
+            startChat(session.id);
+        };
+        
+        chatListContainer.appendChild(div);
+    }
+}
+
+// 监听输入框，控制发送按钮显示 (适配分句模式)
+chatInput.addEventListener('input', () => {
+    checkSendBtnVisibility();
+});
+
+// 辅助函数：统一检查发送按钮可见性 (互斥切换模式)
+function checkSendBtnVisibility() {
+    const hasInput = chatInput.value.trim().length > 0;
+    const hasQueue = typeof splitMsgQueue !== 'undefined' && splitMsgQueue.length > 0;
+    
+    const plusBtn = document.getElementById('chatRefreshBtn');
+    const sendBtn = document.getElementById('chatSendBtn');
+
+    if (hasInput || hasQueue) {
+        // 有字时：隐藏+号，显示发送
+        plusBtn.style.display = 'none';
+        sendBtn.style.display = 'block';
+        sendBtn.classList.add('visible'); // 保持原有样式逻辑
+    } else {
+        // 无字时：显示+号，隐藏发送
+        plusBtn.style.display = 'block';
+        sendBtn.style.display = 'none';
+        sendBtn.classList.remove('visible');
+    }
+}
+
+// 重写渲染队列函数 (优化版：支持图片预览)
+window.renderSplitQueue = function() {
+  if (splitMsgQueue.length > 0) {
+    splitMsgPreview.style.display = 'flex';
+    splitMsgPreview.innerHTML = splitMsgQueue.map((msg, index) => {
+      // ★ 判断是否为图片数据
+      let displayText = msg;
+      if (typeof msg === 'string' && msg.startsWith('data:image')) {
+          displayText = '[图片]';
+      }
+      // ★ 判断是否为表情占位符
+      else if (typeof msg === 'string' && msg.startsWith('[表情：')) {
+          // 保持原样显示 [表情：开心]
+      }
+      
+      return `
+      <div class="split-msg-bubble" onclick="removeSplitMsg(${index})">
+        ${displayText} <span style="opacity:0.6; margin-left:4px;">×</span>
+      </div>
+    `}).join('');
+  } else {
+    splitMsgPreview.style.display = 'none';
+  }
+  // 每次队列变动，都检查按钮状态
+  checkSendBtnVisibility();
+}
+
+// 绑定遮罩层点击事件（点击空白关闭长按菜单）
+document.getElementById('menuOverlay').addEventListener('click', handleOutsideClick);
+
+// 绑定聊天区域滚动事件（滚动时关闭菜单并退出多选）
+document.getElementById('chatMessagesContainer').addEventListener('scroll', handleOutsideClick);
+
+/* 小鱼新增：AI按钮模式与分句逻辑 */
+// ★★★ 修改：优先从本地存储读取模式，没有则默认为 normal ★★★
+let aiReplyMode = localStorage.getItem('wechat_ai_reply_mode') || 'normal';
+
+let splitMsgQueue = []; // 分句消息队列
+let aiBtnLongPressTimer;
+let isLongPressTriggered = false; // ★ 关键：标记是否触发了长按
+const aiModeMenu = document.getElementById('aiModeMenu');
+const iconMagic = document.getElementById('iconMagic');
+const iconSplit = document.getElementById('iconSplit');
+const splitMsgPreview = document.getElementById('splitMsgPreview');
+
+// 1. AI按钮长按显示菜单
+chatAiBtn.addEventListener('touchstart', (e) => {
+  isLongPressTriggered = false; // 重置标记
+  aiBtnLongPressTimer = setTimeout(() => {
+    isLongPressTriggered = true; // ★ 标记为已触发长按
+    showAiModeMenu();
+    navigator.vibrate && navigator.vibrate(50); // 震动反馈
+  }, 500);
+}, { passive: true });
+
+chatAiBtn.addEventListener('touchend', () => {
+  clearTimeout(aiBtnLongPressTimer);
+});
+
+chatAiBtn.addEventListener('touchmove', () => {
+  clearTimeout(aiBtnLongPressTimer);
+  isLongPressTriggered = false; // 滑动时也重置标记
+});
+
+// 显示模式菜单
+function showAiModeMenu() {
+  aiModeMenu.style.display = 'flex';
+  // 更新选中状态
+  document.querySelectorAll('.ai-mode-item').forEach(item => {
+    item.classList.toggle('active', item.dataset.mode === aiReplyMode);
+  });
+}
+
+// 隐藏模式菜单（点击其他地方或点击菜单外区域）
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('#chatAiBtn') && !e.target.closest('#aiModeMenu')) {
+    aiModeMenu.style.display = 'none';
+  }
+});
+
+// ★ 小鱼新增：点击菜单项后也重置长按标记
+document.querySelectorAll('.ai-mode-item').forEach(item => {
+  item.addEventListener('click', () => {
+    isLongPressTriggered = false; // 防止选择模式后立即触发点击
+  });
+});
+
+// 2. 切换模式逻辑
+document.querySelectorAll('.ai-mode-item').forEach(item => {
+  item.addEventListener('click', () => {
+    aiReplyMode = item.dataset.mode;
+    
+    // ★★★ 新增：保存设置到本地存储 ★★★
+    localStorage.setItem('wechat_ai_reply_mode', aiReplyMode);
+
+    aiModeMenu.style.display = 'none';
+    updateAiBtnUI();
+    
+    // 如果切回普通模式，清空队列
+    if (aiReplyMode === 'normal') {
+      splitMsgQueue = [];
+      renderSplitQueue();
+    }
+  });
+});
+
+// ★★★ 新增：页面加载时初始化按钮图标状态 ★★★
+// 确保页面刷新后，图标能正确反映当前的模式
+document.addEventListener('DOMContentLoaded', () => {
+    updateAiBtnUI();
+});
+
+function updateAiBtnUI() {
+  if (aiReplyMode === 'immediate') {
+    iconMagic.style.display = 'none';
+    iconSplit.style.display = 'block';
+  } else {
+    iconMagic.style.display = 'block';
+    iconSplit.style.display = 'none';
+  }
+}
+
+// 3. AI按钮点击事件 (分流逻辑)
+let isAiProcessing = false;
+chatAiBtn.addEventListener('click', async () => {
+  // ★★★ 关键修复：如果刚刚触发了长按，忽略本次点击 ★★★
+  if (isLongPressTriggered) {
+    isLongPressTriggered = false; // 重置标记
+    return;
+  }
+
+  // 如果菜单是打开的，点击不触发功能
+  if (aiModeMenu.style.display === 'flex') return;
+
+  // 视觉反馈
+  chatAiBtn.classList.add('btn-pulse');
+  setTimeout(() => chatAiBtn.classList.remove('btn-pulse'), 200);
+
+  // === 分句模式逻辑 (保持不变) ===
+  if (aiReplyMode === 'immediate') {
+    const content = chatInput.value.trim();
+    if (content) {
+      splitMsgQueue.push(content); // 加入队列
+      renderSplitQueue(); // 渲染预览
+      chatInput.value = ''; // 清空输入框
+      chatInput.focus();
+      checkSendBtnVisibility(); // 更新发送按钮状态
+    }
+    return; // 结束，不触发AI
+  }
+
+  // === 普通模式逻辑 (统一入口) ===
+  if (isAiProcessing) return;
+  
+  if (!currentChatId) {
+      customAlert('请先选择一个联系人开始聊天');
+      return;
+  }
+  
+  // 检查是否有历史消息 (只要有消息就能触发，不分是谁发的)
+  const messages = await getData('chat_messages_' + currentChatId) || [];
+  if (messages.length === 0) {
+      customAlert('请先发送至少一条消息');
+      return;
+  }
+  
+  // 锁定按钮，防止重复点击
+  isAiProcessing = true;
+  chatAiBtn.style.opacity = '0.5';
+  chatAiBtn.style.pointerEvents = 'none';
+  
+  try {
+      // ★★★ 核心修改：无论上一条是谁发的，统一调用升级后的 getAIResponse ★★★
+      // (升级后的 getAIResponse 会自动检测：如果是AI发的，它会自动注入隐藏指令让AI续写)
+      await getAIResponse(currentChatId);
+  } catch (error) {
+      console.error('AI回复出错:', error);
+      customAlert('AI回复失败，请稍后再试');
+  } finally {
+      // 解锁按钮
+      isAiProcessing = false;
+      chatAiBtn.style.opacity = '1';
+      chatAiBtn.style.pointerEvents = 'auto';
+  }
+});
+
+// 渲染分句队列
+function renderSplitQueue() {
+  if (splitMsgQueue.length > 0) {
+    splitMsgPreview.style.display = 'flex';
+    splitMsgPreview.innerHTML = splitMsgQueue.map((msg, index) => `
+      <div class="split-msg-bubble" onclick="removeSplitMsg(${index})">
+        ${msg} <span style="opacity:0.6; margin-left:4px;">×</span>
+      </div>
+    `).join('');
+  } else {
+    splitMsgPreview.style.display = 'none';
+  }
+}
+
+// 允许点击删除队列中的某一句
+window.removeSplitMsg = function(index) {
+  splitMsgQueue.splice(index, 1);
+  renderSplitQueue();
+}
+
+// 退出聊天
+chatBackBtn.addEventListener('click', () => {
+    // ★★★ 修复核心：退出时强制关闭所有面板 ★★★
+    closeActionSheet();   // 关闭 +号 面板
+    closeStickerPicker(); // 关闭 表情 面板
+
+    // ★ 新增：退出时折叠所有翻译面板
+    document.querySelectorAll('.translation-panel').forEach(p => {
+        p.classList.remove('show');
+    });
+
+    currentChatId = null;
+    chatInput.value = '';
+    chatSendBtn.classList.remove('visible');
+    
+    // ★★★ 核心新增：退出时立即清空DOM和重置分页，彻底释放内存 ★★★
+    chatMessagesContainer.innerHTML = ''; 
+    window.currentMsgLimit = 50;
+    
+    showPage(mainApp);
+    renderChatList();
+});
+
+// 滚动到底部
+function scrollToBottom() {
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+    // 滚到底部后，强制隐藏按钮
+    document.getElementById('scrollToBottomBtn').style.display = 'none';
+}
+
+// ★★★ 小鱼新增：监听滚动，控制“回到底部”按钮显示 ★★★
+const scrollToBottomBtn = document.getElementById('scrollToBottomBtn');
+
+chatMessagesContainer.addEventListener('scroll', () => {
+    // 计算距离底部的距离 = 总高度 - 卷去的高度 - 可视高度
+    const distanceToBottom = chatMessagesContainer.scrollHeight - chatMessagesContainer.scrollTop - chatMessagesContainer.clientHeight;
+    
+    // 如果距离底部超过 500px，显示按钮；否则隐藏
+    if (distanceToBottom > 1500) {
+        scrollToBottomBtn.style.display = 'flex';
+    } else {
+        scrollToBottomBtn.style.display = 'none';
+    }
+});
+
+// 点击按钮，快速回到底部
+scrollToBottomBtn.addEventListener('click', () => {
+    // 使用平滑滚动效果 (behavior: 'smooth') 可能会有点慢，这里用瞬间跳转更像微信
+    // 如果想要动画，可以把下面这行改成: chatMessagesContainer.scrollTo({ top: chatMessagesContainer.scrollHeight, behavior: 'smooth' });
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+});
+// 初始化时加载会话列表
+const originalLoadUserData2 = loadUserData;
+loadUserData = async function() {
+    await originalLoadUserData2();
+    await renderChatList();
+};
+
+/* 小鱼新增：聊天表情发送逻辑 (已重构为底部面板模式) */
+const chatStickerOverlay = document.getElementById('chatStickerOverlay');
+const chatStickerLibTab = document.getElementById('chatStickerLibTab');
+const chatStickerGridContainer = document.getElementById('chatStickerGrid');
+
+// --- 小鱼新增：扩充后的 Emoji 列表 ---
+const commonEmojis = [
+      // 经典黄脸
+  "😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊","😋","😎","😗","😙","😚","🙂","🤗","🤩",
+  "🤔","🤨","😐","😑","😶","🙄","😏","😣","😥","😮","🤐","😯","😪","😫","😴","😌","😛","😜",
+  "😝","🤤","😒","😓","😔","😕","🙃","🤑","😲","☹️","🙁","😖","😞","😟","😤","😢","😭","😦",
+  "😧","😨","😩","🤯","😬","😰","😱","🥵","🥶","😳","🤪","😵","😡","😠","🤬","😷","🤒","🤕",
+  "🤢","🤮","🤧","😇","🤠","🥳","🥴","🥺","🤥","🤫","🤭","🧐","🤓","🥰","😍","😘",
+  // 手势与身体
+  "👌","👀","👍","👎","🤝","✌️","🙏","💪","👈","👉","👆","👇","✋","👋","👊","👏","👐","🫶",
+  // 情感与爱
+  "❤️","💔","🌹","🥀","💋","💕","💞","💓","💗","💖","💘","💝",
+
+  // 动物与自然
+  "🐷","🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯","🦁","🐮","🐸","🐵","🐔","🐧","🐦",
+  "🌲","🌳","🌴","🌵","🌷","🌸","🌼","🌻","☀️","🌙","⭐","☁️","🔥","💧",
+  // 物体与符号
+  "🆘","🎉","🎁","🎂","🎈","💣","💢","💤","💥","💦","💨","💩","👻","💀","👽","🤖"
+];
+
+// 打开/关闭选择器 (修复版：强制清除隐藏状态 + 确保层级)
+window.openChatStickerPicker = async function() {
+  // 1. 先关闭“+号”面板
+  closeActionSheet();
+  
+  const picker = document.getElementById('chatStickerOverlay');
+  const inputArea = document.querySelector('.chat-input-area');
+
+  // ★★★ 核心修复：强制清除旧代码残留的 display: none ★★★
+  // 这行代码非常重要，它能覆盖掉 HTML 标签里可能残留的 style="display:none"
+  picker.style.display = 'flex'; 
+
+  // 2. 如果面板已经打开，就关闭它
+  if (picker.classList.contains('open')) {
+    closeStickerPicker();
+    return;
+  }
+  
+  // 3. 获取数据并渲染
+  let userLibs = await getData('stickerLibs') || [];
+  const defaultEmojiLib = { id: 'default_emoji', name: '默认', isEmoji: true, cover: '' };
+  const allLibs = [defaultEmojiLib, ...userLibs];
+  
+  renderChatStickerTabs(allLibs, 'default_emoji');
+  renderChatStickers(defaultEmojiLib);
+
+  // 4. 打开面板
+  picker.classList.add('open');
+  inputArea.classList.add('sticker-open');
+  // 小鱼新增：按钮随动
+  document.getElementById('scrollToBottomBtn').classList.add('sticker-open');
+};
+
+// 新增：关闭表情面板的专用函数
+function closeStickerPicker() {
+  const picker = document.getElementById('chatStickerOverlay');
+  const inputArea = document.querySelector('.chat-input-area');
+  
+  picker.classList.remove('open');
+  inputArea.classList.remove('sticker-open');
+  // 小鱼新增：按钮复位
+  document.getElementById('scrollToBottomBtn').classList.remove('sticker-open');
+}
+
+// 修改：点击聊天区域时，同时关闭表情面板
+document.getElementById('chatMessagesContainer').addEventListener('click', () => {
+    closeActionSheet();   // 关闭 +号 面板
+    closeStickerPicker(); // 关闭 表情 面板
+});
+
+// 修改：点击输入框时，同时关闭两个面板
+document.getElementById('chatInput').addEventListener('focus', () => {
+    closeActionSheet();
+    closeStickerPicker(); // ★★★ 恢复这行，唤起键盘时关闭表情面板 ★★★
+});
+
+// 修改：打开“+”号面板时，自动关闭表情面板
+function toggleActionSheet() {
+    const sheet = document.getElementById('chatActionSheet');
+    const inputArea = document.querySelector('.chat-input-area');
+    const scrollBtn = document.getElementById('scrollToBottomBtn'); // 小鱼新增
+    
+    // ★ 新增：打开 + 号菜单前，先强制关闭表情面板
+    closeStickerPicker();
+
+    // 切换类名来触发CSS动画
+    sheet.classList.toggle('open');
+    inputArea.classList.toggle('sheet-open');
+    scrollBtn.classList.toggle('sheet-open'); // 小鱼新增：按钮随动
+}
+
+// 渲染顶部库标签 (图标模式) - (此函数不变，保留)
+function renderChatStickerTabs(libs, activeId) {
+  chatStickerLibTab.innerHTML = libs.map(lib => {
+    const isActive = lib.id == activeId ? 'active' : '';
+    if (lib.id === 'default_emoji') {
+  // ★★★ 修复：强制设置背景色（激活时白色，未激活时透明，覆盖掉默认的灰色） ★★★
+  return `
+    <div class="sticker-tab-btn ${isActive}" onclick="switchChatStickerLib('${lib.id}')" style="background-color: ${isActive ? '#FFFFFF' : 'transparent'};">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="${isActive ? '#333' : '#000000'}">
+        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+      </svg>
+    </div>
+  `;
+}
+    let coverStyle = '';
+    if (lib.stickers && lib.stickers.length > 0) {
+        coverStyle = `background-image: url(${lib.stickers[0].url});`;
+    }
+    return `
+      <div class="sticker-tab-btn ${isActive}" onclick="switchChatStickerLib('${lib.id}')" style="${coverStyle}">
+        ${(!lib.stickers || lib.stickers.length === 0) ? '<span style="font-size:10px; color:#999">空</span>' : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+// 切换库 - (此函数不变，保留)
+window.switchChatStickerLib = async function(libId) {
+  let userLibs = await getData('stickerLibs') || [];
+  const defaultEmojiLib = { id: 'default_emoji', name: '默认', isEmoji: true };
+  const allLibs = [defaultEmojiLib, ...userLibs];
+  const lib = allLibs.find(l => l.id == libId);
+  if (lib) {
+    renderChatStickerTabs(allLibs, libId);
+    renderChatStickers(lib);
+  }
+};
+
+// 渲染表情网格 (含长按逻辑 + 标题更新 + 动画 + 最近使用功能)
+function renderChatStickers(lib) {
+  // 动画重置
+  chatStickerGridContainer.classList.remove('sticker-grid-anim');
+  void chatStickerGridContainer.offsetWidth; 
+  chatStickerGridContainer.classList.add('sticker-grid-anim');
+
+  // A. 如果是 Emoji 库 (渲染最近使用 + 所有表情)
+  if (lib.isEmoji) {
+    chatStickerGridContainer.style.gridTemplateColumns = 'repeat(8, 1fr)';
+    
+    let recents = JSON.parse(localStorage.getItem('wechat_recent_emojis') || '[]');
+    let html = '';
+
+    // Emoji面板不需要顶部的大标题，直接显示分区
+    if (recents.length > 0) {
+        html += '<div class="emoji-section-title">最近使用</div>';
+        html += recents.map(emoji => `
+          <div class="emoji-cell" onclick="sendEmojiAsText('${emoji}')">${emoji}</div>
+        `).join('');
+    }
+
+    html += '<div class="emoji-section-title">所有表情</div>';
+    html += commonEmojis.map(emoji => `
+      <div class="emoji-cell" onclick="sendEmojiAsText('${emoji}')">${emoji}</div>
+    `).join('');
+
+    chatStickerGridContainer.innerHTML = html;
+    return;
+  }
+
+  // B. 如果是自定义图片库
+  chatStickerGridContainer.style.gridTemplateColumns = 'repeat(5, 1fr)';
+
+  // ★★★ 小鱼修改：在这里构建标题 HTML，让它成为网格的第一项 ★★★
+  let html = '';
+  // 插入标题 (使用之前定义的 emoji-section-title 样式，它会自动跨全行)
+  html += `<div class="emoji-section-title">${lib.name || '表情'}</div>`;
+
+  if (!lib.stickers || lib.stickers.length === 0) {
+    html += '<div style="grid-column: 1/-1; text-align: center; color: #999; padding: 20px;">暂无表情，请去管理页添加</div>';
+    chatStickerGridContainer.innerHTML = html;
+    return;
+  }
+
+  // 追加表情图片
+  html += lib.stickers.map((s, index) => {
+    const descHtml = s.desc ? `<span class="chat-sticker-desc">${s.desc}</span>` : '';
+    return `
+      <div class="chat-sticker-item" 
+           data-index="${index}"
+           data-url="${s.url}"
+           data-desc="${s.desc || ''}"
+           style="background-image: url(${s.url});">
+        ${descHtml}
+      </div>
+    `;
+  }).join('');
+
+  chatStickerGridContainer.innerHTML = html;
+
+  // 绑定图片表情的事件
+  const items = chatStickerGridContainer.querySelectorAll('.chat-sticker-item');
+  items.forEach(item => {
+    let timer = null;
+    let isLongPress = false;
+    item.addEventListener('touchstart', (e) => {
+      isLongPress = false;
+      timer = setTimeout(() => {
+        isLongPress = true;
+        showStickerPopup(item, lib);
+        if (navigator.vibrate) navigator.vibrate(50);
+      }, 500);
+    }, { passive: true });
+    item.addEventListener('touchmove', () => clearTimeout(timer));
+    item.addEventListener('touchend', () => clearTimeout(timer));
+    item.addEventListener('click', () => {
+      if (!isLongPress) sendStickerMessage(item.dataset.url, item.dataset.desc);
+    });
+  });
+}
+
+// 显示长按弹窗的辅助函数 (修复版：实现真实功能)
+function showStickerPopup(targetEl, lib) {
+  const popup = document.getElementById('stickerPreviewPopup');
+  const img = document.getElementById('previewImg');
+  const desc = document.getElementById('previewDesc');
+  
+  // 获取按钮
+  // 注意：我们需要重新获取按钮元素，因为之前的代码可能没有给"移到前面"按钮加ID
+  // 建议在HTML结构中给第一个按钮加个ID，或者用 querySelector 获取
+  const moveBtn = popup.querySelector('.preview-actions button:first-child');
+  const deleteBtn = document.getElementById('previewDeleteBtn');
+  
+  // 1. 填充数据
+  const url = targetEl.dataset.url;
+  const txt = targetEl.dataset.desc;
+  const index = parseInt(targetEl.dataset.index);
+  
+  img.src = url;
+  desc.textContent = txt || '表情';
+  
+  // 2. 计算位置
+  const rect = targetEl.getBoundingClientRect();
+  const containerRect = document.querySelector('.sticker-content-wrapper').getBoundingClientRect();
+  const centerLeft = (rect.left + rect.width / 2) - containerRect.left;
+  const bottomPos = containerRect.bottom - rect.top + 10; 
+  
+  popup.style.left = centerLeft + 'px';
+  popup.style.bottom = bottomPos + 'px';
+  popup.style.display = 'block';
+  
+  // ★★★ 3. 绑定"移到前面"事件 ★★★
+  moveBtn.onclick = async () => {
+    if (index === 0) {
+        popup.style.display = 'none';
+        return; // 已经在第一个了
+    }
+    
+    // 数组操作：删除当前，插入到头部
+    const item = lib.stickers.splice(index, 1)[0];
+    lib.stickers.unshift(item);
+    
+    // 保存并刷新
+    let allLibs = await getData('stickerLibs');
+    const libIndex = allLibs.findIndex(l => l.id === lib.id);
+    if (libIndex !== -1) allLibs[libIndex] = lib;
+    
+    await saveData('stickerLibs', allLibs);
+    renderChatStickers(lib); // 重新渲染界面
+    popup.style.display = 'none';
+  };
+
+  // ★★★ 4. 绑定"删除"事件 ★★★
+  deleteBtn.onclick = async () => {
+    // 直接删除，不弹confirm，体验更像微信
+    lib.stickers.splice(index, 1);
+    
+    // 保存并刷新
+    let allLibs = await getData('stickerLibs');
+    const libIndex = allLibs.findIndex(l => l.id === lib.id);
+    if (libIndex !== -1) allLibs[libIndex] = lib;
+    
+    await saveData('stickerLibs', allLibs);
+    renderChatStickers(lib);
+    popup.style.display = 'none';
+  };
+}
+
+// 点击任意地方关闭弹窗
+document.addEventListener('touchstart', (e) => {
+  const popup = document.getElementById('stickerPreviewPopup');
+  // 如果点击的不是弹窗本身，也不是触发长按的表情，就关闭
+  if (popup.style.display === 'block' && !e.target.closest('#stickerPreviewPopup') && !e.target.closest('.chat-sticker-item')) {
+    popup.style.display = 'none';
+  }
+});
+
+// 小鱼新增：点击 Emoji 直接上屏到输入框，并存入最近使用
+window.sendEmojiAsText = function(emoji) {
+  const input = document.getElementById('chatInput');
+  input.value += emoji;
+  // input.focus(); 
+  input.dispatchEvent(new Event('input'));
+
+  // --- 小鱼新增：更新最近使用列表 ---
+  let recents = JSON.parse(localStorage.getItem('wechat_recent_emojis') || '[]');
+  
+  // 1. 如果已存在，先删除（为了把它移到最前面）
+  recents = recents.filter(e => e !== emoji);
+  
+  // 2. 添加到头部
+  recents.unshift(emoji);
+  
+  // 3. 限制最多显示8个
+  if (recents.length > 8) {
+      recents.length = 8;
+  }
+  
+  // 4. 保存
+  localStorage.setItem('wechat_recent_emojis', JSON.stringify(recents));
+
+  // 5. 立即刷新表情面板以显示最新状态
+  // 构造一个伪造的 lib 对象来触发渲染
+  const defaultEmojiLib = { id: 'default_emoji', name: '默认', isEmoji: true };
+  renderChatStickers(defaultEmojiLib);
+};
+
+// 发送表情 (修复版：发送后保持面板打开)
+window.sendStickerMessage = async function(url, desc) {
+  if (!currentChatId) return;
+
+  // 如果是分句模式，依然直接上屏
+  if (aiReplyMode === 'immediate') {
+      const stickerName = desc || '图片';
+      const textToInsert = `[表情：${stickerName}]`;
+      chatInput.value += textToInsert;
+      checkSendBtnVisibility();
+      chatInput.focus();
+      return; 
+  }
+  
+  // ★★★ 小鱼修复：发送表情时，也必须强制清空草稿箱 ★★★
+  wxDrafts = [];
+  wxCurrentDraftIdx = 0;
+  await saveData('chat_drafts_' + currentChatId, null);
+  
+  // 立即移除界面上的草稿工具栏
+  const existingToolbar = document.querySelector('.wx-draft-toolbar');
+  if (existingToolbar) existingToolbar.remove();
+  
+  // ★★★ 关键：这里不要调用 closeStickerPicker() ★★★
+  // 保持面板打开，方便连发
+  
+  const stickerMsg = {
+    role: 'user',
+    type: 'sticker',
+    content: url,
+    desc: desc,
+    timestamp: Date.now()
+  };
+  
+  appendMessageToUI(stickerMsg);
+  scrollToBottom();
+  await saveMessage(currentChatId, stickerMsg);
+  await updateChatList(currentChatId, `[表情]`, Date.now());
+};
+
+// ★★★ 小鱼新增：辅助函数，用于通过表情名称查找URL ★★★
+async function findStickerUrlByDesc(desc) {
+    const libs = await getData('stickerLibs') || [];
+    for (const lib of libs) {
+        if (lib.stickers) {
+            // 查找描述匹配的表情
+            const found = lib.stickers.find(s => s.desc === desc);
+            if (found) return found.url;
+        }
+    }
+    return null; // 没找到
+}
+
+/* ★ 小鱼新增：自动插入线上/线下分界线的系统消息 */
+async function insertSceneSeparator(chatId, newSource) {
+    const key = 'chat_messages_' + chatId;
+    let messages = await getData(key) || [];
+    
+    if (messages.length === 0) return; // 空聊天不需要分隔
+    
+    const lastMsg = messages[messages.length - 1];
+    
+    // ★★★ 核心修复：获取上一条消息的来源，如果为空则默认为 'online' ★★★
+    // 这样避免了普通消息被误判为“未知场景”，从而导致重复插入提示
+    const lastSource = lastMsg.source || 'online';
+    
+    // 如果最后一条消息的场景和即将发送的场景不同，插入分隔符
+    if (lastSource !== newSource) {
+        const separator = {
+            role: 'user',
+            type: 'system_separator', // ★ 标记为系统消息
+            content: `[系统提示：场景已切换为${newSource === 'online' ? '线上聊天' : '线下见面'}，请基于当前场景继续对话]`,
+            timestamp: Date.now(),
+            source: newSource, // 继承新场景的标记
+            isHidden: true // ★ 标记为隐藏消息
+        };
+        
+        messages.push(separator);
+        await saveData(key, messages);
+        console.log(`✅ 已自动插入${newSource}场景分隔符`);
+    }
+}
+
+/* ========================================
+   小鱼新增：自定义弹窗系统（替代浏览器原生弹窗）
+   ======================================== */
+
+// 1. 自定义 alert（提示框）
+window.customAlert = function(message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('customAlertOverlay');
+    const content = document.getElementById('customAlertContent');
+    const okBtn = document.getElementById('customAlertOkBtn');
+    
+    content.textContent = message;
+    overlay.style.display = 'flex';
+    
+    const handleOk = () => {
+      overlay.style.display = 'none';
+      okBtn.removeEventListener('click', handleOk);
+      resolve();
+    };
+    
+    okBtn.addEventListener('click', handleOk);
+  });
+};
+
+// 2. 自定义 confirm（确认框）- 小鱼升级版：支持复选框 (极限压缩间距版)
+window.customConfirm = function(message, options = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('customConfirmOverlay');
+    const content = document.getElementById('customConfirmContent');
+    const okBtn = document.getElementById('customConfirmOkBtn');
+    const cancelBtn = document.getElementById('customConfirmCancelBtn');
+    
+    // ★★★ 核心修复下猛药：极限压缩上下内边距 (上12px, 左右15px, 下8px) ★★★
+    content.style.padding = '12px 15px 8px 15px';
+    content.style.minHeight = '0'; // 强制清除可能存在的默认高度
+    
+    if (options.checkboxText) {
+      // 渲染文本和复选框 (大幅缩小 margin-bottom，让两行紧紧靠在一起)
+      content.innerHTML = `
+        <div style="margin-bottom: 6px; white-space: pre-wrap; word-break: break-word; line-height: 1.3; font-size: 15px; color: #000;">${message}</div>
+        <label style="display: flex; align-items: center; justify-content: center; font-size: 12px; color: #666; cursor: pointer; padding-bottom: 4px;">
+          <input type="checkbox" id="customConfirmCheckbox" style="margin-right: 6px; width: 14px; height: 14px; accent-color: #FA5151;">
+          ${options.checkboxText}
+        </label>
+      `;
+    } else {
+      // 没复选框时的普通弹窗，稍微给点上下缓冲
+      content.innerHTML = `<div style="white-space: pre-wrap; word-break: break-word; line-height: 1.3; font-size: 15px; color: #000; padding: 8px 0;">${message}</div>`;
+    }
+    
+    overlay.style.display = 'flex';
+    
+    const handleOk = () => {
+      let isChecked = false;
+      if (options.checkboxText) {
+        const cb = document.getElementById('customConfirmCheckbox');
+        if (cb) isChecked = cb.checked;
+      }
+      overlay.style.display = 'none';
+      cleanup();
+      // 如果有复选框，返回对象；否则返回布尔值（兼容旧代码）
+      resolve(options.checkboxText ? { confirmed: true, checked: isChecked } : true);
+    };
+    
+    const handleCancel = () => {
+      overlay.style.display = 'none';
+      cleanup();
+      resolve(options.checkboxText ? { confirmed: false, checked: false } : false);
+    };
+    
+    const cleanup = () => {
+      okBtn.removeEventListener('click', handleOk);
+      cancelBtn.removeEventListener('click', handleCancel);
+    };
+    
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
+  });
+};
+
+// 3. 自定义 prompt（输入框）
+window.customPrompt = function(message, defaultValue = '') {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('customPromptOverlay');
+    const content = document.getElementById('customPromptContent');
+    const input = document.getElementById('customPromptInput');
+    const okBtn = document.getElementById('customPromptOkBtn');
+    const cancelBtn = document.getElementById('customPromptCancelBtn');
+    
+    content.textContent = message;
+    input.value = defaultValue;
+    overlay.style.display = 'flex';
+    
+    setTimeout(() => input.focus(), 100);
+    
+    const handleOk = () => {
+      const value = input.value;
+      overlay.style.display = 'none';
+      cleanup();
+      resolve(value);
+    };
+    
+    const handleCancel = () => {
+      overlay.style.display = 'none';
+      cleanup();
+      resolve(null);
+    };
+    
+    const handleEnter = (e) => {
+      if (e.key === 'Enter') handleOk();
+    };
+    
+    const cleanup = () => {
+      okBtn.removeEventListener('click', handleOk);
+      cancelBtn.removeEventListener('click', handleCancel);
+      input.removeEventListener('keypress', handleEnter);
+    };
+    
+    okBtn.addEventListener('click', handleOk);
+    cancelBtn.addEventListener('click', handleCancel);
+    input.addEventListener('keypress', handleEnter);
+  });
+};
+
+// --- 小鱼新增：微信内部弹窗控制逻辑 (支持上滑/右滑仅关闭当前一条) ---
+let notifTimer = null;
+let notifQueueTimer = null;
+let currentNotifChatId = null;
+
+// 小鱼新增：当前通知队列状态
+let notifMessageQueue = [];
+let notifCurrentIndex = 0;
+let notifIsSequencePlaying = false;
+let notifCurrentDismissResolver = null;
+
+// 小鱼新增：弹窗滑动状态
+let notifTouchStartX = 0;
+let notifTouchStartY = 0;
+let notifTouchCurrentX = 0;
+let notifTouchCurrentY = 0;
+let notifIsDragging = false;
+let notifHasSwipedToClose = false;
+
+// 小鱼新增：滑动方向锁
+// 可选值：'' / 'right' / 'up'
+let notifSwipeDirectionLock = '';
+
+// 小鱼新增：统一重置样式
+function resetHeadsUpNotificationStyles() {
+    const notif = document.getElementById('heads-up-notification');
+    if (!notif) return;
+
+    notif.style.display = '';
+    notif.style.transform = '';
+    notif.style.opacity = '';
+    notif.style.transition = '';
+}
+
+// 小鱼新增：不带业务逻辑的关闭当前弹窗UI
+function closeCurrentNotificationUI(withAnimation = true, direction = 'up') {
+    return new Promise((resolve) => {
+        const notif = document.getElementById('heads-up-notification');
+        if (!notif) {
+            resolve();
+            return;
+        }
+
+        if (notifTimer) clearTimeout(notifTimer);
+
+        // 小鱼修复：先锁住当前状态，防止 .show 移除时再触发默认隐藏动画
+        const finishClose = () => {
+            // 先彻底隐藏，再移除 show，避免出现“第二次向上消失”
+            notif.style.transition = 'none';
+            notif.style.opacity = '0';
+            notif.style.display = 'none';
+
+            // 强制重绘，确保 display:none 先生效
+            void notif.offsetHeight;
+
+            notif.classList.remove('show');
+
+            // 清理内联样式，给下一次显示做准备
+            notif.style.display = '';
+            notif.style.transition = '';
+            notif.style.transform = '';
+            notif.style.opacity = '';
+
+            resolve();
+        };
+
+        if (withAnimation) {
+            notif.style.transition = 'transform 0.22s ease, opacity 0.22s ease';
+
+            if (direction === 'right') {
+                notif.style.transform = 'translateX(120%)';
+            } else {
+                notif.style.transform = 'translateY(-100px)';
+            }
+
+            notif.style.opacity = '0';
+
+            setTimeout(() => {
+                finishClose();
+            }, 220);
+        } else {
+            finishClose();
+        }
+    });
+}
+
+// 小鱼新增：回弹函数
+function resetHeadsUpNotificationPosition() {
+    const notif = document.getElementById('heads-up-notification');
+    if (!notif) return;
+
+    notif.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+    notif.style.transform = 'translate(0, 0)';
+    notif.style.opacity = '1';
+
+    setTimeout(() => {
+        notif.style.transition = '';
+    }, 200);
+}
+
+// 小鱼新增：显示当前索引的消息
+async function playNextNotificationInQueue() {
+    const notif = document.getElementById('heads-up-notification');
+    const nameEl = document.getElementById('notif-sender-name');
+    const msgEl = document.getElementById('notif-message-text');
+    const avatarEl = document.getElementById('notif-avatar-img');
+
+    if (!notif) return;
+
+    // 队列播放完毕
+    if (notifCurrentIndex >= notifMessageQueue.length) {
+        notifIsSequencePlaying = false;
+        notifMessageQueue = [];
+        notifCurrentIndex = 0;
+        return;
+    }
+
+    const currentContent = notifMessageQueue[notifCurrentIndex];
+    const countPrefix = notifCurrentIndex === 0 ? '' : `[${notifCurrentIndex + 1}条] `;
+
+    msgEl.textContent = countPrefix + currentContent;
+    nameEl.textContent = notif.dataset.senderName || '';
+    avatarEl.src = notif.dataset.senderAvatar || 'https://iili.io/fkc3RwJ.jpg';
+
+notifHasSwipedToClose = false;
+notifIsDragging = false;
+notifSwipeDirectionLock = '';
+resetHeadsUpNotificationStyles();
+
+// 小鱼修复：先确保元素已经恢复正常显示状态，再加 show
+notif.style.display = '';
+
+await new Promise(r => setTimeout(r, 50));
+
+notif.classList.add('show');
+if (navigator.vibrate) navigator.vibrate(30);
+
+    // 等待“自动关闭 / 手动滑掉 / 点击进入聊天”
+    await new Promise((resolve) => {
+        notifCurrentDismissResolver = resolve;
+
+        notifTimer = setTimeout(async () => {
+    await closeCurrentNotificationUI(true, 'up');
+    resolve();
+}, notifCurrentIndex < notifMessageQueue.length - 1 ? 2500 : 5000);
+    });
+
+    notifCurrentDismissResolver = null;
+    notifCurrentIndex++;
+
+    // 多条之间留一点间隔
+    if (notifCurrentIndex < notifMessageQueue.length) {
+        await new Promise(r => {
+            notifQueueTimer = setTimeout(r, 350);
+        });
+        await playNextNotificationInQueue();
+    } else {
+        notifIsSequencePlaying = false;
+        notifMessageQueue = [];
+        notifCurrentIndex = 0;
+    }
+}
+
+async function showHeadsUpNotification(charId, name, messagesArray, avatar) {
+    const notif = document.getElementById('heads-up-notification');
+    if (!notif) return;
+
+    currentNotifChatId = charId;
+
+    // 存一下发送者信息，给播放函数用
+    notif.dataset.senderName = name || '';
+    notif.dataset.senderAvatar = avatar || 'https://iili.io/fkc3RwJ.jpg';
+
+    const msgs = Array.isArray(messagesArray) ? messagesArray : [messagesArray];
+
+    if (notifTimer) clearTimeout(notifTimer);
+    if (notifQueueTimer) clearTimeout(notifQueueTimer);
+
+    // 核心：新的通知来了，重新覆盖当前队列
+    notifMessageQueue = msgs;
+    notifCurrentIndex = 0;
+
+    // 如果当前有弹窗，先立即隐藏旧的，再播放新的
+    notif.classList.remove('show');
+    resetHeadsUpNotificationStyles();
+
+    if (notifIsSequencePlaying) {
+        notifIsSequencePlaying = false;
+        if (notifCurrentDismissResolver) {
+            notifCurrentDismissResolver();
+            notifCurrentDismissResolver = null;
+        }
+    }
+
+    notifIsSequencePlaying = true;
+    await playNextNotificationInQueue();
+}
+
+// 点击弹窗直接跳转到对应聊天
+async function handleNotificationClick() {
+    if (notifHasSwipedToClose || notifIsDragging) return;
+
+    if (notifTimer) clearTimeout(notifTimer);
+    if (notifQueueTimer) clearTimeout(notifQueueTimer);
+
+    await closeCurrentNotificationUI(true, 'up');
+
+    // 终止整个队列，因为用户已经点进去聊天了
+    notifIsSequencePlaying = false;
+    notifMessageQueue = [];
+    notifCurrentIndex = 0;
+
+    if (notifCurrentDismissResolver) {
+        notifCurrentDismissResolver();
+        notifCurrentDismissResolver = null;
+    }
+
+    if (currentNotifChatId) {
+        await startChat(currentNotifChatId);
+    }
+}
+
+// 小鱼新增：给消息弹窗绑定上滑/右滑关闭手势
+document.addEventListener('DOMContentLoaded', () => {
+    const notif = document.getElementById('heads-up-notification');
+    if (!notif) return;
+
+    notif.addEventListener('touchstart', (e) => {
+    if (!notif.classList.contains('show')) return;
+
+    const touch = e.changedTouches[0];
+    notifTouchStartX = touch.clientX;
+    notifTouchStartY = touch.clientY;
+    notifTouchCurrentX = touch.clientX;
+    notifTouchCurrentY = touch.clientY;
+    notifIsDragging = true;
+    notifHasSwipedToClose = false;
+    notifSwipeDirectionLock = ''; // 每次开始拖动时重置方向锁
+
+    notif.style.transition = 'none';
+
+    if (notifTimer) clearTimeout(notifTimer);
+}, { passive: true });
+
+notif.addEventListener('touchmove', (e) => {
+    if (!notifIsDragging || !notif.classList.contains('show')) return;
+
+    const touch = e.changedTouches[0];
+    notifTouchCurrentX = touch.clientX;
+    notifTouchCurrentY = touch.clientY;
+
+    const deltaX = notifTouchCurrentX - notifTouchStartX;
+    const deltaY = notifTouchCurrentY - notifTouchStartY;
+
+    // 小鱼新增：先锁定方向，锁定后只允许单方向移动
+    if (!notifSwipeDirectionLock) {
+        const absX = Math.abs(deltaX);
+        const absY = Math.abs(deltaY);
+
+        // 位移太小，先不判定，避免误锁
+        if (absX < 8 && absY < 8) return;
+
+        if (deltaX > 0 && absX > absY) {
+            notifSwipeDirectionLock = 'right';
+        } else if (deltaY < 0 && absY > absX) {
+            notifSwipeDirectionLock = 'up';
+        } else {
+            return;
+        }
+    }
+
+    let moveX = 0;
+    let moveY = 0;
+    let finalOpacity = 1;
+
+    // 右滑模式：只走X轴
+    if (notifSwipeDirectionLock === 'right') {
+        moveX = Math.max(deltaX, 0);
+        finalOpacity = 1 - Math.min(moveX / 180, 0.7);
+        notif.style.transform = `translateX(${moveX}px)`;
+        notif.style.opacity = finalOpacity;
+    }
+
+    // 上滑模式：只走Y轴
+    if (notifSwipeDirectionLock === 'up') {
+        moveY = Math.min(deltaY, 0);
+        finalOpacity = 1 - Math.min(Math.abs(moveY) / 180, 0.7);
+        notif.style.transform = `translateY(${moveY}px)`;
+        notif.style.opacity = finalOpacity;
+    }
+}, { passive: true });
+
+notif.addEventListener('touchend', async () => {
+    if (!notifIsDragging || !notif.classList.contains('show')) return;
+
+    notifIsDragging = false;
+
+    const deltaX = notifTouchCurrentX - notifTouchStartX;
+    const deltaY = notifTouchCurrentY - notifTouchStartY;
+
+    const shouldCloseByRightSwipe =
+        notifSwipeDirectionLock === 'right' && deltaX > 80;
+
+    const shouldCloseByUpSwipe =
+        notifSwipeDirectionLock === 'up' && deltaY < -60;
+
+    if (shouldCloseByRightSwipe || shouldCloseByUpSwipe) {
+        notifHasSwipedToClose = true;
+
+        await closeCurrentNotificationUI(
+            true,
+            shouldCloseByRightSwipe ? 'right' : 'up'
+        );
+
+        // 这里只结束当前这一条，不清空整个队列
+        if (notifCurrentDismissResolver) {
+            notifCurrentDismissResolver();
+            notifCurrentDismissResolver = null;
+        }
+    } else {
+        notifSwipeDirectionLock = '';
+        resetHeadsUpNotificationPosition();
+
+        // 没关掉则恢复自动消失计时
+        notifTimer = setTimeout(async () => {
+    await closeCurrentNotificationUI(true, 'up');
+    if (notifCurrentDismissResolver) {
+        notifCurrentDismissResolver();
+        notifCurrentDismissResolver = null;
+    }
+}, notifCurrentIndex < notifMessageQueue.length - 1 ? 2500 : 5000);
+    }
+}, { passive: true });
+
+notif.addEventListener('touchcancel', () => {
+    if (!notifIsDragging) return;
+    notifIsDragging = false;
+    notifSwipeDirectionLock = '';
+    resetHeadsUpNotificationPosition();
+}, { passive: true });
+});
+
+window.addEventListener('DOMContentLoaded', async () => {
+    await loadUserData();
+    // ★ 页面加载完成后，检测并恢复未结束的通话
+    await restoreCallState();
+});
+
+// ★★★ 小鱼新增：微信的“电话接线员” ★★★
+window.addEventListener('message', async (event) => {
+  // 1. 处理跳转指令 (新增)
+  if (event.data && event.data.action === 'jump-to-chat') {
+      const targetId = event.data.chatId;
+      console.log('微信收到跳转指令，目标ID:', targetId);
+      
+      // 确保数据已加载
+      if (!db) await initDB();
+      
+      // 只有当不在该聊天界面时才跳转，避免重复刷新
+      if (currentChatId !== targetId) {
+          // 调用现有的开始聊天函数
+          await startChat(targetId);
+      }
+      return;
+  }
+
+  // 2. 原有的数据导出/导入逻辑
+  if (event.data && event.data.action === 'export-wechat-data') {
+        // 接到“导出数据”的电话
+        console.log('微信收到导出请求...');
+        try {
+            const allWeChatData = {};
+            const keys = [
+                'avatar', 'userName', 'gender', 'region', 'phone', 'wechatId', 'pat', 
+                'signature', 'ringtone', 'ringtoneHistory', 'customContacts'
+            ];
+
+            // 使用微信自己的getData函数（基于IndexedDB）来收集所有数据
+            for (const key of keys) {
+                const data = await getData(key);
+                if (data !== null && data !== undefined) {
+                    allWeChatData[key] = data;
+                }
+            }
+            
+            // 通过电话线把数据报送回去
+            event.source.postMessage({
+                action: 'wechat-data-response',
+                payload: allWeChatData
+            }, event.origin);
+            console.log('微信数据已发送。');
+
+        } catch (e) {
+            console.error('微信导出数据时出错:', e);
+        }
+
+    } else if (event.data && event.data.action === 'import-wechat-data') {
+        // 接到“导入数据”的电话
+        console.log('微信收到导入请求...');
+        const dataToImport = event.data.payload;
+        if (dataToImport && typeof dataToImport === 'object') {
+            try {
+                // 使用微信自己的saveData函数（基于IndexedDB）来保存每一项数据
+                for (const key in dataToImport) {
+                    await saveData(key, dataToImport[key]);
+                }
+                console.log('微信数据导入完成！');
+                // 导入后重新加载一次数据以更新UI
+                await loadUserData();
+                 // 你可以加一个提示，但因为这个窗口是隐藏的，所以提示给用户看不到
+                 // customAlert('微信数据已恢复！');
+            } catch (e) {
+                console.error('微信导入数据时出错:', e);
+            }
+        }
+    }
+  });
+  /* --- 聊天信息设置页逻辑 --- */
+
+const chatInfoPage = document.getElementById('chatInfoPage');
+const chatInfoEntryBtn = document.getElementById('chatInfoEntryBtn');
+const chatInfoBackBtn = document.getElementById('chatInfoBackBtn');
+const chatMembersContainer = document.getElementById('chatMembersContainer');
+const topChatSwitch = document.getElementById('topChatSwitch');
+const clearChatHistoryBtn = document.getElementById('clearChatHistoryBtn');
+const setChatBgBtn = document.getElementById('setChatBgBtn');
+const chatBgInput = document.getElementById('chatBgInput');
+
+// ★★★ 小鱼修复：将渲染逻辑提取为全局函数，确保任何时候都能强制刷新 ★★★
+window.renderChatInfoPage = async function() {
+    // 强制关闭面板
+    closeActionSheet();
+    closeStickerPicker();
+
+    if (!currentChatId) return;
+    
+    // 1. 强制从数据库获取最新数据
+    const contacts = await getData('customContacts') || [];
+    const contact = contacts.find(c => c.id === currentChatId);
+    if (!contact) return;
+
+    const isGroup = contact.isGroup;
+    let memberCount = 0; 
+
+    // --- A. 准备成员数据 ---
+    let membersHtml = '';
+    
+    if (isGroup) {
+        // 群聊：获取真实成员
+        const allContacts = await getData('customContacts') || [];
+        const memberIds = contact.memberIds || [];
+        memberCount = memberIds.length;
+
+        // 生成成员列表 HTML
+        for (let i = 0; i < memberIds.length; i++) {
+            // if (i >= 18) break; // 注释掉限制，显示所有成员(或者保留限制)
+            
+            const mid = memberIds[i];
+            let mName = '';
+            let mAvatar = '';
+            
+            if (mid === 'user_self') {
+                mName = await getData('userName') || '我';
+                mAvatar = await getData('avatar');
+            } else {
+                const m = allContacts.find(c => c.id === mid);
+                if (m) {
+                    mName = m.nickname;
+                    mAvatar = m.avatar;
+                } else {
+                    mName = '未知';
+                }
+            }
+            
+            const avatarStyle = mAvatar ? `background-image: url(${mAvatar})` : 'background-color: #ccc';
+            const avatarContent = !mAvatar ? mName[0] : '';
+
+            membersHtml += `
+                <div class="member-item">
+                    <div class="member-avatar-img" style="${avatarStyle}; display: flex; align-items: center; justify-content: center; color: white; font-size: 16px;">
+                        ${avatarContent}
+                    </div>
+                    <span class="member-name-text">${mName}</span>
+                </div>
+            `;
+        }
+        
+        // 群聊特有的 + 和 - 按钮 (带点击事件)
+        membersHtml += `
+            <div class="member-item" onclick="openGroupManage('add')"><div class="add-member-btn">+</div></div>
+            <div class="member-item" onclick="openGroupManage('remove')"><div class="add-member-btn">-</div></div>
+        `;
+
+    } else {
+        // 单聊：只显示对方和加号
+        const avatarStyle = contact.avatar ? `background-image: url(${contact.avatar})` : 'background-color: #ccc';
+        const avatarText = !contact.avatar ? contact.nickname[0] : '';
+        membersHtml = `
+            <div class="member-item">
+                <div class="member-avatar-img" style="${avatarStyle}; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+                    ${avatarText}
+                </div>
+                <span class="member-name-text">${contact.nickname}</span>
+            </div>
+            <div class="member-item" onclick="openGroupManage('add')"><div class="add-member-btn">+</div></div>
+        `;
+    }
+
+    // --- B. 动态构建设置列表 HTML ---
+    const contentDiv = document.querySelector('#chatInfoPage .content');
+    contentDiv.innerHTML = ''; // 清空旧内容
+    
+    // 读取状态
+const sessions = await getData('chat_sessions') || [];
+const session = sessions.find(s => s.id === currentChatId);
+const isTop = session ? !!session.isTop : false;
+const savedInnerVoice = await getData('innerVoice_' + currentChatId);
+const isInnerVoice = savedInnerVoice !== null ? savedInnerVoice : false;
+const savedLimit = await getData('contextLimit_' + currentChatId) || 20;
+// 小鱼新增：读取时间概念状态（默认从角色数据读取，如果没有则默认开启）
+const isTimeEnabled = contact.timeAwareness !== false;
+// 小鱼新增：读取"显示群成员昵称"开关状态（默认开启）
+const savedShowNickname = await getData('showGroupNickname_' + currentChatId);
+const isShowNickname = savedShowNickname !== null ? savedShowNickname : true;
+
+// ★★★ 新增：读取群聊总结记忆读取条数（默认5） ★★★
+const savedGroupMemoryMount = await getData('groupMemoryMount_' + currentChatId);
+const groupMemoryMountVal = savedGroupMemoryMount !== null ? savedGroupMemoryMount : 5;
+
+const savedGroupChatLimit = await getData('groupChatLimit_' + currentChatId);
+const groupChatLimitVal = savedGroupChatLimit !== null ? savedGroupChatLimit : 30;
+
+    let settingsHtml = '';
+
+    if (isGroup) {
+        // === 群聊界面 ===
+        const myName = await getData('userName') || 'user';
+        
+        settingsHtml = `
+            <div class="member-section" id="chatMembersContainer">${membersHtml}</div>
+
+            <div class="settings-group">
+                <div class="settings-row" id="editGroupNameRow">
+                    <span>群聊名称</span>
+                    <span class="item-value" style="flex:1; text-align:right; margin-right:10px;">${contact.nickname || '未命名'}</span>
+                    <span class="arrow-right">›</span>
+                </div>
+                <div class="settings-row">
+                    <span>群二维码</span>
+                    <div style="flex:1; text-align:right; margin-right:10px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="#666"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zM3 13h8v8H3v-8zm2 2v4h4v-4H5zM13 3h8v8h-8V3zm2 2v4h4V5h-4zM13 13h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-6 2h2v2h-2v-2zm2 2h2v2h-2v-2z"/></svg>
+                    </div>
+                    <span class="arrow-right">›</span>
+                </div>
+                <!-- 其他菜单项保持不变 -->
+                <div class="settings-row"><span>群公告</span><span class="arrow-right">›</span></div>
+                <div class="settings-row"><span>群管理</span><span class="arrow-right">›</span></div>
+                <div class="settings-row"><span>备注</span><span class="arrow-right">›</span></div>
+            </div>
+            
+            <!-- 这里省略了中间通用的菜单代码，为了节省篇幅，实际运行时请保留原来的菜单结构 -->
+            <!-- 关键是上面的 member-section 已经更新 -->
+            
+<div class="settings-group">
+    <div class="settings-row"><span>查找聊天记录</span><span class="arrow-right">›</span></div>
+    <div class="settings-row" onclick="openArchivePage()"><span>历史话题存档</span><span class="arrow-right">›</span></div>
+    <!-- 小鱼新增：世界书管理入口 -->
+    <div class="settings-row" id="worldBookManageBtn"><span>世界书/提示词</span><span class="arrow-right">›</span></div>
+    <!-- ★★★ 新增：群聊也添加上下文查看入口 ★★★ -->
+    <div class="settings-row" id="viewContextBtn_Dynamic"><span>查看上下文 (Debug)</span><span class="arrow-right">›</span></div>
+<!-- 小鱼新增：时间概念开关 -->
+<div class="settings-row">
+    <span>时间概念 (AI感知当前时间)</span>
+    <label class="ios-switch"><input type="checkbox" id="dynamicTimeSwitch" ${isTimeEnabled ? 'checked' : ''}><span class="ios-slider"></span></label>
+</div>
+</div>
+
+            <div class="settings-group">
+                <div class="settings-row">
+                    <span>消息免打扰</span>
+                    <label class="ios-switch"><input type="checkbox"><span class="ios-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                    <span>置顶聊天</span>
+                    <label class="ios-switch"><input type="checkbox" id="dynamicTopSwitch" ${isTop ? 'checked' : ''}><span class="ios-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                    <span>保存到通讯录</span>
+                    <label class="ios-switch"><input type="checkbox"><span class="ios-slider"></span></label>
+                </div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-row">
+                    <span>我在群里的昵称</span>
+                    <span class="item-value" style="flex:1; text-align:right; margin-right:10px;">${myName}</span>
+                    <span class="arrow-right">›</span>
+                </div>
+<div class="settings-row">
+    <span>显示群成员昵称</span>
+    <label class="ios-switch"><input type="checkbox" id="dynamicShowNicknameSwitch" ${isShowNickname ? 'checked' : ''}><span class="ios-slider"></span></label>
+</div>
+            </div>
+
+            <div class="settings-group">
+                <div class="settings-row">
+                    <span>心声模式</span>
+                    <label class="ios-switch"><input type="checkbox" id="dynamicInnerVoiceSwitch" ${isInnerVoice ? 'checked' : ''}><span class="ios-slider"></span></label>
+                </div>
+<div class="settings-row" id="dynamicContextRow">
+    <span>AI记忆轮数</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="contextLimitValue">${savedLimit}条</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+
+<!-- ★★★ 新增：群聊总结记忆读取设置 ★★★ -->
+<div class="settings-row" id="dynamicGroupMemoryRow">
+    <span>群聊总结记忆读取</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="groupMemoryMountValue">${groupMemoryMountVal}条</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+
+<!-- ★★★ 已移除：记忆挂载设置已转移至"编辑角色资料"页面 ★★★ -->
+
+<!-- ★★★ 新增：自动总结设置 (已修复默认0) ★★★ -->
+<div class="settings-row" id="dynamicAutoSummaryRow">
+    <span>自动总结间隔</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="autoSummaryValue">${(await getData('autoSummary_' + currentChatId)) || 0}轮</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+<!-- ★★★ 已移除：群聊记忆分发功能 ★★★ -->
+                <div class="settings-row" id="dynamicSetBgBtn"><span>设置当前聊天背景</span><span class="arrow-right">›</span></div>
+                <div class="settings-row" id="dynamicClearBtn"><span>清空聊天记录</span><span class="arrow-right">›</span></div>
+            </div>
+
+<div class="settings-group">
+    <!-- ★★★ 修改：添加 ID="exitGroupBtn"，并去掉了 onclick 属性 ★★★ -->
+    <div class="settings-row" id="exitGroupBtn" style="justify-content: center; color: #FA5151; font-weight: 600; cursor: pointer;">
+        删除并退出
+    </div>
+</div>
+<div style="height: 50px;"></div>
+        `;
+} else {
+    // === 单聊界面 ===
+    
+    // ★★★ 新增：读取群聊记忆挂载设置 ★★★
+const isGroupMountEnabled = (await getData('groupMountEnabled_' + currentChatId)) || false;
+const savedGroupMountLimit = await getData('groupMountLimit_' + currentChatId);
+const groupMountLimit = savedGroupMountLimit !== null ? savedGroupMountLimit : 30;
+const mountedGroups = (await getData('mountedGroupIds_' + currentChatId)) || [];
+
+    settingsHtml = `
+        <div class="member-section" id="chatMembersContainer">${membersHtml}</div>
+        
+<div class="settings-group">
+    <div class="settings-row"><span>查找聊天记录</span><span class="arrow-right">›</span></div>
+    <div class="settings-row" onclick="openArchivePage()"><span>历史话题存档</span><span class="arrow-right">›</span></div>
+    <div class="settings-row" id="worldBookManageBtn"><span>世界书/提示词</span><span class="arrow-right">›</span></div>
+<div class="settings-row">
+    <span>时间概念 (AI感知当前时间)</span>
+    <label class="ios-switch"><input type="checkbox" id="dynamicTimeSwitch" ${isTimeEnabled ? 'checked' : ''}><span class="ios-slider"></span></label>
+</div>
+    <div class="settings-row" id="viewContextBtn_Dynamic"><span>查看上下文 (Debug)</span><span class="arrow-right">›</span></div>
+</div>
+
+            <div class="settings-group">
+                <div class="settings-row">
+                    <span>消息免打扰</span>
+                    <label class="ios-switch"><input type="checkbox"><span class="ios-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                    <span>置顶聊天</span>
+                    <label class="ios-switch"><input type="checkbox" id="dynamicTopSwitch" ${isTop ? 'checked' : ''}><span class="ios-slider"></span></label>
+                </div>
+                <div class="settings-row">
+                    <span>心声模式</span>
+                    <label class="ios-switch"><input type="checkbox" id="dynamicInnerVoiceSwitch" ${isInnerVoice ? 'checked' : ''}><span class="ios-slider"></span></label>
+                </div>
+<div class="settings-row" id="dynamicContextRow">
+    <span>AI记忆轮数</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="contextLimitValue">${savedLimit}条</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+<div class="settings-row" id="dynamicAutoSummaryRow">
+    <span>自动总结间隔</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="autoSummaryValue">${(await getData('autoSummary_' + currentChatId)) || 0}轮</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+            </div>
+
+            <!-- ★★★ 新增：群聊记忆挂载专属模块 ★★★ -->
+            <div class="settings-group">
+                <div class="settings-row">
+                    <span>群聊记忆挂载</span>
+                    <label class="ios-switch"><input type="checkbox" id="dynamicGroupMountSwitch" ${isGroupMountEnabled ? 'checked' : ''}><span class="ios-slider"></span></label>
+                </div>
+                <div class="settings-row" id="dynamicSelectGroupRow" style="display: ${isGroupMountEnabled ? 'flex' : 'none'};">
+                    <span>选择挂载的群聊</span>
+                    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+                        <span id="mountedGroupCount">${mountedGroups.length}个</span>
+                        <span class="arrow-right" style="margin-left:5px;">›</span>
+                    </div>
+                </div>
+<div class="settings-row" id="dynamicGroupMountLimitRow" style="display: ${isGroupMountEnabled ? 'flex' : 'none'};">
+    <span>长期记忆读取总数</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="groupMountLimitValue">${groupMountLimit}条</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+<div class="settings-row" id="dynamicGroupChatLimitRow" style="display: ${isGroupMountEnabled ? 'flex' : 'none'};">
+    <span>短期记忆读取总数</span>
+    <div style="display:flex; align-items:center; color:#999; font-size:14px;">
+        <span id="groupChatLimitValue">${groupChatLimitVal}条</span>
+        <span class="arrow-right" style="margin-left:5px;">›</span>
+    </div>
+</div>
+            </div>
+            
+            <div class="settings-group">
+                <div class="settings-row" id="dynamicSetBgBtn"><span>设置当前聊天背景</span><span class="arrow-right">›</span></div>
+                <div class="settings-row" id="dynamicClearBtn"><span>清空聊天记录</span><span class="arrow-right">›</span></div>
+            </div>
+            <div style="height: 50px;"></div>
+        `;
+    }
+
+    // 更新标题
+    document.querySelector('#chatInfoPage h1').textContent = `聊天信息${isGroup ? `(${memberCount})` : ''}`;
+    
+    // 注入 HTML
+    contentDiv.innerHTML = settingsHtml;
+
+    // --- C. 重新绑定事件 (必须重新绑定，因为DOM被重写了) ---
+    // 1. 置顶开关
+    const topSwitch = document.getElementById('dynamicTopSwitch');
+    if (topSwitch) {
+        topSwitch.addEventListener('change', async (e) => {
+            const val = e.target.checked;
+            let sess = await getData('chat_sessions') || [];
+            const idx = sess.findIndex(s => s.id === currentChatId);
+            if (idx !== -1) {
+                sess[idx].isTop = val;
+                sess.sort((a, b) => (b.isTop ? 1 : 0) - (a.isTop ? 1 : 0) || b.time - a.time);
+                await saveData('chat_sessions', sess);
+                renderChatList();
+            }
+        });
+    }
+    // 2. 心声
+const voiceSwitch = document.getElementById('dynamicInnerVoiceSwitch');
+if (voiceSwitch) voiceSwitch.addEventListener('change', async (e) => await saveData('innerVoice_' + currentChatId, e.target.checked));
+
+// 2.5 小鱼新增：显示群成员昵称开关
+const showNicknameSwitch = document.getElementById('dynamicShowNicknameSwitch');
+if (showNicknameSwitch) {
+    showNicknameSwitch.addEventListener('change', async (e) => {
+        await saveData('showGroupNickname_' + currentChatId, e.target.checked);
+        // 立即刷新聊天界面，让修改生效
+        await renderMessages(currentChatId);
+    });
+}
+    // 3. 记忆轮数
+const ctxRow = document.getElementById('dynamicContextRow');
+if (ctxRow) ctxRow.addEventListener('click', async () => {
+    const input = await customPrompt("AI记忆轮数", savedLimit);
+    if (input) { await saveData('contextLimit_' + currentChatId, parseInt(input)); renderChatInfoPage(); }
+});
+
+// ★★★ 新增：群聊总结记忆读取设置 ★★★
+const groupMemoryRow = document.getElementById('dynamicGroupMemoryRow');
+if (groupMemoryRow) {
+    groupMemoryRow.addEventListener('click', async () => {
+        const currentVal = parseInt(document.getElementById('groupMemoryMountValue').textContent);
+        const input = await customPrompt("请输入群聊总结记忆读取条数\n(从群聊历史中挑选最新的N条)", currentVal || 5);
+        
+        if (input !== null) {
+            const num = parseInt(input);
+            if (!isNaN(num) && num >= 0) {
+                await saveData('groupMemoryMount_' + currentChatId, num);
+                document.getElementById('groupMemoryMountValue').textContent = num + '条';
+            } else {
+                customAlert("请输入大于等于0的有效数字");
+            }
+        }
+    });
+}
+
+// ★★★ 新增：单聊的群聊记忆挂载事件绑定 ★★★
+const gmSwitch = document.getElementById('dynamicGroupMountSwitch');
+const selGroupRow = document.getElementById('dynamicSelectGroupRow');
+const gmLimitRow = document.getElementById('dynamicGroupMountLimitRow');
+
+if (gmSwitch) {
+    gmSwitch.addEventListener('change', async (e) => {
+        const isEnabled = e.target.checked;
+        await saveData('groupMountEnabled_' + currentChatId, isEnabled);
+        if (selGroupRow) selGroupRow.style.display = isEnabled ? 'flex' : 'none';
+        if (gmLimitRow) gmLimitRow.style.display = isEnabled ? 'flex' : 'none';
+        // ★★★ 核心修复：同步控制短期记忆行的显示 ★★★
+        const gcLimitRow = document.getElementById('dynamicGroupChatLimitRow');
+        if (gcLimitRow) gcLimitRow.style.display = isEnabled ? 'flex' : 'none';
+    });
+}
+
+if (selGroupRow) {
+    selGroupRow.addEventListener('click', () => {
+        if (typeof openMountGroupModal === 'function') openMountGroupModal();
+    });
+}
+
+if (gmLimitRow) {
+    gmLimitRow.addEventListener('click', async () => {
+        const currentVal = parseInt(document.getElementById('groupMountLimitValue').textContent);
+        const input = await customPrompt("请输入读取群聊长期记忆的总条数\n(0表示不读取)", currentVal || 30);
+        if (input !== null) {
+            const num = parseInt(input);
+            if (!isNaN(num) && num >= 0) {
+                await saveData('groupMountLimit_' + currentChatId, num);
+                document.getElementById('groupMountLimitValue').textContent = num + '条';
+            }
+        }
+    });
+}
+
+const gcLimitRow = document.getElementById('dynamicGroupChatLimitRow');
+if (gcLimitRow) {
+    gcLimitRow.addEventListener('click', async () => {
+        const currentVal = parseInt(document.getElementById('groupChatLimitValue').textContent);
+        const input = await customPrompt("请输入读取群聊短期记忆的总条数\n(0表示不读取)", currentVal || 30);
+        if (input !== null) {
+            const num = parseInt(input);
+            if (!isNaN(num) && num >= 0) {
+                await saveData('groupChatLimit_' + currentChatId, num);
+                document.getElementById('groupChatLimitValue').textContent = num + '条';
+            }
+        }
+    });
+}
+
+// ★★★ 新增：自动总结间隔监听器 ★★★
+const autoSumRow = document.getElementById('dynamicAutoSummaryRow');
+if (autoSumRow) autoSumRow.addEventListener('click', async () => {
+    const currentVal = parseInt(document.getElementById('autoSummaryValue').textContent);
+    // 小鱼修正：弹窗默认值改为0
+    const input = await customPrompt("每多少轮对话自动总结一次记忆？\n(0表示关闭)", currentVal || 0);
+    
+    if (input !== null) {
+        const num = parseInt(input);
+        if (!isNaN(num) && num >= 0) {
+            await saveData('autoSummary_' + currentChatId, num);
+            document.getElementById('autoSummaryValue').textContent = num + '轮';
+            // 重置当前计数器
+            await saveData('chat_turn_count_' + currentChatId, 0);
+        }
+    }
+});
+    // 4. 清空
+    const clrBtn = document.getElementById('dynamicClearBtn');
+    if (clrBtn) clrBtn.addEventListener('click', () => clearChatHistoryBtn.click());
+    // 5. 背景
+    const bgBtn = document.getElementById('dynamicSetBgBtn');
+    if (bgBtn) bgBtn.addEventListener('click', () => setChatBgBtn.click());
+    // 6. Debug
+    const dbgBtn = document.getElementById('viewContextBtn_Dynamic');
+    if (dbgBtn) dbgBtn.addEventListener('click', () => document.getElementById('viewContextBtn').click());
+    // 7. 改名
+    const editNameRow = document.getElementById('editGroupNameRow');
+    if (editNameRow) {
+        editNameRow.addEventListener('click', async () => {
+            const newName = await customPrompt('修改群聊名称', contact.nickname);
+            if (newName) {
+                let allContacts = await getData('customContacts');
+                allContacts.find(c => c.id === currentChatId).nickname = newName;
+                await saveData('customContacts', allContacts);
+                renderChatInfoPage(); // 自刷新
+            }
+        });
+    }
+    
+    // 8. 小鱼新增：世界书管理按钮
+    const wbBtn = document.getElementById('worldBookManageBtn');
+    if (wbBtn) {
+        wbBtn.addEventListener('click', () => {
+            openWorldBookManager();
+        });
+    }
+    
+    // 9. 小鱼新增：时间概念开关
+    const timeSwitch = document.getElementById('dynamicTimeSwitch');
+    if (timeSwitch) {
+        timeSwitch.addEventListener('change', async (e) => {
+            const isEnabled = e.target.checked;
+            let contacts = await getData('customContacts') || [];
+            const contactIndex = contacts.findIndex(c => c.id === currentChatId);
+            if (contactIndex !== -1) {
+                contacts[contactIndex].timeAwareness = isEnabled;
+                await saveData('customContacts', contacts);
+            }
+        });
+    }
+
+    // 10. ★★★ 小鱼新增：退出群聊按钮逻辑 ★★★
+const exitGroupBtn = document.getElementById('exitGroupBtn');
+if (exitGroupBtn) {
+    exitGroupBtn.addEventListener('click', async () => {
+        // ★★★ 小鱼修改：唤起带复选框的确认弹窗 ★★★
+        const result = await customConfirm('确定要删除并退出该群聊吗？\n此操作将清空所有聊天记录且无法撤销。', {
+            checkboxText: '同时清空该群聊的所有总结记忆'
+        });
+        
+        const isConfirmed = typeof result === 'object' ? result.confirmed : result;
+        const isChecked = typeof result === 'object' ? result.checked : false;
+
+        if (isConfirmed) {
+            // ★★★ 小鱼新增：如果勾选了同步删除，通知父窗口清空记忆 ★★★
+            if (isChecked && window.parent !== window) {
+                window.parent.postMessage({
+                    action: 'clear-memories',
+                    data: { characterId: String(currentChatId) }
+                }, '*');
+            }
+
+            // 1. 删除群聊联系人数据
+                let contacts = await getData('customContacts') || [];
+                contacts = contacts.filter(c => c.id !== currentChatId);
+                await saveData('customContacts', contacts);
+
+                // 2. 删除聊天记录和草稿
+                await saveData('chat_messages_' + currentChatId, []);
+                await saveData('chat_drafts_' + currentChatId, null);
+
+                // 3. 删除会话列表
+                let sessions = await getData('chat_sessions') || [];
+                sessions = sessions.filter(s => s.id !== currentChatId);
+                await saveData('chat_sessions', sessions);
+
+                // 4. 清除其他关联数据 (配置、昵称开关等)
+                await saveData('innerVoice_' + currentChatId, null);
+                await saveData('contextLimit_' + currentChatId, null);
+                await saveData('showGroupNickname_' + currentChatId, null);
+
+                // 5. 刷新界面并返回首页
+                currentChatId = null; 
+                await renderChatList(); // 刷新首页列表
+                showPage(mainApp); // 返回首页
+            }
+        });
+    }
+
+    showPage(chatInfoPage);
+};
+
+// 绑定按钮点击事件，直接调用新函数
+chatInfoEntryBtn.addEventListener('click', window.renderChatInfoPage);
+
+// 2. 返回聊天页
+chatInfoBackBtn.addEventListener('click', () => {
+    showPage(chatRoomPage);
+});
+
+// 3. 清空聊天记录
+clearChatHistoryBtn.addEventListener('click', async () => {
+    // ★★★ 小鱼修改：唤起带复选框的确认弹窗 ★★★
+    const result = await customConfirm('确定删除和该联系人的聊天记录吗？', {
+        checkboxText: '同时清空该角色的所有总结记忆'
+    });
+    
+    const isConfirmed = typeof result === 'object' ? result.confirmed : result;
+    const isChecked = typeof result === 'object' ? result.checked : false;
+
+    if (isConfirmed) {
+        // 清空数据库消息
+        await saveData('chat_messages_' + currentChatId, []);
+        
+        // 清空界面消息
+        document.getElementById('chatMessagesContainer').innerHTML = '';
+        
+        // 更新会话列表预览
+        await updateChatList(currentChatId, '', Date.now());
+        
+        // ★★★ 小鱼新增：如果勾选了同步删除，通知父窗口清空记忆 ★★★
+        if (isChecked && window.parent !== window) {
+            window.parent.postMessage({
+                action: 'clear-memories',
+                data: {
+                    characterId: String(currentChatId)
+                }
+            }, '*');
+            customAlert('聊天记录及总结记忆已清空');
+        } else {
+            customAlert('聊天记录已清空');
+        }
+    }
+});
+
+// 4. 置顶聊天
+topChatSwitch.addEventListener('change', async (e) => {
+    const isTop = e.target.checked;
+    let sessions = await getData('chat_sessions') || [];
+    const sessionIndex = sessions.findIndex(s => s.id === currentChatId);
+    
+    if (sessionIndex !== -1) {
+        sessions[sessionIndex].isTop = isTop;
+        sessions.sort((a, b) => {
+            if (a.isTop !== b.isTop) return b.isTop - a.isTop;
+            return b.time - a.time;
+        });
+        await saveData('chat_sessions', sessions);
+        renderChatList();
+    }
+});
+
+// 心声开关监听器
+document.getElementById('innerVoiceSwitch').addEventListener('change', async (e) => {
+    const isEnabled = e.target.checked;
+    await saveData('innerVoice_' + currentChatId, isEnabled);
+});
+
+// ★★★ 小鱼修复：上下文轮数限制点击监听器（改用事件委托，兼容动态渲染）★★★
+document.addEventListener('click', async (e) => {
+    // 判断是否点击了"AI记忆轮数"这一行（不管是静态的还是动态的ID）
+    const row = e.target.closest('#contextLimitRow, #dynamicContextRow');
+    if (row) {
+        const currentVal = parseInt(document.getElementById('contextLimitValue').textContent);
+        const input = await customPrompt("请输入AI读取历史消息的轮数（默认20）：\n(线上线下消息一视同仁，均计入总数)", currentVal || 20);
+        
+        if (input !== null) {
+            const num = parseInt(input);
+            if (!isNaN(num) && num > 0) {
+                await saveData('contextLimit_' + currentChatId, num);
+                document.getElementById('contextLimitValue').textContent = num + '条';
+            } else {
+                customAlert("请输入有效的数字");
+            }
+        }
+    }
+});
+
+// 5. 设置聊天背景
+const chatBackgroundSettingsPage = document.getElementById('chatBackgroundSettingsPage');
+const chatBgBackBtn = document.getElementById('chatBgBackBtn');
+const selectBgImageBtn = document.getElementById('selectBgImageBtn');
+
+// 入口：点击“设置当前聊天背景” -> 跳转到背景菜单页
+setChatBgBtn.addEventListener('click', () => {
+    showPage(chatBackgroundSettingsPage);
+});
+
+// 返回：从背景菜单页 -> 返回聊天信息页
+chatBgBackBtn.addEventListener('click', () => {
+    showPage(document.getElementById('chatInfoPage'));
+});
+
+// 功能：点击“选择背景图” -> 触发文件选择
+selectBgImageBtn.addEventListener('click', () => {
+    chatBgInput.click();
+});
+
+// 小鱼新增：恢复默认背景逻辑
+const restoreDefaultBgBtn = document.getElementById('restoreDefaultBgBtn');
+restoreDefaultBgBtn.addEventListener('click', async () => {
+    let contacts = await getData('customContacts') || [];
+    const index = contacts.findIndex(c => c.id === currentChatId);
+    
+    if (index !== -1) {
+        // 删除背景属性
+        delete contacts[index].chatBackground;
+        await saveData('customContacts', contacts);
+        
+        // 立即应用默认背景（灰色）
+        applyChatBackground(null);
+        
+        customAlert('已恢复默认背景');
+    }
+});
+
+chatBgInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+            const bgUrl = event.target.result;
+            
+            // ★ 修复：确保保存到正确的数据结构
+            let contacts = await getData('customContacts') || [];
+            const index = contacts.findIndex(c => c.id === currentChatId);
+            if (index !== -1) {
+                contacts[index].chatBackground = bgUrl;
+                await saveData('customContacts', contacts);
+                console.log('背景已保存:', bgUrl.substring(0, 50)); // 调试日志
+                
+                applyChatBackground(bgUrl);
+                customAlert('背景设置成功');
+            } else {
+                console.error('未找到联系人ID:', currentChatId);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+// 辅助函数：应用背景
+function applyChatBackground(url) {
+    const container = document.querySelector('.chat-room-container');
+    if (url) {
+        container.style.backgroundImage = `url(${url})`;
+        container.style.backgroundSize = 'cover';
+        container.style.backgroundPosition = 'center';
+    } else {
+        container.style.backgroundImage = '';
+        container.style.backgroundColor = '#EDEDED';
+    }
+}
+
+async function startChat(contactOrId) {
+    selectContactOverlay.style.display = 'none';
+    const id = contactOrId.id || contactOrId;
+
+    // ★★★ 小鱼核心修复：进入任意聊天时，刷新会话令牌 ★★★
+    activeChatSessionToken++;
+    const mySessionToken = activeChatSessionToken;
+
+    currentChatId = id;
+
+    // ★★★ 新增：每次进入聊天，先强制清掉旧的“正在输入闪烁”状态 ★★★
+    chatTitle.classList.remove('typing-blink-effect');
+    chatTitle.textContent = '聊天中';
+    
+    // ★ 关键修复：进入聊天时，强制从数据库恢复草稿箱
+    await loadWxDrafts(id);
+    
+    const contact = await getContactDetails(id);
+    if (!contact) return;
+
+    // 如果在异步过程中，用户又切去了别的聊天，则终止本次界面更新
+    if (mySessionToken !== activeChatSessionToken || currentChatId !== id) return;
+
+    // ★★★ 再次确保进入新聊天后标题是干净状态 ★★★
+    chatTitle.classList.remove('typing-blink-effect');
+    chatTitle.textContent = contact.nickname;
+
+    // 优先加载聊天专属头像
+    const chatProfiles = await getData('my_chat_profiles') || {};
+    const myProfile = chatProfiles[id];
+    
+    if (myProfile && myProfile.avatar) {
+        userAvatarUrl = myProfile.avatar; 
+    } else {
+        userAvatarUrl = await getData('avatar') || ''; 
+    }
+
+    // 再次确认没有切走
+    if (mySessionToken !== activeChatSessionToken || currentChatId !== id) return;
+    
+    await renderMessages(contact.id);
+
+    // renderMessages 期间也可能切走，所以还要再判断一次
+    if (mySessionToken !== activeChatSessionToken || currentChatId !== id) return;
+
+    showPage(chatRoomPage);
+    scrollToBottom();
+    
+    // 加载背景
+    const contacts = await getData('customContacts') || [];
+    const currentContact = contacts.find(c => c.id === id);
+
+    // 再次确认没有切走
+    if (mySessionToken !== activeChatSessionToken || currentChatId !== id) return;
+
+    if (currentContact && currentContact.chatBackground) {
+        applyChatBackground(currentContact.chatBackground);
+    } else {
+        applyChatBackground(null);
+    }
+
+    // ★★★ 核心新增：立即创建会话条目（即使没有消息） ★★★
+    let sessions = await getData('chat_sessions') || [];
+    const exists = sessions.find(s => s.id === id);
+    if (!exists) {
+        await updateChatList(id, '', Date.now());
+    }
+}
+
+/* 小鱼新增：表情包管理系统 */
+const stickerEntryBtn = document.getElementById('stickerEntryBtn');
+const stickerLibraryPage = document.getElementById('stickerLibraryPage');
+const stickerDetailPage = document.getElementById('stickerDetailPage');
+const stickerLibContainer = document.getElementById('stickerLibContainer');
+const addLibraryBtn = document.getElementById('addLibraryBtn');
+const backToLibList = document.getElementById('backToLibList');
+const stickerGrid = document.getElementById('stickerGrid');
+const currentLibTitle = document.getElementById('currentLibTitle');
+const openImportModalBtn = document.getElementById('openImportModalBtn');
+const importStickerOverlay = document.getElementById('importStickerOverlay');
+const importTabs = document.querySelectorAll('.import-tab');
+const importLocalPanel = document.getElementById('importLocalPanel');
+const importUrlPanel = document.getElementById('importUrlPanel');
+const stickerFileInput = document.getElementById('stickerFileInput');
+const importUrlInput = document.getElementById('importUrlInput');
+const cancelImportBtn = document.getElementById('cancelImportBtn');
+const confirmImportBtn = document.getElementById('confirmImportBtn');
+
+// 将新页面加入页面管理器
+allFullscreenPages.push(stickerLibraryPage, stickerDetailPage);
+
+let currentLibId = null; // 当前正在查看的库ID
+let importMode = 'local'; // local 或 url
+
+// 1. 进入表情管理首页
+stickerEntryBtn.addEventListener('click', async () => {
+  await renderStickerLibraries();
+  showPage(stickerLibraryPage);
+});
+
+// 返回按钮
+document.querySelector('.back-from-sticker').addEventListener('click', () => showPage(mainApp));
+backToLibList.addEventListener('click', () => showPage(stickerLibraryPage));
+
+// 2. 渲染库列表 (小鱼修改：支持长按删除)
+async function renderStickerLibraries() {
+  let libs = await getData('stickerLibs') || [];
+  if (libs.length === 0) {
+    libs = [{ id: Date.now(), name: '默认表情', stickers: [] }];
+    await saveData('stickerLibs', libs);
+  }
+
+  // 先生成HTML结构，但去掉 onclick 属性，改用 JS 绑定
+  stickerLibContainer.innerHTML = libs.map(lib => {
+    const count = lib.stickers ? lib.stickers.length : 0;
+    const cover = count > 0 ? lib.stickers[0].url : '';
+    const coverStyle = cover ? `background-image: url(${cover})` : '';
+    const coverContent = cover ? '' : '无封面';
+    
+// 小鱼修改：如果名称为空，显示"未命名"
+const displayName = (lib.name && lib.name.trim() !== '') ? lib.name : '未命名';
+
+return `
+  <div class="sticker-lib-item" data-id="${lib.id}" data-name="${displayName}">
+    <div class="sticker-lib-cover" style="${coverStyle}">${coverContent}</div>
+    <div style="flex: 1;">
+      <div style="font-size: 16px; font-weight: 500;">${displayName}</div>
+      <div style="font-size: 13px; color: #999;">${count}个表情</div>
+    </div>
+    <span class="contact-arrow">›</span>
+  </div>
+`;
+  }).join('');
+
+  // 为每个列表项绑定触摸事件
+  document.querySelectorAll('.sticker-lib-item').forEach(item => {
+    let pressTimer = null;
+    let isLongPress = false;
+    const libId = parseInt(item.dataset.id);
+    const libName = item.dataset.name;
+
+// 触摸开始
+item.addEventListener('touchstart', (e) => {
+  isLongPress = false;
+  pressTimer = setTimeout(async () => {  // ← 关键修改：添加 async
+    isLongPress = true;
+    // 长按触发删除确认
+    navigator.vibrate && navigator.vibrate(50); // 震动反馈
+    if (await customConfirm(`确定要删除表情包库 "${libName}" 吗？\n(库内表情将一并删除)`)) {
+      deleteStickerLibrary(libId);
+    }
+  }, 600); // 600毫秒视为长按
+});
+
+    // 触摸移动 (如果手指滑动了，就取消长按判定)
+    item.addEventListener('touchmove', () => {
+      clearTimeout(pressTimer);
+    });
+
+    // 触摸结束
+    item.addEventListener('touchend', () => {
+      clearTimeout(pressTimer);
+    });
+
+    // 点击事件 (如果是长按触发了，就不执行点击跳转)
+    item.addEventListener('click', () => {
+      if (!isLongPress) {
+        openStickerLib(libId, libName);
+      }
+    });
+  });
+}
+
+// 小鱼新增：删除表情库函数
+async function deleteStickerLibrary(id) {
+  let libs = await getData('stickerLibs') || [];
+  const newLibs = libs.filter(l => l.id !== id);
+  await saveData('stickerLibs', newLibs);
+  renderStickerLibraries();
+}
+
+// 3. 新建库
+addLibraryBtn.addEventListener('click', async () => {
+  const name = await customPrompt('请输入表情包专辑名称：');
+  if (name) {
+    let libs = await getData('stickerLibs') || [];
+    libs.push({ id: Date.now(), name: name, stickers: [] });
+    await saveData('stickerLibs', libs);
+    renderStickerLibraries();
+  }
+});
+
+// 小鱼新增：点击标题重命名
+currentLibTitle.addEventListener('click', async () => {
+  if (!currentLibId) return;
+  
+  const oldName = currentLibTitle.textContent;
+  const newName = await customPrompt('重命名表情专辑', oldName);
+  
+  if (newName && newName.trim() !== '' && newName !== oldName) {
+    let libs = await getData('stickerLibs') || [];
+    const lib = libs.find(l => l.id === currentLibId);
+    if (lib) {
+      lib.name = newName.trim();
+      await saveData('stickerLibs', libs);
+      currentLibTitle.textContent = lib.name;
+      // 后台刷新列表，这样返回时名字也是新的
+      renderStickerLibraries();
+    }
+  }
+});
+
+// 4. 打开库详情
+window.openStickerLib = async function(id, name) {
+  currentLibId = id;
+  currentLibTitle.textContent = name;
+  await renderStickerGrid();
+  showPage(stickerDetailPage);
+};
+
+// 小鱼修改：渲染表情网格（点击弹出菜单）
+let currentStickerIndex = null; // 记录当前操作的表情索引
+
+async function renderStickerGrid() {
+  let libs = await getData('stickerLibs') || [];
+  const lib = libs.find(l => l.id === currentLibId);
+  if (!lib) return;
+
+  stickerGrid.innerHTML = (lib.stickers || []).map((s, index) => `
+    <div class="sticker-img-box" style="background-image: url(${s.url})" data-index="${index}">
+      ${s.desc ? `<div class="sticker-desc">${s.desc}</div>` : ''}
+    </div>
+  `).join('');
+
+  // 为每个表情绑定点击事件
+  document.querySelectorAll('.sticker-img-box').forEach(box => {
+    box.addEventListener('click', () => {
+      currentStickerIndex = parseInt(box.dataset.index);
+      showStickerActionSheet();
+    });
+  });
+}
+
+// 小鱼新增：显示表情操作菜单
+function showStickerActionSheet() {
+  document.getElementById('stickerActionOverlay').style.display = 'flex';
+}
+
+// 小鱼新增：绑定菜单按钮
+const stickerActionOverlay = document.getElementById('stickerActionOverlay');
+const renameStickerBtn = document.getElementById('renameStickerBtn');
+const deleteStickerBtn = document.getElementById('deleteStickerBtn');
+const cancelStickerActionBtn = document.getElementById('cancelStickerActionBtn');
+
+cancelStickerActionBtn.addEventListener('click', () => {
+  stickerActionOverlay.style.display = 'none';
+});
+
+stickerActionOverlay.addEventListener('click', (e) => {
+  if (e.target === stickerActionOverlay) {
+    stickerActionOverlay.style.display = 'none';
+  }
+});
+
+// 命名按钮
+renameStickerBtn.addEventListener('click', async () => {
+  if (currentStickerIndex === null) return;
+  
+  let libs = await getData('stickerLibs') || [];
+  const lib = libs.find(l => l.id === currentLibId);
+  if (!lib) return;
+
+  const oldDesc = lib.stickers[currentStickerIndex].desc || '';
+  const newDesc = await customPrompt('为这个表情命名', oldDesc);
+  
+  if (newDesc !== null) {
+    lib.stickers[currentStickerIndex].desc = newDesc.trim();
+    await saveData('stickerLibs', libs);
+    renderStickerGrid();
+  }
+  
+  stickerActionOverlay.style.display = 'none';
+});
+
+// 删除按钮
+deleteStickerBtn.addEventListener('click', async () => {
+  if (currentStickerIndex === null) return;
+  
+  if (await customConfirm('确定删除这张表情吗？')) {
+    let libs = await getData('stickerLibs') || [];
+    const lib = libs.find(l => l.id === currentLibId);
+    if (lib) {
+      lib.stickers.splice(currentStickerIndex, 1);
+      await saveData('stickerLibs', libs);
+      renderStickerGrid();
+    }
+  }
+  
+  stickerActionOverlay.style.display = 'none';
+});
+
+// 5. 导入相关逻辑
+openImportModalBtn.addEventListener('click', () => {
+  importStickerOverlay.style.display = 'flex';
+  importUrlInput.value = '';
+  stickerFileInput.value = '';
+  // 小鱼新增：每次打开时清空前缀输入框，防止误用旧前缀
+  document.getElementById('urlPrefixInput').value = '';
+});
+
+cancelImportBtn.addEventListener('click', () => {
+  importStickerOverlay.style.display = 'none';
+});
+
+// 切换Tab
+importTabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    importTabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    importMode = tab.dataset.type;
+    
+    if (importMode === 'local') {
+      importLocalPanel.style.display = 'flex';
+      importUrlPanel.style.display = 'none';
+    } else {
+      importLocalPanel.style.display = 'none';
+      importUrlPanel.style.display = 'flex';
+    }
+  });
+});
+
+// 小鱼新增：本地文件选择后实时预览
+const localImagePreviewGrid = document.getElementById('localImagePreviewGrid');
+stickerFileInput.addEventListener('change', () => {
+  localImagePreviewGrid.innerHTML = ''; // 清空旧预览
+  
+  if (stickerFileInput.files.length === 0) return;
+  
+  Array.from(stickerFileInput.files).forEach((file, index) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'aspect-ratio: 1; background-size: cover; background-position: center; border-radius: 6px; position: relative;';
+      div.style.backgroundImage = `url(${e.target.result})`;
+      
+      // 添加序号角标
+      div.innerHTML = `<div style="position: absolute; top: 2px; left: 2px; background: rgba(0,0,0,0.5); color: white; font-size: 10px; padding: 2px 5px; border-radius: 3px;">${index + 1}</div>`;
+      
+      localImagePreviewGrid.appendChild(div);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+// ★★★ 小鱼新增：AI 智能分拣功能 ★★★
+document.getElementById('aiSortStickersBtn').addEventListener('click', async () => {
+    const inputArea = document.getElementById('importUrlInput');
+    const rawText = inputArea.value.trim();
+    const btn = document.getElementById('aiSortStickersBtn');
+    
+    if (!rawText) {
+        customAlert('请先粘贴包含图片链接的杂乱文本到输入框中');
+        return;
+    }
+
+    // 1. 锁定界面状态
+    const originalBtnText = btn.innerHTML;
+    btn.innerHTML = '正在分析...';
+    btn.style.opacity = '0.6';
+    btn.disabled = true;
+
+try {
+    // 2. 获取 API 配置 (★ 修改：明确告诉主程序这是 stickerSort 请求)
+    const apiConfig = await getApiConfigForWechat('stickerSort');
+
+            // 3. 构建 Prompt (★ 小鱼修改：强制要求生成名称)
+        const systemPrompt = `你是一个专业的数据清洗助手。
+任务：从用户提供的文本中提取图片链接（URL），并确保每一条都有对应的中文描述（表情名）。
+
+严格输出格式：
+表情名: URL
+
+重要规则：
+1. 如果原文本包含描述（如 "开心: http..."），直接使用。
+2. 如果原文本只有URL（如 "http.../img001.jpg"），你必须根据文件名或上下文自动生成一个简短的中文名字（如 "表情"、"img001"、"未命名"）。
+3. ★★★ 绝对不要只输出 URL，每一行必须包含冒号 ":"。 ★★★
+4. 去除重复链接。
+5. 不要输出 Markdown 代码块，只输出纯文本。`;
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `请整理以下文本：\n\n${rawText}` }
+        ];
+
+        // 4. 调用 AI
+        const result = await callAIAPI(messages, apiConfig);
+
+        // 5. 清洗结果 (防止AI还是输出了markdown)
+        let cleanResult = result.replace(/```\w*\n?/g, '').replace(/```/g, '').trim();
+        
+        // 6. 回填到输入框
+        inputArea.value = cleanResult;
+        
+        // 7. 提示成功
+        // 创建一个临时的成功提示
+        const toast = document.createElement('div');
+        toast.textContent = '✅ 格式化完成';
+        toast.style.cssText = 'position:absolute; bottom: 80px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); color:white; padding:8px 16px; border-radius:4px; font-size:12px; animation: fadeInOut 2s forwards;';
+        document.getElementById('importUrlPanel').appendChild(toast);
+        setTimeout(() => toast.remove(), 2000);
+
+    } catch (error) {
+        console.error('AI 分拣失败:', error);
+        customAlert('AI 分拣失败: ' + error.message);
+    } finally {
+        // 8. 恢复按钮状态
+        btn.innerHTML = originalBtnText;
+        btn.style.opacity = '1';
+        btn.disabled = false;
+    }
+});
+
+// 确认导入
+confirmImportBtn.addEventListener('click', async () => {
+  let newStickers = [];
+
+  if (importMode === 'local') {
+    // 本地文件处理
+    if (stickerFileInput.files.length === 0) return customAlert('请选择图片');
+    
+    // 简单的Promise封装用于读取文件
+    const readFile = (file) => new Promise(resolve => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve({ url: e.target.result, desc: '' }); // 本地图片暂无描述
+      reader.readAsDataURL(file);
+    });
+
+    const promises = Array.from(stickerFileInput.files).map(file => readFile(file));
+    newStickers = await Promise.all(promises);
+
+} else {
+  // URL 批量解析处理 (支持前缀补全)
+  const text = importUrlInput.value.trim();
+  const prefix = document.getElementById('urlPrefixInput').value.trim(); // 获取前缀
+  
+  if (!text) return customAlert('请输入内容');
+
+  const lines = text.split(/\n/);
+  lines.forEach(line => {
+    line = line.trim();
+    if (!line) return;
+
+    let url = '';
+    let desc = '';
+    
+    // 1. 尝试寻找完整的 http 链接
+    const httpIndex = line.search(/https?:\/\//i);
+    
+    if (httpIndex !== -1) {
+      // 情况A：行内包含完整URL，忽略前缀设置
+      url = line.substring(httpIndex).trim();
+      desc = line.substring(0, httpIndex).trim();
+    } else {
+      // 情况B：行内没有完整URL，尝试使用前缀拼接
+      // 先尝试分离描述 (格式如 "开心：img.jpg" 或 "img.jpg")
+      const colonMatch = line.match(/[:：]/);
+      
+      if (colonMatch) {
+        desc = line.substring(0, colonMatch.index).trim();
+        url = line.substring(colonMatch.index + 1).trim();
+      } else {
+        // 没有冒号，整行都是文件名
+        desc = '';
+        url = line;
+      }
+      
+      // 如果有前缀，进行拼接
+      if (prefix && url) {
+         // 智能处理斜杠，防止出现 // (http://除外)
+         if (prefix.endsWith('/') && url.startsWith('/')) {
+           url = prefix + url.substring(1);
+         } else if (!prefix.endsWith('/') && !url.startsWith('/')) {
+           url = prefix + '/' + url;
+         } else {
+           url = prefix + url;
+         }
+      }
+    }
+
+    // 清理描述末尾的冒号
+    desc = desc.replace(/[:：]$/, '').trim();
+
+    // 最终校验：必须是合法的URL才添加
+    if (url && url.match(/^https?:\/\//i)) {
+      newStickers.push({ url: url, desc: desc });
+    }
+  });
+}
+
+  if (newStickers.length > 0) {
+    let libs = await getData('stickerLibs') || [];
+    const libIndex = libs.findIndex(l => l.id === currentLibId);
+    if (libIndex !== -1) {
+      libs[libIndex].stickers.push(...newStickers);
+      await saveData('stickerLibs', libs);
+      renderStickerGrid();
+      importStickerOverlay.style.display = 'none';
+      customAlert(`成功添加 ${newStickers.length} 个表情`);
+    }
+  } else {
+    customAlert('未能识别有效图片');
+  }
+});
+
+// 小鱼优化：一键复制到剪切板（带视觉反馈）
+async function copyCurrentMessage() {
+    if (!currentSelectedMsgTimestamp) return;
+    hideContextMenu(); // 关闭菜单
+
+    const key = 'chat_messages_' + currentChatId;
+    const messages = await getData(key) || [];
+    const msg = messages.find(m => m.timestamp == currentSelectedMsgTimestamp);
+    
+    if (msg && msg.content) {
+        // 创建一个临时的 textarea 元素来辅助复制（兼容性更好）
+        const tempInput = document.createElement('textarea');
+        tempInput.value = msg.content;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        
+        try {
+            // 执行复制命令
+            document.execCommand('copy');
+            document.body.removeChild(tempInput);
+            
+            // 显示“已复制”提示
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.textContent = '已复制';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 1500);
+            
+        } catch (err) {
+            document.body.removeChild(tempInput);
+            console.error('复制失败', err);
+            customAlert('复制失败，请手动长按文字复制');
+        }
+    }
+}
+
+// 小鱼优化：打开自定义编辑弹窗（图片编辑描述，文字编辑内容）
+async function editCurrentMessage() {
+    if (!currentSelectedMsgTimestamp) return;
+    hideContextMenu(); // 关闭菜单
+
+    const key = 'chat_messages_' + currentChatId;
+    const messages = await getData(key) || [];
+    const msg = messages.find(m => m.timestamp == currentSelectedMsgTimestamp);
+    
+    if (msg) {
+        const modal = document.getElementById('editMsgModal');
+        const input = document.getElementById('customEditInput');
+        
+        // ★★★ 核心修改：如果是图片消息，编辑描述；否则编辑内容 ★★★
+        if (msg.type === 'sticker' && msg.content.startsWith('data:image')) {
+            // 情况A：图片消息 -> 编辑 ai_description
+            input.value = msg.ai_description || '';
+            input.placeholder = '请输入图片的文字描述（用于AI理解画面内容）';
+        } else {
+            // 情况B：普通消息 -> 编辑 content
+            input.value = msg.content;
+            input.placeholder = '编辑消息内容';
+        }
+        
+        // 显示弹窗
+        modal.style.display = 'flex';
+        input.focus();
+    }
+}
+
+// 关闭编辑弹窗
+function closeEditModal() {
+    document.getElementById('editMsgModal').style.display = 'none';
+}
+
+// 保存编辑后的消息（小鱼修复版：支持编辑图片描述）
+async function saveEditedMessage() {
+    const input = document.getElementById('customEditInput');
+    const newContent = input.value.trim();
+    
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    const msgIndex = messages.findIndex(m => m.timestamp == currentSelectedMsgTimestamp);
+    
+    if (msgIndex !== -1) {
+        const msg = messages[msgIndex];
+        
+        // ★★★ 核心修改：判断是图片还是普通消息 ★★★
+        if (msg.type === 'sticker' && msg.content.startsWith('data:image')) {
+            // --- 情况A：图片消息 -> 修改 ai_description ---
+            
+            // 允许清空描述（用户可以手动清除让AI重新识别）
+            messages[msgIndex].ai_description = newContent || null;
+            await saveData(key, messages);
+            
+            // 更新界面：图片卡片的背面
+            const targetElement = document.querySelector(`[data-timestamp="${currentSelectedMsgTimestamp}"]`);
+            if (targetElement) {
+                const backEl = targetElement.querySelector('.img-back');
+                if (backEl) {
+                    backEl.textContent = newContent || 'AI正在分析画面...';
+                }
+            }
+            
+        } else {
+            // --- 情况B：普通消息 -> 修改 content ---
+            
+            if (!newContent) {
+                customAlert('消息内容不能为空');
+                return;
+            }
+            
+            messages[msgIndex].content = newContent;
+            await saveData(key, messages);
+            
+            // 更新界面
+            const targetElement = document.querySelector(`[data-timestamp="${currentSelectedMsgTimestamp}"]`);
+            if (targetElement) {
+                const contentDiv = targetElement.querySelector('.msg-content');
+                if (contentDiv) contentDiv.textContent = newContent;
+                
+                const innerVoiceDiv = targetElement.querySelector('.inner-voice-content');
+                if (innerVoiceDiv) innerVoiceDiv.textContent = newContent;
+                
+                if (targetElement.classList.contains('system-text-message')) {
+                    targetElement.textContent = newContent;
+                }
+            }
+            
+            // 如果是最后一条消息，更新会话列表预览
+            if (msgIndex === messages.length - 1) {
+                const preview = (msg.type === 'sticker') ? '[表情]' : newContent;
+                await updateChatList(currentChatId, preview, msg.timestamp);
+            }
+        }
+    }
+    
+    closeEditModal();
+}
+
+/* ========================================
+   小鱼新增：翻译功能 (支持多引擎，长按切换)
+   ======================================== */
+
+// 翻译图标SVG字符串（复用）
+const TRANSLATE_ICON_SVG = `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="display:inline-block; vertical-align:middle; margin-left:4px; opacity:0.5;"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>`;
+
+// 当前翻译引擎（从本地存储读取，默认libre）
+let currentTranslateEngine = localStorage.getItem('translate_engine') || 'libre';
+
+// 长按计时器
+let translateEngineTimer = null;
+let translateLongPressed = false;
+
+// 长按开始
+function startTranslateEngineTimer(e) {
+    translateLongPressed = false;
+    translateEngineTimer = setTimeout(() => {
+        translateLongPressed = true;
+        hideContextMenu(); // 关闭长按菜单
+        showTranslateEngineModal(); // 弹出引擎选择
+        if (navigator.vibrate) navigator.vibrate(50);
+    }, 600);
+}
+
+// 长按结束
+function clearTranslateEngineTimer() {
+    clearTimeout(translateEngineTimer);
+}
+
+// 显示引擎选择弹窗，并标记当前选中
+function showTranslateEngineModal() {
+    // 更新勾选状态
+    document.getElementById('engineCheckGoogle').style.display =
+        currentTranslateEngine === 'google' ? 'block' : 'none';
+    document.getElementById('engineCheckLibre').style.display =
+        currentTranslateEngine === 'libre' ? 'block' : 'none';
+
+    document.getElementById('translateEngineModal').style.display = 'flex';
+}
+
+// 用户选择引擎后保存并提示
+function selectTranslateEngine(engine) {
+    currentTranslateEngine = engine;
+    localStorage.setItem('translate_engine', engine);
+    document.getElementById('translateEngineModal').style.display = 'none';
+
+    const names = { google: '谷歌翻译', libre: 'LibreTranslate' };
+    const toast = document.createElement('div');
+    toast.className = 'toast-message';
+    toast.textContent = `已切换为 ${names[engine]}`;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 1800);
+}
+
+// 主翻译函数
+async function translateCurrentMessage() {
+    // 如果是长按触发的，不执行翻译
+    if (translateLongPressed) { translateLongPressed = false; return; }
+
+    if (!currentSelectedMsgTimestamp) return;
+    hideContextMenu();
+
+    // 1. 取出消息内容
+    const key = 'chat_messages_' + currentChatId;
+    const messages = await getData(key) || [];
+    const msg = messages.find(m => m.timestamp == currentSelectedMsgTimestamp);
+
+    if (!msg || !msg.content) return;
+
+    // 不支持图片、拍一拍
+    if (msg.type === 'sticker' || msg.type === 'pat') {
+        const t = document.createElement('div');
+        t.className = 'toast-message';
+        t.textContent = '该消息类型不支持翻译';
+        document.body.appendChild(t);
+        setTimeout(() => t.remove(), 1500);
+        return;
+    }
+
+    // 语音消息只取文字部分
+    let textToTranslate = msg.content;
+    const voiceMatch = textToTranslate.match(/^\[VOICE:\d+:(.+)\]$/);
+    if (voiceMatch) textToTranslate = voiceMatch[1];
+
+    // 2. 找到气泡元素
+    const bubbleEl = document.querySelector(`[data-timestamp="${currentSelectedMsgTimestamp}"]`);
+    if (!bubbleEl) return;
+
+    // 3. 如果面板已存在则重新翻译
+    let panel = bubbleEl.querySelector('.translation-panel');
+    if (panel) {
+        panel.classList.add('show');
+        const oldSpan = panel.querySelector('.translation-text');
+        if (oldSpan) {
+            oldSpan.textContent = '正在重新翻译...';
+            panel.style.color = '#576B95';
+            panel.style.fontStyle = 'italic';
+        }
+        panel._isRetranslate = true;
+    }
+
+    // 4. 首次翻译：加图标标记 + 创建面板
+const msgContent = bubbleEl.querySelector('.msg-content') || bubbleEl.querySelector('.inner-voice-content');
+if (!panel || !panel._isRetranslate) {
+    if (msgContent && !msgContent.querySelector('.translated-mark')) {
+        const mark = document.createElement('span');
+        mark.className = 'translated-mark';
+        mark.innerHTML = TRANSLATE_ICON_SVG;
+        msgContent.appendChild(mark);
+    }
+
+    panel = document.createElement('div');
+    panel.className = 'voice-text-panel translation-panel show';
+    panel.style.cssText = 'color:#576B95; font-style:italic; cursor:pointer; user-select:none;';
+    panel.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="#576B95" style="vertical-align:middle; margin-right:4px; flex-shrink:0;"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg><span class="translation-text">正在翻译...</span>`;
+
+    panel.addEventListener('click', (e) => {
+        e.stopPropagation();
+        panel.classList.toggle('show');
+        const mark = bubbleEl.querySelector('.translated-mark');
+        if (mark) mark.style.opacity = panel.classList.contains('show') ? '0.5' : '1';
+    });
+
+    if (msgContent && !msgContent.dataset.translateBound) {
+        msgContent.dataset.translateBound = '1';
+        msgContent.addEventListener('click', (e) => {
+            const p = bubbleEl.querySelector('.translation-panel');
+            if (!p) return;
+            e.stopPropagation();
+            p.classList.toggle('show');
+            const mark = bubbleEl.querySelector('.translated-mark');
+            if (mark) mark.style.opacity = p.classList.contains('show') ? '0.5' : '1';
+        });
+    }
+
+    const innerMain = bubbleEl.querySelector('.inner-voice-main');
+
+if (innerMain) {
+    // 心声：宽度撑满与心声气泡一致的75%容器，居中
+    panel.style.width = '100%';
+    panel.style.boxSizing = 'border-box';
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `width:75%; display:flex; justify-content:center; margin-top:4px;`;
+    wrapper.appendChild(panel);
+    innerMain.appendChild(wrapper);
+} else {
+    // 普通气泡：左右对齐
+    const alignDir = msg.role === 'user' ? 'flex-end' : 'flex-start';
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = `width:100%; display:flex; justify-content:${alignDir}; margin-top:4px; padding:0 50px;`;
+    wrapper.appendChild(panel);
+    bubbleEl.style.flexWrap = 'wrap';
+    bubbleEl.appendChild(wrapper);
+}
+}
+
+    // 5. 调用翻译接口
+    const isChinese = /[\u4e00-\u9fa5]/.test(textToTranslate);
+    const targetLang = isChinese ? 'en' : 'zh-CN';
+    let translated = '';
+
+    try {
+        if (currentTranslateEngine === 'google') {
+            // 谷歌翻译（需加速器）
+            const encoded = encodeURIComponent(textToTranslate);
+            const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encoded}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('谷歌翻译请求失败，请检查加速器是否开启');
+            const data = await res.json();
+            if (data && data[0]) {
+                data[0].forEach(seg => { if (seg && seg[0]) translated += seg[0]; });
+            }
+        } else {
+            // LibreTranslate（无需加速器）
+            const libreTarget = isChinese ? 'en' : 'zh';
+            const mirrors = [
+                'https://translate.fedilab.app/translate',
+                'https://libretranslate.de/translate',
+                'https://translate.argosopentech.com/translate'
+            ];
+            let lastError = null;
+            for (const baseUrl of mirrors) {
+                try {
+                    const res = await fetch(baseUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ q: textToTranslate, source: 'auto', target: libreTarget, format: 'text' })
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    if (data && data.translatedText) { translated = data.translatedText; break; }
+                } catch (e) { lastError = e; continue; }
+            }
+            if (!translated) throw new Error(lastError ? lastError.message : '所有节点均不可用');
+        }
+
+        if (!translated) throw new Error('未获取到翻译结果');
+
+        // 6. 显示结果
+        const textSpan = panel.querySelector('.translation-text');
+        if (textSpan) {
+            textSpan.textContent = translated;
+            panel.style.color = '#333';
+            panel.style.fontStyle = 'normal';
+        }
+
+        // 7. 保存到数据库
+        const allMsgs = await getData(key) || [];
+        const targetMsg = allMsgs.find(m => m.timestamp == currentSelectedMsgTimestamp);
+        if (targetMsg) {
+            targetMsg.translation = translated;
+            await saveData(key, allMsgs);
+        }
+
+    } catch (e) {
+        console.error('翻译失败:', e);
+        const textSpan = panel.querySelector('.translation-text');
+        if (textSpan) {
+            textSpan.textContent = '翻译失败：' + e.message;
+            panel.style.color = '#FA5151';
+            panel.style.fontStyle = 'normal';
+        }
+    }
+}
+
+/* 小鱼新增：资料设置页面逻辑 */
+const dataSettingsPage = document.getElementById('dataSettingsPage');
+const cpMoreBtn = document.getElementById('cpMoreBtn');
+const dsBackBtn = document.getElementById('dsBackBtn');
+const dsDeleteBtn = document.getElementById('dsDeleteBtn');
+const dsEditRemarkRow = document.getElementById('dsEditRemarkRow');
+
+// 1. 进入资料设置页
+if (cpMoreBtn) {
+  cpMoreBtn.addEventListener('click', () => {
+    showPage(dataSettingsPage);
+  });
+}
+
+// 2. 返回角色主页
+if (dsBackBtn) {
+  dsBackBtn.addEventListener('click', () => {
+    showPage(document.getElementById('contactProfilePage'));
+  });
+}
+
+// 3. 资料设置页里的"设置备注和标签" -> 跳转到编辑页
+if (dsEditRemarkRow) {
+  dsEditRemarkRow.addEventListener('click', async () => {
+    if (!currentChatId) return;
+    
+    // ★ 小鱼新增：编辑前，先获取当前的旧昵称记录下来
+    const beforeContacts = await getData('customContacts') || [];
+    const oldContact = beforeContacts.find(c => c.id === currentChatId);
+    const oldNickname = oldContact ? oldContact.nickname : null;
+
+    // 清除覆盖数据并进入编辑
+    const overrides = await getData('contactOverrides') || {};
+    delete overrides[currentChatId];
+    await saveData('contactOverrides', overrides);
+    
+    // 呼出原生编辑界面，等待用户编辑完成
+    await editCharacter(currentChatId);
+    pageTitle.textContent = "设置备注和标签";
+
+    // ★ 小鱼新增：编辑完成后，获取新昵称并扫描全库替换旧昵称
+    if (oldNickname) {
+        const afterContacts = await getData('customContacts') || [];
+        const newContact = afterContacts.find(c => c.id === currentChatId);
+        const newNickname = newContact ? newContact.nickname : null;
+
+        // 如果名字真的发生了改变，执行全面清理和数据同步
+        if (newNickname && oldNickname !== newNickname) {
+            console.log(`检测到改名：【${oldNickname}】 -> 【${newNickname}】，开始同步数据...`);
+            
+            // 同步一：群聊历史消息中的发送者名称
+            const groups = afterContacts.filter(c => c.isGroup);
+            for (const group of groups) {
+                const chatKey = 'chat_messages_' + group.id;
+                let chatMsgs = await getData(chatKey) || [];
+                let changed = false;
+                chatMsgs.forEach(msg => {
+                    if (msg.senderName === oldNickname) {
+                        msg.senderName = newNickname;
+                        changed = true;
+                    }
+                });
+                if (changed) await saveData(chatKey, chatMsgs);
+            }
+
+            // 同步二：朋友圈的作者名、点赞列表、评论列表
+            let moments = await getData('moments_posts') || [];
+            let momentsChanged = false;
+            moments.forEach(post => {
+                if (post.authorName === oldNickname) {
+                    post.authorName = newNickname;
+                    momentsChanged = true;
+                }
+                if (post.likes && post.likes.includes(oldNickname)) {
+                    post.likes = post.likes.map(name => name === oldNickname ? newNickname : name);
+                    momentsChanged = true;
+                }
+                if (post.comments) {
+                    post.comments.forEach(comment => {
+                        if (comment.authorName === oldNickname) {
+                            comment.authorName = newNickname;
+                            momentsChanged = true;
+                        }
+                        if (comment.replyToAuthorName === oldNickname) {
+                            comment.replyToAuthorName = newNickname;
+                            momentsChanged = true;
+                        }
+                    });
+                }
+            });
+            if (momentsChanged) await saveData('moments_posts', moments);
+
+            // 提示用户同步已完成
+            if(typeof customAlert === 'function') {
+                customAlert(`检测到角色已改名为“${newNickname}”\n对应的历史群聊记录及朋友圈相关数据已全部同步更新完成！`);
+            }
+        }
+    }
+  });
+}
+
+// 4. 删除联系人逻辑
+if (dsDeleteBtn) {
+  dsDeleteBtn.addEventListener('click', async () => {
+    if (await customConfirm('将联系人删除，同时删除与该联系人的聊天记录？')) {
+      let contacts = await getData('customContacts') || [];
+
+      // ★★★ 小鱼新增：遍历所有群聊，将该角色从成员列表中移除 ★★★
+      contacts.forEach(c => {
+        if (c.isGroup && Array.isArray(c.memberIds)) {
+          // 过滤掉当前要删除的ID
+          c.memberIds = c.memberIds.filter(mid => mid !== currentChatId);
+        }
+      });
+
+      // 1. 删除通讯录数据 (过滤掉被删除的人)
+      contacts = contacts.filter(c => c.id !== currentChatId);
+      await saveData('customContacts', contacts);
+      
+      // 2. 删除聊天记录
+      await saveData('chat_messages_' + currentChatId, []);
+      
+      // 3. 删除会话列表
+      let sessions = await getData('chat_sessions') || [];
+      sessions = sessions.filter(s => s.id !== currentChatId);
+      await saveData('chat_sessions', sessions);
+      
+      // 4. 删除覆盖数据
+      const overrides = await getData('contactOverrides') || {};
+      delete overrides[currentChatId];
+      
+      await saveData('contactOverrides', overrides);
+
+      // 5. 刷新界面并返回首页
+      renderCustomContacts(contacts);
+      await renderChatList();
+      showPage(mainApp);
+    }
+  });
+}
+
+/* ========================================
+   小鱼新增：我的聊天资料管理系统
+   ======================================== */
+
+// 1. 打开聊天资料编辑页
+window.openMyChatProfile = async function() {
+  if (!currentChatId) return;
+  
+  // 关闭底部面板
+  closeActionSheet();
+  
+  // 1. 获取专属资料
+  const chatProfiles = await getData('my_chat_profiles') || {};
+  const localProfile = chatProfiles[currentChatId]; // 可能为 undefined
+  
+  // 2. 获取全局资料
+  const [gName, gGender, gRegion, gAvatar, gPersona] = await Promise.all([
+      getData('userName'), 
+      getData('gender'), 
+      getData('region'), 
+      getData('avatar'), 
+      getData('userPersona')
+  ]);
+
+  // 3. 决定显示什么 (如果设定了专属资料就用专属的，否则预填全局资料)
+  // 注意：如果 localProfile 存在，即使属性为空字符串，也应该显示为空（代表用户特意清空了）
+  // 但如果 localProfile 根本不存在，则显示全局资料
+  
+  const nickname = localProfile ? (localProfile.nickname || '') : (gName || '');
+  const gender = localProfile ? (localProfile.gender || '') : (gGender || '');
+  const region = localProfile ? (localProfile.region || '') : (gRegion || '');
+  const persona = localProfile ? (localProfile.persona || '') : (gPersona || '');
+  
+  // 头像逻辑
+  let displayAvatar = '';
+  if (localProfile && localProfile.avatar !== undefined) {
+      displayAvatar = localProfile.avatar; // 可能是 null
+  } else {
+      displayAvatar = gAvatar; // 预填全局头像
+  }
+
+  // ★★★ 关键：初始化临时头像变量，确保不修改直接保存时也能保存全局头像
+  tempMcpAvatar = displayAvatar || '';
+
+  // 4. 回填到界面
+  document.getElementById('mcpNickname').value = nickname;
+  document.getElementById('mcpGender').value = gender;
+  document.getElementById('mcpRegion').value = region;
+  document.getElementById('mcpPersona').value = persona;
+  
+  const avatarPreview = document.getElementById('mcpAvatarPreview');
+  if (displayAvatar) {
+    avatarPreview.style.backgroundImage = `url(${displayAvatar})`;
+    avatarPreview.textContent = '';
+  } else {
+    avatarPreview.style.backgroundImage = '';
+    avatarPreview.textContent = '点击更换';
+  }
+  
+  showPage(document.getElementById('myChatProfilePage'));
+};
+
+// 2. 头像上传逻辑
+let tempMcpAvatar = '';
+document.getElementById('mcpAvatarPreview').addEventListener('click', () => {
+  document.getElementById('mcpAvatarInput').click();
+});
+
+document.getElementById('mcpAvatarInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file && file.type.startsWith('image/')) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      tempMcpAvatar = event.target.result;
+      const preview = document.getElementById('mcpAvatarPreview');
+      preview.style.backgroundImage = `url(${tempMcpAvatar})`;
+      preview.textContent = '';
+    };
+    reader.readAsDataURL(file);
+  }
+});
+
+// 3. 保存按钮逻辑
+document.getElementById('mcpSaveBtn').addEventListener('click', async () => {
+  if (!currentChatId) return;
+  
+  // 收集表单数据
+  const newProfile = {
+    nickname: document.getElementById('mcpNickname').value.trim(),
+    gender: document.getElementById('mcpGender').value,
+    region: document.getElementById('mcpRegion').value.trim(),
+    persona: document.getElementById('mcpPersona').value.trim(),
+    avatar: tempMcpAvatar || null
+  };
+  
+  // 保存到数据库
+  const chatProfiles = await getData('my_chat_profiles') || {};
+  chatProfiles[currentChatId] = newProfile;
+  await saveData('my_chat_profiles', chatProfiles);
+  
+  // 更新聊天窗口的头像显示
+  updateChatUserAvatar();
+  
+  customAlert('保存成功');
+  showPage(document.getElementById('chatRoomPage'));
+});
+
+// 4. 返回按钮
+document.getElementById('mcpBackBtn').addEventListener('click', () => {
+  showPage(document.getElementById('chatRoomPage'));
+});
+
+// 5. 恢复全局资料按钮
+document.getElementById('mcpRestoreBtn').addEventListener('click', async () => {
+  if (!currentChatId) return;
+  
+  if (await customConfirm('确定要将当前聊天的资料恢复为全局设置吗？')) {
+    // 1. 读取全局资料
+    const [gName, gGender, gRegion, gAvatar, gPersona] = await Promise.all([
+        getData('userName'), 
+        getData('gender'), 
+        getData('region'), 
+        getData('avatar'), 
+        getData('userPersona')
+    ]);
+    
+    // 2. 填充到表单
+    document.getElementById('mcpNickname').value = gName || '';
+    document.getElementById('mcpGender').value = gGender || '';
+    document.getElementById('mcpRegion').value = gRegion || '';
+    document.getElementById('mcpPersona').value = gPersona || '';
+    
+    const avatarPreview = document.getElementById('mcpAvatarPreview');
+    if (gAvatar) {
+      avatarPreview.style.backgroundImage = `url(${gAvatar})`;
+      avatarPreview.textContent = '';
+      tempMcpAvatar = gAvatar;
+    } else {
+      avatarPreview.style.backgroundImage = '';
+      avatarPreview.textContent = '点击更换';
+      tempMcpAvatar = '';
+    }
+    
+    customAlert('已恢复为全局资料，请点击右上角"保存"按钮');
+  }
+});
+
+// 6. 辅助函数：更新聊天界面中用户自己的头像
+async function updateChatUserAvatar() {
+  const chatProfiles = await getData('my_chat_profiles') || {};
+  const profile = chatProfiles[currentChatId];
+  
+  if (profile && profile.avatar) {
+    userAvatarUrl = profile.avatar; // 更新全局变量
+  } else {
+    userAvatarUrl = await getData('avatar') || ''; // 使用全局头像
+  }
+  
+  // 刷新已显示的消息头像
+  document.querySelectorAll('.message-bubble.self .msg-avatar').forEach(avatar => {
+    if (userAvatarUrl) {
+      avatar.style.backgroundImage = `url(${userAvatarUrl})`;
+      avatar.textContent = '';
+    } else {
+      avatar.style.backgroundImage = '';
+      avatar.textContent = '我';
+    }
+  });
+}
+
+/* ========================================
+   小鱼新增：微信草稿箱与图片发送核心逻辑
+   ======================================== */
+
+// 重新生成 (草稿箱模式 - 小鱼修复版：支持清除旧图片描述)
+async function regenerateLastWeChat() {
+    if (!currentChatId) return;
+    
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    if (messages.length === 0) return;
+
+    // 1. 找到最后连续的AI消息组
+    let lastAiGroup = [];
+    let cutIndex = 0; // 切割点
+
+    for (let i = messages.length - 1; i >= 0; i--) {
+        const msg = messages[i];
+
+        // 遇到隐形的“（继续）”隔断时，立刻停止
+        if (msg.isHidden && msg.content === '（继续）') {
+            cutIndex = i + 1; 
+            break; 
+        }
+
+        // 跳过其他隐藏消息
+        if (msg.isHidden || msg.type === 'system_separator') {
+            continue;
+        }
+
+        if (msg.role === 'assistant') {
+            lastAiGroup.unshift(msg);
+        } else if (msg.role === 'user') {
+            cutIndex = i + 1;
+            break;
+        }
+    }
+
+    if (lastAiGroup.length === 0) {
+        customAlert('最后一条不是AI回复，无法刷新');
+        return;
+    }
+
+    // A. 第一次刷新，保存当前为草稿1
+    if (wxDrafts.length === 0) {
+        wxDrafts.push(lastAiGroup);
+        wxCurrentDraftIdx = 0;
+        await saveWxDrafts();
+    }
+
+    // ★★★ 核心优化：只删除AI消息的DOM节点 ★★★
+    const timestampsToRemove = new Set(lastAiGroup.map(m => m.timestamp));
+    document.querySelectorAll('.message-bubble, .inner-voice-wrapper, .system-text-message').forEach(el => {
+        if (timestampsToRemove.has(parseInt(el.dataset.timestamp))) {
+            el.remove(); 
+        }
+    });
+    
+    const oldToolbar = document.querySelector('.wx-draft-toolbar');
+    if (oldToolbar) oldToolbar.remove();
+
+    // B. 准备基础消息 (用户消息历史)
+    let baseMessages = messages.slice(0, cutIndex);
+
+    // ============================================================
+    // ★★★ 小鱼新增：检查是否需要清洗旧的图片描述 ★★★
+    // ============================================================
+    try {
+        const mainConfig = await getApiConfigForWechat('wechat');
+        const imgConfig = await getApiConfigForWechat('imageRecognition');
+
+        // 如果配置相同，说明“识图功能”未勾选（或者都指向同一个主模型）
+        // 此时我们需要清除图片描述，强迫主模型重新看图
+        if (JSON.stringify(mainConfig) === JSON.stringify(imgConfig)) {
+            let hasCleaned = false;
+            
+            // 倒序检查上一轮用户的发言
+            for (let i = baseMessages.length - 1; i >= 0; i--) {
+                const msg = baseMessages[i];
+                
+                // 遇到上一轮AI回复就停止，只处理最近一轮用户的
+                if (msg.role === 'assistant' && !msg.isHidden) break;
+
+                // 如果发现有描述的图片，清除描述
+if (msg.role === 'user' && msg.type === 'sticker' && msg.ai_description) {
+    console.log('检测到识图已关闭，正在清除旧图片描述...');
+    msg.ai_description = null; // ★ 清除数据，确保下次请求发送原图
+    hasCleaned = true;
+
+    // ★ 更新界面显示为占位符
+    const bubble = document.querySelector(`[data-timestamp="${msg.timestamp}"]`);
+    if (bubble) {
+        const backEl = bubble.querySelector('.img-back');
+        // 小鱼修改：显示占位符，等待新的描述生成
+        if (backEl) backEl.textContent = 'AI正在分析画面...'; 
+    }
+}
+            }
+            
+            if (hasCleaned) {
+                console.log('图片描述清洗完成，准备重新生成');
+            }
+        }
+    } catch (e) {
+        console.warn('获取配置失败，跳过清洗步骤', e);
+    }
+    // ============================================================
+
+    // 更新数据库（此时 baseMessages 可能已经被清洗过）
+    await saveData(key, baseMessages);
+
+    // C. 生成新回复
+    try {
+        await getAIResponse(currentChatId); 
+        
+        // D. 获取新生成的回复
+        const newAllMessages = await getData(key) || [];
+        const newAiGroup = newAllMessages.slice(cutIndex);
+        
+        // E. 存入草稿箱
+        if (newAiGroup.length > 0) {
+            wxDrafts.push(newAiGroup);
+            wxCurrentDraftIdx = wxDrafts.length - 1;
+            await saveWxDrafts();
+        }
+        
+        renderDraftToolbar();
+
+    } catch (e) {
+        console.error(e);
+        customAlert('生成失败');
+        if (wxDrafts.length > 0) {
+            await applyWxDraft(baseMessages, wxDrafts[wxCurrentDraftIdx]);
+        }
+    }
+}
+
+// ★★★ 小鱼修复：切换草稿 (支持群聊头像和名字显示) ★★★
+async function switchWxDraft(direction) {
+    if (wxDrafts.length === 0) return;
+    
+    let newIdx = wxCurrentDraftIdx + direction;
+    if (newIdx < 0) newIdx = 0;
+    if (newIdx >= wxDrafts.length) newIdx = wxDrafts.length - 1;
+    
+    if (newIdx === wxCurrentDraftIdx) return;
+    
+    wxCurrentDraftIdx = newIdx;
+    
+    // 找到当前显示的AI消息
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    
+    let cutIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role !== 'assistant') {
+            cutIndex = i + 1;
+            break;
+        }
+    }
+    
+    // 只删除旧AI消息的DOM
+    const oldAiGroup = messages.slice(cutIndex);
+    const oldTimestamps = new Set(oldAiGroup.map(m => m.timestamp));
+
+    document.querySelectorAll('.message-bubble, .inner-voice-wrapper, .system-text-message').forEach(el => {
+        if (oldTimestamps.has(parseInt(el.dataset.timestamp))) {
+            el.remove();
+        }
+    });
+    
+    // 移除旧工具栏
+    const oldToolbar = document.querySelector('.wx-draft-toolbar');
+    if (oldToolbar) oldToolbar.remove();
+    
+    // 构建新历史记录
+    const baseMessages = messages.slice(0, cutIndex);
+    const newDraft = wxDrafts[wxCurrentDraftIdx];
+    const newHistory = [...baseMessages, ...newDraft];
+    
+    // 保存到数据库
+    await saveData(key, newHistory);
+    await saveWxDrafts();
+    
+    // ★★★ 核心修复：准备群聊头像映射 ★★★
+    const contacts = await getData('customContacts') || [];
+    const contact = contacts.find(c => c.id === currentChatId);
+    const isGroup = contact ? !!contact.isGroup : false;
+    
+    let memberAvatarMap = {};
+    if (isGroup) {
+        const memberIds = contact.memberIds || [];
+        const members = contacts.filter(c => memberIds.includes(c.id));
+        members.forEach(m => {
+            memberAvatarMap[m.nickname] = m.avatar;
+            if (m.realName) memberAvatarMap[m.realName] = m.avatar;
+        });
+    }
+    
+    // ★★★ 追加新消息到界面 ★★★
+    const defaultAvatar = contact ? contact.avatar : '';
+    
+    newDraft.forEach((msg) => {
+        let avatarToUse = defaultAvatar;
+        
+        // 如果是群聊且有发送者名字，查找对应头像
+        if (isGroup && msg.role === 'assistant' && msg.senderName) {
+            avatarToUse = memberAvatarMap[msg.senderName] || '';
+        }
+        
+        // 关键：传入 resolvedAvatar 和 isGroup 参数
+        appendMessageToUI(msg, avatarToUse, isGroup);
+    });
+    
+    // 重绘工具栏
+    renderDraftToolbar();
+    scrollToBottom();
+}
+
+// 3. 应用草稿辅助函数
+async function applyWxDraft(baseMessages, draftGroup) {
+    const key = 'chat_messages_' + currentChatId;
+    const newHistory = [...baseMessages, ...draftGroup];
+    
+    await saveData(key, newHistory);
+    await saveWxDrafts();
+    
+    // ★★★ 优化：只在必要时全量刷新（例如从外部调用） ★★★
+    // 如果是切换草稿/重新生成调用，它们已经自己处理了DOM更新
+    // 这里只刷新数据库，不触发界面重绘
+}
+
+// 4. 发送图片逻辑 (修复版：支持分句模式)
+async function handleSendImage(input) {
+    const file = input.files[0];
+    if (!file || !currentChatId) return;
+    
+    // ★★★ 核心新增：压缩图片函数 ★★★
+    const compressImage = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 1024;
+                    if (width > maxSize || height > maxSize) {
+                        if (width > height) {
+                            height = (height / width) * maxSize;
+                            width = maxSize;
+                        } else {
+                            width = (width / height) * maxSize;
+                            height = maxSize;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+                    resolve(compressedBase64);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    };
+    
+    // 压缩图片
+    const imgUrl = await compressImage(file);
+    
+    // ★★★ 核心修改：如果是分句模式，不发送，只入队 ★★★
+    if (aiReplyMode === 'immediate') {
+        // 使用特殊格式标记这是一张图片：[图片:BASE64数据]
+        // 但为了预览栏显示好看，我们只显示 [图片]，数据存入队列时带上标记
+        
+        // 注意：splitMsgQueue 存储的是真实要发送的内容
+        // 我们约定：如果内容以 "data:image" 开头，它就是图片
+        splitMsgQueue.push(imgUrl);
+        
+        renderSplitQueue(); // 更新预览栏
+        checkSendBtnVisibility(); // 显示发送按钮
+        
+        // 清空input并关闭面板
+        input.value = '';
+        closeActionSheet();
+        return; // ★ 结束函数，不执行后续发送逻辑
+    }
+
+    // --- 以下是普通模式的发送逻辑 (保持不变) ---
+    
+    const msg = {
+        role: 'user',
+        type: 'sticker',
+        content: imgUrl,
+        desc: '用户图片',
+        timestamp: Date.now()
+    };
+    
+    wxDrafts = [];
+    await saveData('chat_drafts_' + currentChatId, null);
+
+    const existingToolbar = document.querySelector('.wx-draft-toolbar');
+    if (existingToolbar) existingToolbar.remove();
+    
+    await saveMessage(currentChatId, msg);
+    appendMessageToUI(msg);
+    scrollToBottom();
+    
+    await updateChatList(currentChatId, '[图片]', Date.now());
+    
+    input.value = '';
+    closeActionSheet();
+}
+/* ★ 小鱼新增：草稿箱数据持久化核心函数 */
+
+// 保存当前草稿箱状态到数据库
+async function saveWxDrafts() {
+    if (!currentChatId) return;
+    const key = 'chat_drafts_' + currentChatId;
+    if (wxDrafts.length > 0) {
+        await saveData(key, { drafts: wxDrafts, idx: wxCurrentDraftIdx });
+    } else {
+        await saveData(key, null); // 如果为空，清除数据库记录
+    }
+}
+
+// 读取草稿箱状态
+async function loadWxDrafts(id) {
+    const key = 'chat_drafts_' + id;
+    const data = await getData(key);
+    if (data && Array.isArray(data.drafts)) {
+        wxDrafts = data.drafts;
+        wxCurrentDraftIdx = data.idx || 0;
+    } else {
+        wxDrafts = [];
+        wxCurrentDraftIdx = 0;
+    }
+}
+
+// ★★★ 小鱼新增：表情面板滑动切换逻辑 + 滚动优化 ★★★
+const stickerGridEl = document.getElementById('chatStickerGrid');
+if (stickerGridEl) {
+  let touchStartX = 0;
+  let touchStartY = 0;
+
+  // 1. 触摸开始
+  stickerGridEl.addEventListener('touchstart', (e) => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+
+// 2. 触摸结束 (判断滑动方向 + 动画)
+stickerGridEl.addEventListener('touchend', async (e) => {
+  const touchEndX = e.changedTouches[0].screenX;
+  const touchEndY = e.changedTouches[0].screenY;
+  
+  const diffX = touchEndX - touchStartX;
+  const diffY = Math.abs(touchEndY - touchStartY);
+
+  if (Math.abs(diffX) > 60 && diffY < 40) {
+    let userLibs = await getData('stickerLibs') || [];
+    const defaultEmojiLib = { id: 'default_emoji', name: '默认', isEmoji: true };
+    const allLibs = [defaultEmojiLib, ...userLibs];
+
+    const tabs = Array.from(document.querySelectorAll('#chatStickerLibTab .sticker-tab-btn'));
+    const currentIndex = tabs.findIndex(t => t.classList.contains('active'));
+
+    if (currentIndex === -1) return;
+
+    const grid = document.getElementById('chatStickerGrid');
+
+    if (diffX < 0) {
+      // 向左滑 -> 下一个库
+      if (currentIndex < allLibs.length - 1) {
+        // 1. 先播放滑出动画
+        grid.classList.add('slide-out-left');
+        setTimeout(() => {
+          // 2. 切换数据
+          switchChatStickerLib(allLibs[currentIndex + 1].id);
+          // 3. 移除滑出类，添加滑入类
+          grid.classList.remove('slide-out-left');
+          grid.classList.add('slide-in-right');
+          // 4. 清理滑入类
+          setTimeout(() => grid.classList.remove('slide-in-right'), 200);
+        }, 200);
+      }
+    } else {
+      // 向右滑 -> 上一个库
+      if (currentIndex > 0) {
+        grid.classList.add('slide-out-right');
+        setTimeout(() => {
+          switchChatStickerLib(allLibs[currentIndex - 1].id);
+          grid.classList.remove('slide-out-right');
+          grid.classList.add('slide-in-left');
+          setTimeout(() => grid.classList.remove('slide-in-left'), 200);
+        }, 200);
+      }
+    }
+  }
+}, { passive: true });
+
+  // 3. 滚动事件 (保留原有逻辑：滚动时关闭长按弹窗)
+  stickerGridEl.addEventListener('scroll', () => {
+    const popup = document.getElementById('stickerPreviewPopup');
+    if (popup && popup.style.display === 'block') {
+      popup.style.display = 'none';
+    }
+  });
+}
+
+// ★★★ 小鱼新增：打开全屏查看器 ★★★
+function openFullScreenViewer(msg, isBackSide) {
+    const viewer = document.getElementById('fullScreenViewer');
+    const contentBox = document.getElementById('viewerContent');
+    
+    // 清空旧内容
+    contentBox.innerHTML = '';
+    
+    if (isBackSide) {
+        // --- 情况A：背面（显示文字描述）---
+        const descText = msg.ai_description || 'AI正在分析画面...';
+        const textEl = document.createElement('div');
+        textEl.style.cssText = 'color: white; font-size: 18px; line-height: 1.6; padding: 20px; max-width: 90%; white-space: pre-wrap; text-align: center;';
+        textEl.textContent = descText;
+        contentBox.appendChild(textEl);
+    } else {
+        // --- 情况B：正面（显示大图）---
+        const imgEl = document.createElement('img');
+        imgEl.src = msg.content;
+        imgEl.style.cssText = 'max-width: 100%; max-height: 100%; object-fit: contain;';
+        contentBox.appendChild(imgEl);
+    }
+    
+    // 显示查看器
+    viewer.style.display = 'flex';
+    
+    // 绑定关闭事件 (点击任意处关闭)
+    viewer.onclick = () => {
+        viewer.style.display = 'none';
+        contentBox.innerHTML = ''; // 清理内存
+        viewer.onclick = null; // 解绑事件
+    };
+}
+
+// 1. 打开语音输入弹窗
+function openVoiceInputModal() {
+    closeActionSheet(); // 关闭底部面板
+    document.getElementById('voiceInputModal').style.display = 'flex';
+    document.getElementById('voiceTextInput').value = '';
+    document.getElementById('voiceTextInput').focus();
+}
+
+// 2. 发送语音消息
+async function sendVoiceMessage() {
+    const text = document.getElementById('voiceTextInput').value.trim();
+    if (!text) return;
+    
+    document.getElementById('voiceInputModal').style.display = 'none';
+    
+    // 计算假时长：每3个字算1秒，最少1秒，最多60秒
+    let duration = Math.ceil(text.length / 3);
+    if (duration < 1) duration = 1;
+    if (duration > 60) duration = 60;
+    
+    // 构造消息内容：特殊前缀标识
+    // 格式：[VOICE:时长:实际文本]
+    const content = `[VOICE:${duration}:${text}]`;
+    
+    const msg = {
+        role: 'user',
+        type: 'text', // 依然用 text 类型，但在渲染时特殊处理
+        content: content,
+        timestamp: Date.now()
+    };
+    
+    // 清空草稿箱
+    wxDrafts = [];
+    await saveData('chat_drafts_' + currentChatId, null);
+    
+    appendMessageToUI(msg);
+    scrollToBottom();
+    await saveMessage(currentChatId, msg);
+    await updateChatList(currentChatId, '[语音]', Date.now());
+    
+    // 触发 AI 回复
+    if (aiReplyMode === 'immediate') {
+        setTimeout(() => getAIResponse(currentChatId), 500);
+    }
+}
+
+// 3. 播放语音动画 + 显示底部文字
+function playVoice(bubble) {
+    // 找到同级的文字面板 (它是 bubble 的下一个兄弟元素)
+    const textPanel = bubble.nextElementSibling;
+
+    // 1. 如果正在播放，就停止（复原）
+    if (bubble.classList.contains('playing')) {
+        bubble.classList.remove('playing');
+        if(textPanel) textPanel.classList.remove('show'); // 隐藏文字
+        return;
+    }
+    
+    // 2. 停止其他所有正在播放的（互斥逻辑）
+    document.querySelectorAll('.voice-bubble.playing').forEach(el => {
+        el.classList.remove('playing');
+        // 找到对应的文字面板并隐藏
+        const panel = el.nextElementSibling;
+        if(panel && panel.classList.contains('voice-text-panel')) {
+            panel.classList.remove('show');
+        }
+    });
+    
+    // 3. 开始播放当前语音
+    bubble.classList.add('playing');
+    if(textPanel) textPanel.classList.add('show'); // 显示文字
+    
+    // 4. 倒计时结束（时长 * 1000ms）
+    const duration = parseInt(bubble.dataset.duration) || 2;
+    setTimeout(() => {
+        // 只有当它还在播放时才自动停止（防止用户中途手动停止后，定时器又把它关了一次）
+        if (bubble.classList.contains('playing')) {
+            bubble.classList.remove('playing');
+            if(textPanel) textPanel.classList.remove('show'); // 隐藏文字
+        }
+    }, duration * 1000);
+}
+
+/* ========================================
+   小鱼新增：开启新话题与存档系统 (终极版)
+   ======================================== */
+
+// 1. 将新页面加入页面管理器
+allFullscreenPages.push(document.getElementById('topicArchivePage'));
+
+// 2. 开启新话题流程
+async function startNewTopicFlow() {
+    closeActionSheet(); // 关闭面板
+    
+    if (!currentChatId) return;
+    
+    // 检查是否有消息可存档
+    const key = 'chat_messages_' + currentChatId;
+    const messages = await getData(key) || [];
+    
+    if (messages.length === 0) {
+        customAlert('当前没有聊天记录，无需存档。');
+        return;
+    }
+
+    if (await customConfirm('【开启新话题】\n\n系统将：\n1. 自动保存当前所有聊天记录到“历史存档”\n2. 清空当前屏幕，开始全新对话\n\n确定要继续吗？')) {
+        await archiveAndReset(currentChatId, messages);
+    }
+}
+
+// 3. 执行存档并重置
+async function archiveAndReset(chatId, messages) {
+    // A. 生成存档数据
+    const archiveKey = 'chat_archives_' + chatId;
+    let archives = await getData(archiveKey) || [];
+    
+    // 获取最后一条消息作为摘要
+    const lastMsg = messages[messages.length - 1];
+    let summary = '[无内容]';
+    if (lastMsg) {
+        if (lastMsg.type === 'text') summary = lastMsg.content;
+        else if (lastMsg.type === 'sticker') summary = '[表情/图片]';
+        else if (lastMsg.type === 'voice') summary = '[语音]';
+        else summary = lastMsg.content;
+    }
+    // 截取前20个字
+    if (summary.length > 20) summary = summary.substring(0, 20) + '...';
+
+    const newArchive = {
+        id: Date.now(),
+        dateStr: new Date().toLocaleString(),
+        summary: summary,
+        msgCount: messages.length,
+        data: messages // 完整数据
+    };
+    
+    // B. 保存存档 (新存档在最前)
+    archives.unshift(newArchive);
+    await saveData(archiveKey, archives);
+    
+        // C. 清空当前聊天
+    await saveData('chat_messages_' + chatId, []);
+    
+    // D. 清空草稿
+    wxDrafts = [];
+    wxCurrentDraftIdx = 0;
+    await saveData('chat_drafts_' + chatId, null);
+
+    // E. 立即刷新界面
+    document.getElementById('chatMessagesContainer').innerHTML = '';
+    await updateChatList(chatId, '[新话题]', Date.now());
+
+await customAlert('✅ 已归档并开启新话题！\n你可以随时在"聊天信息 -> 历史话题存档"中找回旧记录。');
+}
+
+// 4. 打开存档列表页
+window.openArchivePage = async function() {
+    if (!currentChatId) return;
+    await renderArchiveList();
+    showPage(document.getElementById('topicArchivePage'));
+};
+
+// 5. 渲染存档列表
+async function renderArchiveList() {
+    const container = document.getElementById('archiveListContainer');
+    const key = 'chat_archives_' + currentChatId;
+    const archives = await getData(key) || [];
+
+    if (archives.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:50px; color:#999; font-size: 14px;">暂无存档记录</div>';
+        return;
+    }
+
+    container.innerHTML = archives.map(arc => `
+        <div class="discover-section" style="margin-bottom: 10px;">
+            <div class="discover-item" onclick="viewArchive(${arc.id})">
+                <div style="flex: 1; padding: 5px 0;">
+                    <div style="font-size: 15px; color: #000; margin-bottom: 6px; font-weight: 500;">${arc.dateStr}</div>
+                    <div style="font-size: 13px; color: #999;">${arc.msgCount}条消息 - ${arc.summary}</div>
+                </div>
+                <span class="contact-arrow">›</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// 6. 预览存档详情
+let currentViewingArchiveId = null;
+
+window.viewArchive = async function(archiveId) {
+    const key = 'chat_archives_' + currentChatId;
+    const archives = await getData(key) || [];
+    const archive = archives.find(a => a.id === archiveId);
+    
+    if (!archive) return;
+    currentViewingArchiveId = archiveId;
+
+    // 渲染预览内容 (简化版渲染，只显示文本和图片占位)
+    const previewBox = document.getElementById('archivePreviewContent');
+    const contacts = await getData('customContacts') || [];
+    const contact = contacts.find(c => c.id === currentChatId);
+    const otherName = contact ? contact.nickname : '对方';
+
+    previewBox.innerHTML = archive.data.map(msg => {
+        // 跳过隐藏消息
+        if(msg.isHidden) return '';
+        
+        const isSelf = msg.role === 'user';
+        const name = isSelf ? '我' : otherName;
+        const bg = isSelf ? '#95EC69' : '#FFFFFF';
+        const align = isSelf ? 'flex-end' : 'flex-start';
+        
+        let content = msg.content;
+        if (msg.type === 'sticker') content = '[图片/表情]';
+        else if (msg.type === 'voice') content = '[语音消息]';
+        else if (msg.type === 'pat') content = `[系统] ${msg.content}`;
+        else if (msg.type === 'inner_voice') content = `[心声] ${msg.content}`;
+
+        return `
+            <div style="display: flex; flex-direction: column; align-items: ${align}; margin-bottom: 12px;">
+                <span style="font-size: 10px; color: #999; margin-bottom: 2px;">${name}</span>
+                <div style="background: ${bg}; padding: 8px 12px; border-radius: 6px; font-size: 14px; max-width: 85%; word-wrap: break-word; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    ${content}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('archivePreviewModal').style.display = 'flex';
+};
+
+// 7. 恢复存档按钮逻辑
+document.getElementById('btnRestoreArchive').addEventListener('click', async () => {
+    if (!currentViewingArchiveId || !currentChatId) return;
+
+    if (await customConfirm('确定要恢复这个话题吗？\n\n⚠️ 警告：当前聊天界面的内容将被覆盖！\n(建议先将当前内容也归档为新话题后再恢复)')) {
+        const key = 'chat_archives_' + currentChatId;
+        const archives = await getData(key) || [];
+        const archive = archives.find(a => a.id === currentViewingArchiveId);
+
+        if (archive) {
+            // 恢复数据
+            await saveData('chat_messages_' + currentChatId, archive.data);
+            
+            // 刷新聊天界面
+            document.getElementById('archivePreviewModal').style.display = 'none';
+            // 如果是从聊天信息页进来的，需要先跳回聊天页
+            showPage(document.getElementById('chatRoomPage')); 
+            
+            // 重新渲染消息
+            await renderMessages(currentChatId); 
+            scrollToBottom();
+            
+await customAlert('✅ 话题已成功恢复！');
+        }
+    }
+});
+
+// 8. 删除存档按钮逻辑
+document.getElementById('btnDeleteArchive').addEventListener('click', async () => {
+    if (!currentViewingArchiveId || !currentChatId) return;
+
+    if (await customConfirm('确定要永久删除这条存档吗？此操作无法撤销。')) {
+        const key = 'chat_archives_' + currentChatId;
+        let archives = await getData(key) || [];
+        archives = archives.filter(a => a.id !== currentViewingArchiveId);
+        
+        await saveData(key, archives);
+        
+        document.getElementById('archivePreviewModal').style.display = 'none';
+        renderArchiveList(); // 刷新列表
+    }
+});
+
+/* --- 小鱼新增：底部面板滑动逻辑 --- */
+const actionSwiperWindow = document.getElementById('actionSwiperWindow');
+const actionSheetTrack = document.getElementById('actionSheetTrack');
+const actionIndicators = document.querySelectorAll('.indicator-dot');
+
+let actionCurrentPage = 0;
+let actionTouchStartX = 0;
+let actionTouchMoveX = 0;
+const actionTotalPages = 2; // 总页数
+
+// 1. 触摸开始
+if (actionSwiperWindow) {
+  actionSwiperWindow.addEventListener('touchstart', (e) => {
+    actionTouchStartX = e.touches[0].clientX;
+  }, { passive: true });
+
+  // 2. 触摸结束 (判断滑动方向)
+  actionSwiperWindow.addEventListener('touchend', (e) => {
+    const touchEndX = e.changedTouches[0].clientX;
+    const diff = actionTouchStartX - touchEndX;
+    const threshold = 50; // 滑动阈值
+
+    if (diff > threshold) {
+      // 向左滑 -> 下一页
+      if (actionCurrentPage < actionTotalPages - 1) {
+        actionCurrentPage++;
+      }
+    } else if (diff < -threshold) {
+      // 向右滑 -> 上一页
+      if (actionCurrentPage > 0) {
+        actionCurrentPage--;
+      }
+    }
+    
+    updateActionSwiper();
+  }, { passive: true });
+}
+
+// 更新滑动位置和指示点
+function updateActionSwiper() {
+  // 移动轨道 (0% -> -50% -> -100% ...)
+  // 注意：因为宽度是 200%，所以移动一页是移动整个宽度的 50%
+  const translateVal = actionCurrentPage * 50; 
+  actionSheetTrack.style.transform = `translateX(-${translateVal}%)`;
+  
+  // 更新指示点
+  actionIndicators.forEach((dot, index) => {
+    dot.classList.toggle('active', index === actionCurrentPage);
+  });
+}
+
+/* --- 小鱼新增：内部相机控制逻辑 (定格/重拍版) --- */
+let cameraStream = null;
+let currentFacingMode = 'environment'; // 默认后置摄像头
+let capturedBlob = null; // 存储拍照后的数据
+
+// 1. 打开相机入口
+async function openCamera() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    try {
+      await startCameraStream();
+      document.getElementById('internalCameraModal').style.display = 'flex';
+      resetCameraUI(); // 每次打开都重置界面状态
+    } catch (err) {
+      console.error("相机启动失败:", err);
+      document.getElementById('cameraInput').click();
+    }
+  } else {
+    document.getElementById('cameraInput').click();
+  }
+}
+
+// 2. 启动视频流
+async function startCameraStream() {
+  if (cameraStream) stopCameraStream();
+
+  const constraints = {
+    audio: false,
+    video: {
+      facingMode: currentFacingMode,
+      width: { ideal: 1280 },
+      height: { ideal: 720 }
+    }
+  };
+
+  cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+  const videoEl = document.getElementById('cameraVideo');
+  videoEl.srcObject = cameraStream;
+  videoEl.play();
+}
+
+// 3. 停止视频流
+function stopCameraStream() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+}
+
+// 4. 关闭相机界面
+function closeInternalCamera() {
+  stopCameraStream();
+  document.getElementById('internalCameraModal').style.display = 'none';
+}
+
+// 5. 切换前后摄像头
+async function switchCamera() {
+  currentFacingMode = (currentFacingMode === 'environment') ? 'user' : 'environment';
+  await startCameraStream();
+}
+
+// 6. ★★★ 拍照并定格 (核心修改) ★★★
+function takePhoto() {
+  const videoEl = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  const context = canvas.getContext('2d');
+
+  // 设置画布尺寸与视频一致
+  canvas.width = videoEl.videoWidth;
+  canvas.height = videoEl.videoHeight;
+
+  // 绘制当前帧 (定格)
+  context.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+  // 切换显示：隐藏视频，显示画布(定格画面)
+  videoEl.style.display = 'none';
+  canvas.style.display = 'block';
+
+  // 切换按钮状态
+  updateUIForReview();
+}
+
+// 7. ★★★ 重拍 (核心新增) ★★★
+function retakePhoto() {
+  const videoEl = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+
+  // 切换显示：隐藏画布，显示视频(继续预览)
+  canvas.style.display = 'none';
+  videoEl.style.display = 'block';
+
+  // 恢复按钮状态
+  resetCameraUI();
+}
+
+// 8. ★★★ 确认发送 (核心新增) ★★★
+function confirmSendPhoto() {
+  const canvas = document.getElementById('cameraCanvas');
+  // 转换为图片数据
+  const imgUrl = canvas.toDataURL('image/jpeg', 0.8);
+  
+  // 发送
+  sendCapturedImage(imgUrl);
+  
+  // 关闭
+  closeInternalCamera();
+}
+
+// 辅助：重置UI到预览状态
+function resetCameraUI() {
+  const leftBtn = document.getElementById('cameraLeftBtn');
+  const rightBtn = document.getElementById('cameraRightBtn');
+  const shutterBtn = document.getElementById('cameraShutterBtn');
+  const videoEl = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+
+  // 显示视频，隐藏画布
+  videoEl.style.display = 'block';
+  canvas.style.display = 'none';
+
+  // 中间快门显示
+  shutterBtn.style.display = 'block';
+
+  // 左侧：关闭图标
+  leftBtn.innerHTML = '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+  leftBtn.onclick = closeInternalCamera; // 绑定关闭事件
+
+  // 右侧：切换图标
+  rightBtn.innerHTML = '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>';
+  rightBtn.onclick = switchCamera; // 绑定切换事件
+}
+
+// 辅助：更新UI到定格/预览状态
+function updateUIForReview() {
+  const leftBtn = document.getElementById('cameraLeftBtn');
+  const rightBtn = document.getElementById('cameraRightBtn');
+  const shutterBtn = document.getElementById('cameraShutterBtn');
+
+  // 中间快门隐藏
+  shutterBtn.style.display = 'none';
+
+  // 左侧：变为"重拍" (刷新循环箭头图标)
+  leftBtn.innerHTML = `
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="1 4 1 10 7 10"></polyline>
+      <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+    </svg>
+  `;
+  leftBtn.onclick = retakePhoto; // 绑定重拍事件
+
+  // 右侧：变为"发送" (绿色圆圈+白色对勾)
+  rightBtn.innerHTML = `
+    <div style="width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+  `;
+  rightBtn.onclick = confirmSendPhoto; // 绑定发送事件
+}
+
+// 小鱼新增：通用图片压缩函数 (提升为全局，方便复用)
+async function compressImage(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                let width = img.width;
+                let height = img.height;
+                const maxSize = 1024; // Max width/height for moments images
+
+                if (width > maxSize || height > maxSize) {
+                    if (width > height) {
+                        height = (height / width) * maxSize;
+                        width = maxSize;
+                    } else {
+                        width = (width / height) * maxSize;
+                        height = maxSize;
+                    }
+                }
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                const compressedBase64 = canvas.toDataURL('image/jpeg', 0.8); // 80% quality
+                resolve(compressedBase64);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// 9. Image compression utility (reused from chat image sending)
+// This function needs to be defined once globally or within the scope
+// where it's used. I'll put it here for now.
+async function sendCapturedImage(imgUrl) {
+  if (!currentChatId) return;
+
+  if (typeof aiReplyMode !== 'undefined' && aiReplyMode === 'immediate') {
+      splitMsgQueue.push(imgUrl);
+      renderSplitQueue();
+      checkSendBtnVisibility();
+      return;
+  }
+
+  if (typeof wxDrafts !== 'undefined') wxDrafts = [];
+  await saveData('chat_drafts_' + currentChatId, null);
+  const existingToolbar = document.querySelector('.wx-draft-toolbar');
+  if (existingToolbar) existingToolbar.remove();
+
+  const msg = {
+      role: 'user',
+      type: 'sticker',
+      content: imgUrl,
+      desc: '拍摄照片',
+      timestamp: Date.now()
+  };
+
+  await saveMessage(currentChatId, msg);
+  appendMessageToUI(msg);
+  scrollToBottom();
+  await updateChatList(currentChatId, '[图片]', Date.now());
+}
+/* ========================================
+   小鱼新增：相册多功能逻辑 (本地/虚拟图片)
+   ======================================== */
+
+// 1. 打开相册选择菜单
+function openAlbumChoiceMenu() {
+  closeActionSheet(); // 关闭底部的功能面板
+  document.getElementById('albumChoiceOverlay').style.display = 'flex';
+}
+
+// 2. 触发本地上传 (原来的功能)
+function triggerLocalUpload() {
+  document.getElementById('albumChoiceOverlay').style.display = 'none';
+  document.getElementById('chatImageInput').click();
+}
+
+// 3. 打开文字图片输入框
+function openTextImageModal() {
+  document.getElementById('albumChoiceOverlay').style.display = 'none';
+  document.getElementById('textImageModal').style.display = 'flex';
+  document.getElementById('textImageDescInput').value = ''; // 清空输入
+  document.getElementById('textImageDescInput').focus();
+}
+
+// 4. 发送虚拟文字图片 (用户版 - 已调用通用工具)
+async function sendVirtualTextImage() {
+  const desc = document.getElementById('textImageDescInput').value.trim();
+  if (!desc) {
+    customAlert('请填写图片描述');
+    return;
+  }
+  
+  document.getElementById('textImageModal').style.display = 'none';
+
+  // ★ 调用通用工具生成图片
+  const base64Img = getVirtualImageBase64();
+
+  // 如果是分句模式
+  if (typeof aiReplyMode !== 'undefined' && aiReplyMode === 'immediate') {
+      splitMsgQueue.push(base64Img); 
+      renderSplitQueue();
+      checkSendBtnVisibility();
+      return;
+  }
+
+  // 清空草稿箱
+  if (typeof wxDrafts !== 'undefined') wxDrafts = [];
+  if (currentChatId) await saveData('chat_drafts_' + currentChatId, null);
+  const existingToolbar = document.querySelector('.wx-draft-toolbar');
+  if (existingToolbar) existingToolbar.remove();
+
+  const msg = {
+      role: 'user',
+      type: 'sticker',
+      content: base64Img,
+      ai_description: desc, // 用户输入的描述
+      desc: '虚拟图片',
+      timestamp: Date.now()
+  };
+
+  if (currentChatId) {
+      await saveMessage(currentChatId, msg);
+      appendMessageToUI(msg);
+      scrollToBottom();
+      await updateChatList(currentChatId, '[图片]', Date.now());
+  }
+}
+
+// 绑定遮罩层点击关闭
+document.getElementById('albumChoiceOverlay').addEventListener('click', (e) => {
+  if (e.target.id === 'albumChoiceOverlay') e.target.style.display = 'none';
+});
+// --- 小鱼新增：通用虚拟图片生成器 (确保用户和AI发的图长得一样) ---
+function getVirtualImageBase64() {
+  const svgString = `
+  <svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500" style="background-color: #F2F2F2;">
+    <!-- 1. 白色卡片背景 -->
+    <rect x="20" y="20" width="360" height="460" rx="12" ry="12" fill="white" stroke="#E0E0E0" stroke-width="2"/>
+    <!-- 2. 中间的风景画图标 -->
+    <g transform="translate(100, 140)">
+      <rect x="0" y="0" width="200" height="150" rx="8" fill="#F7F7F7" stroke="#DDDDDD" stroke-width="2"/>
+      <circle cx="150" cy="50" r="18" fill="#DDDDDD"/>
+      <path d="M0 150 L80 60 L160 150 Z" fill="#CCCCCC"/>
+      <path d="M100 150 L150 90 L200 150 Z" fill="#E0E0E0"/>
+    </g>
+    <!-- 3. 底部文字提示 -->
+    <text x="50%" y="80%" text-anchor="middle" fill="#333333" font-size="22" font-weight="bold" font-family="sans-serif">虚拟图片</text>
+    <text x="50%" y="86%" text-anchor="middle" fill="#CCCCCC" font-size="12" font-family="sans-serif">左滑翻转查看详情</text>
+  </svg>`;
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgString)));
+}
+
+/* ========================================
+   小鱼新增：群聊功能逻辑
+   ======================================== */
+const menuGroupChat = document.getElementById('menuGroupChat');
+const menuAddFriend = document.getElementById('menuAddFriend');
+const groupSelectPage = document.getElementById('groupSelectPage');
+const closeGroupSelect = document.getElementById('closeGroupSelect');
+const groupContactList = document.getElementById('groupContactList');
+const createGroupBtn = document.getElementById('createGroupBtn');
+
+let selectedGroupMembers = new Set(); // 存储被选中的联系人ID
+
+// A. 点击菜单中的"添加朋友" -> 走原来的逻辑
+menuAddFriend.addEventListener('click', async () => {
+    // 复用原来的选择弹窗逻辑
+    const contacts = await getData('customContacts') || [];
+    
+    // ★★★ 核心修改：过滤掉群聊，只显示单人联系人 ★★★
+    const validContacts = contacts.filter(c => !c.isGroup);
+    
+    selectContactList.innerHTML = '';
+    if (validContacts.length === 0) {
+        selectContactList.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">通讯录暂无角色</div>';
+    } else {
+        validContacts.forEach(contact => {
+            const div = document.createElement('div');
+            div.className = 'contact-item';
+            div.style.padding = '10px 15px';
+            
+            // ★★★ 修改：使用默认头像 ★★★
+            const displayAvatar = contact.avatar || 'https://iili.io/fkc3RwJ.jpg';
+            div.innerHTML = `
+                <div class="contact-icon" style="background-image: url(${displayAvatar}); background-size: cover; background-color: #ccc;"></div>
+                <span class="contact-name">${contact.nickname}</span>
+            `;
+            div.onclick = () => startChat(contact);
+            selectContactList.appendChild(div);
+        });
+    }
+    selectContactOverlay.style.display = 'flex';
+});
+
+// B. 点击菜单中的“发起群聊” -> 打开多选页面
+menuGroupChat.addEventListener('click', async () => {
+    groupOperationMode = 'create'; // ★ 标记为创建模式
+    document.querySelector('#groupSelectPage h1').textContent = '发起群聊'; // 恢复标题
+    
+    selectedGroupMembers.clear();
+    updateCreateGroupBtn();
+    
+    const contacts = await getData('customContacts') || [];
+    groupContactList.innerHTML = '';
+
+    // ★★★ 小鱼修改：过滤掉群聊，只保留单人好友 ★★★
+const validContacts = contacts.filter(c => !c.isGroup);
+
+if (validContacts.length === 0) {
+    groupContactList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">暂无好友，无法建群</div>';
+} else {
+    validContacts.forEach(contact => {
+        const row = document.createElement('div');
+        row.className = 'group-contact-row';
+            row.innerHTML = `
+                <div class="group-checkbox"></div>
+                <div class="contact-icon" style="background-image: url(${contact.avatar || ''}); background-size: cover; background-color: #ccc; width: 40px; height: 40px; margin-right: 12px;">${!contact.avatar ? contact.nickname[0] : ''}</div>
+                <span class="contact-name">${contact.nickname}</span>
+            `;
+            // 点击行，切换选中状态
+            row.onclick = () => {
+                row.classList.toggle('selected');
+                if (selectedGroupMembers.has(contact.id)) {
+                    selectedGroupMembers.delete(contact.id);
+                } else {
+                    selectedGroupMembers.add(contact.id);
+                }
+                updateCreateGroupBtn();
+            };
+            groupContactList.appendChild(row);
+        });
+    }
+    
+    showPage(groupSelectPage);
+});
+
+// C. 关闭群聊选择页 (小鱼修改：智能判断返回路径)
+closeGroupSelect.addEventListener('click', () => {
+    // 如果是"新建群聊"模式，取消后返回首页
+    if (groupOperationMode === 'create') {
+        showPage(mainApp);
+    } 
+    // 如果是"加人"或"减人"模式，取消后返回聊天信息页
+    else {
+        showPage(document.getElementById('chatInfoPage'));
+    }
+});
+
+// D. 更新“完成”按钮状态
+function updateCreateGroupBtn() {
+    const count = selectedGroupMembers.size;
+    createGroupBtn.textContent = `完成(${count})`;
+    if (count > 0) {
+        createGroupBtn.classList.add('active');
+    } else {
+        createGroupBtn.classList.remove('active');
+    }
+}
+
+// ★★★ 小鱼新增：群聊管理核心逻辑 (加人/减人/新建) ★★★
+let groupOperationMode = 'create'; // create, add, remove
+
+// 1. 打开管理页面 (由+和-按钮调用)
+window.openGroupManage = async function(mode) {
+    if (!currentChatId) return;
+    groupOperationMode = mode;
+    selectedGroupMembers.clear();
+    
+    // 获取当前群聊信息
+    const contacts = await getData('customContacts') || [];
+    const currentGroup = contacts.find(c => c.id === currentChatId);
+    if (!currentGroup) return;
+    
+    const currentMemberIds = currentGroup.memberIds || [];
+    
+    // 设置界面文案
+    const pageTitle = document.querySelector('#groupSelectPage h1');
+    const btn = document.getElementById('createGroupBtn');
+    
+    if (mode === 'add') {
+        pageTitle.textContent = '选择联系人';
+        // 过滤出“不在群里”的联系人
+        const availableContacts = contacts.filter(c => !c.isGroup && !currentMemberIds.includes(c.id));
+        renderGroupSelect(availableContacts);
+    } else {
+        pageTitle.textContent = `聊天成员(${currentMemberIds.length - 1})`; // 减去自己
+        // 过滤出“在群里”的联系人 (排除自己)
+        const currentMembers = contacts.filter(c => currentMemberIds.includes(c.id) && c.id !== 'user_self');
+        renderGroupSelect(currentMembers);
+    }
+    
+    updateCreateGroupBtn(); // 刷新按钮文字
+    showPage(groupSelectPage);
+};
+
+// 2. 渲染选择列表的辅助函数
+function renderGroupSelect(displayContacts) {
+    groupContactList.innerHTML = '';
+    if (displayContacts.length === 0) {
+        groupContactList.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">没有可选择的联系人</div>';
+        return;
+    }
+    
+    displayContacts.forEach(contact => {
+        const row = document.createElement('div');
+        row.className = 'group-contact-row';
+        row.innerHTML = `
+            <div class="group-checkbox"></div>
+            <div class="contact-icon" style="background-image: url(${contact.avatar || ''}); background-size: cover; background-color: #ccc; width: 40px; height: 40px; margin-right: 12px;">${!contact.avatar ? contact.nickname[0] : ''}</div>
+            <span class="contact-name">${contact.nickname}</span>
+        `;
+        row.onclick = () => {
+            row.classList.toggle('selected');
+            if (selectedGroupMembers.has(contact.id)) {
+                selectedGroupMembers.delete(contact.id);
+            } else {
+                selectedGroupMembers.add(contact.id);
+            }
+            updateCreateGroupBtn();
+        };
+        groupContactList.appendChild(row);
+    });
+}
+
+// 3. 更新按钮文字 (适配不同模式)
+function updateCreateGroupBtn() {
+    const count = selectedGroupMembers.size;
+    const btn = document.getElementById('createGroupBtn');
+    
+    if (groupOperationMode === 'create') {
+        btn.textContent = `完成(${count})`;
+        btn.style.color = '#FFFFFF';
+        btn.style.background = count > 0 ? 'var(--primary-color)' : '#E2E2E2';
+    } else if (groupOperationMode === 'add') {
+        btn.textContent = `完成(${count})`;
+        btn.style.color = '#FFFFFF';
+        btn.style.background = count > 0 ? 'var(--primary-color)' : '#E2E2E2';
+    } else {
+        // 删除模式
+        btn.textContent = `删除(${count})`;
+        btn.style.color = '#FFFFFF';
+        btn.style.background = count > 0 ? '#FA5151' : '#E2E2E2'; // 红色按钮
+    }
+    
+    if (count > 0) btn.classList.add('active');
+    else btn.classList.remove('active');
+}
+
+// E. 点击"完成/删除"按钮 -> 执行逻辑
+createGroupBtn.addEventListener('click', async () => {
+    if (selectedGroupMembers.size === 0) return;
+    
+    let contacts = await getData('customContacts') || [];
+
+    // === 情况1: 新建群聊 ===
+    if (groupOperationMode === 'create') {
+        const members = contacts.filter(c => selectedGroupMembers.has(c.id));
+        let groupName = members.slice(0, 3).map(c => c.nickname).join('、');
+        if (members.length > 3) groupName += `等${members.length}人`;
+
+        const groupId = 'group_' + Date.now();
+        const finalMemberIds = ['user_self', ...Array.from(selectedGroupMembers)];
+
+        const newGroup = {
+            id: groupId,
+            nickname: groupName,
+            realName: groupName,
+            avatar: '',
+            isGroup: true,
+            memberIds: finalMemberIds,
+            persona: '这是一个群聊。你(AI)需要同时扮演所有群成员。',
+            allowedStickerLibs: [],
+            worldBookIds: []
+        };
+
+        contacts.push(newGroup);
+        await saveData('customContacts', contacts);
+        if (typeof renderCustomContacts === 'function') renderCustomContacts(contacts);
+        
+        // ★ 修改：先启动聊天，再显示聊天信息页
+        await startChat(newGroup);
+        // 模拟点击聊天窗口右上角的三个点按钮，进入聊天信息页
+        setTimeout(() => {
+            document.getElementById('chatInfoEntryBtn').click();
+        }, 300);
+    } 
+    
+    // === 情况2: 添加成员 ===
+else if (groupOperationMode === 'add') {
+    const groupIndex = contacts.findIndex(c => c.id === currentChatId);
+    if (groupIndex !== -1) {
+        const newIds = Array.from(selectedGroupMembers);
+        contacts[groupIndex].memberIds.push(...newIds);
+        await saveData('customContacts', contacts);
+        
+        // ★ 核心修复：直接调用全局渲染函数，确保刷新
+        await window.renderChatInfoPage();
+        
+        setTimeout(() => {
+            customAlert(`已添加 ${newIds.length} 位成员`);
+        }, 100);
+    }
+}
+
+// === 情况3: 删除成员 ===
+else if (groupOperationMode === 'remove') {
+    const groupIndex = contacts.findIndex(c => c.id === currentChatId);
+    if (groupIndex !== -1) {
+        const idsToRemove = Array.from(selectedGroupMembers);
+        contacts[groupIndex].memberIds = contacts[groupIndex].memberIds.filter(id => !idsToRemove.includes(id));
+        await saveData('customContacts', contacts);
+        
+        // ★ 核心修复：直接调用全局渲染函数，确保刷新
+        await window.renderChatInfoPage();
+        
+        setTimeout(() => {
+            customAlert(`已移除 ${idsToRemove.length} 位成员`);
+        }, 100);
+    }
+}
+});
+
+/* ========================================
+   小鱼新增：聊天信息页的世界书管理系统
+   ======================================== */
+
+// 1. 打开世界书管理弹窗
+window.openWorldBookManager = async function() {
+    if (!currentChatId) return;
+    
+    // 读取当前角色已绑定的世界书ID
+    const contact = await getContactDetails(currentChatId);
+    const currentWorldBooks = contact.worldBookIds || [];
+    
+    // 渲染选择界面（复用之前写好的渲染函数）
+    renderWorldBookOptionsForElement('worldBookSelectionArea', currentWorldBooks);
+    
+    // 显示弹窗
+    document.getElementById('worldBookModal').style.display = 'flex';
+};
+
+// 2. 保存世界书选择
+window.saveWorldBookSelection = async function() {
+    if (!currentChatId) return;
+    
+    // 收集勾选的世界书ID
+    const checkedBoxes = document.querySelectorAll('#worldBookSelectionArea .world-book-checkbox:checked');
+    const selectedIds = Array.from(checkedBoxes).map(cb => cb.value);
+    
+    // 保存到数据库
+    let contacts = await getData('customContacts') || [];
+    const contactIndex = contacts.findIndex(c => c.id === currentChatId);
+    
+    if (contactIndex !== -1) {
+        contacts[contactIndex].worldBookIds = selectedIds;
+        await saveData('customContacts', contacts);
+        
+        // 关闭弹窗并提示
+        closeWorldBookModal();
+        customAlert(`已绑定 ${selectedIds.length} 条世界书`);
+    }
+};
+
+// 3. 关闭弹窗
+window.closeWorldBookModal = function() {
+    document.getElementById('worldBookModal').style.display = 'none';
+};
+
+// 4. 点击遮罩层关闭
+document.getElementById('worldBookModal').addEventListener('click', (e) => {
+    if (e.target.id === 'worldBookModal') {
+        closeWorldBookModal();
+    }
+});
+
+/* ========================================
+   小鱼新增：群聊列表页逻辑
+   ======================================== */
+
+// 1. 将新页面加入页面管理器，防止返回失效
+allFullscreenPages.push(document.getElementById('groupListPage'));
+
+const groupChatsBtn = document.getElementById('groupChatsBtn');
+const groupListPage = document.getElementById('groupListPage');
+const groupListBackBtn = document.getElementById('groupListBackBtn');
+const groupListContainer = document.getElementById('groupListContainer');
+const groupListCount = document.getElementById('groupListCount');
+
+// 2. 点击通讯录的"群聊"按钮 -> 进入列表页
+groupChatsBtn.addEventListener('click', async () => {
+    await renderGroupListPage();
+    showPage(groupListPage);
+});
+
+// 3. 返回按钮
+groupListBackBtn.addEventListener('click', () => {
+    showPage(mainApp); // 返回主界面
+});
+
+// 4. 渲染群聊列表核心函数
+async function renderGroupListPage() {
+    const contacts = await getData('customContacts') || [];
+    // 筛选出所有群聊
+    const groups = contacts.filter(c => c.isGroup);
+    
+    groupListContainer.innerHTML = '';
+    
+    if (groups.length === 0) {
+        groupListContainer.innerHTML = '<div style="padding:20px; text-align:center; color:#999;">暂无群聊</div>';
+    }
+
+    // 使用 for...of 循环以支持 await
+    for (const group of groups) {
+        // 复用 getAvatarDom 生成九宫格头像
+        const avatarHtml = await getAvatarDom(group, contacts);
+        
+        const div = document.createElement('div');
+        div.className = 'contact-item'; // 复用通讯录条目样式
+        div.style.borderBottom = '1px solid #F0F0F0';
+        
+        // 稍微缩小一点头像以适配列表 (50px -> 45px)
+        div.innerHTML = `
+            <div style="margin-right: 14px; transform: scale(0.9); transform-origin: left center;">${avatarHtml}</div>
+            <span class="contact-name">${group.nickname}</span>
+        `;
+        
+        // 点击进入聊天
+        div.onclick = () => startChat(group.id);
+        groupListContainer.appendChild(div);
+    }
+    
+    // 更新底部计数
+    groupListCount.textContent = `${groups.length}个群聊`;
+}
+/* --- 小鱼新增：朋友圈功能逻辑 --- */
+const momentsEntryBtn = document.getElementById('momentsEntryBtn');
+const momentsPage = document.getElementById('momentsPage');
+const momentsBackBtn = document.getElementById('momentsBackBtn');
+const momentsHeader = document.getElementById('momentsHeader');
+const momentsCoverInput = document.getElementById('momentsCoverInput');
+const momentsUserName = document.getElementById('momentsUserName');
+const momentsUserAvatar = document.getElementById('momentsUserAvatar');
+const momentsHint = document.querySelector('.moments-hint'); // 获取提示文字元素
+
+// 1. 将朋友圈页面加入全屏管理
+allFullscreenPages.push(momentsPage);
+
+// ★ 小鱼新增：朋友圈未读消息辅助函数
+async function addMomentUnreadMsg(msgData) {
+    let unread = await getData('moments_unread_msgs') || [];
+    unread.push(msgData);
+    await saveData('moments_unread_msgs', unread);
+}
+
+// 点击提示条时，清空未读并刷新
+window.clearMomentUnreadMsgs = async function() {
+    await saveData('moments_unread_msgs', []);
+    await renderMomentsFeed();
+}
+
+// Function to render Moments feed (Extracted for reusability)
+async function renderMomentsFeed() {
+    const feedContainer = document.getElementById('momentsFeedContainer');
+    if (!feedContainer) return;
+
+    // ★ 彻底清零间距，让帖子紧贴封面，头像自然悬浮，彻底消除大白边
+    feedContainer.style.cssText = `
+        padding-top: 5px; 
+        margin-top: 0px;
+        padding-bottom: 50px;
+        background-color: #FFFFFF;
+        min-height: calc(100vh - 350px);
+    `;
+
+    // ★ 让整个页面一起滚动
+    momentsPage.style.display = 'block';
+    momentsPage.style.overflowY = 'auto';
+    momentsPage.style.overflowX = 'hidden';
+    momentsPage.style.WebkitOverflowScrolling = 'touch';
+    momentsPage.style.backgroundColor = '#FFFFFF';
+
+    // 从数据库获取朋友圈数据
+const posts = await getData('moments_posts') || [];
+const currentUserName = await getData('userName') || '用户'; // Get current user's name for like check
+
+// ★ 新增：读取未读消息，生成微信同款深灰色提示条
+const unreadMsgs = await getData('moments_unread_msgs') || [];
+let unreadHtml = '';
+if (unreadMsgs.length > 0) {
+    const latestMsg = unreadMsgs[unreadMsgs.length - 1]; // 获取最新互动的头像
+    unreadHtml = `
+        <div style="display: flex; justify-content: center; margin-top: 15px; margin-bottom: 25px;">
+            <div onclick="clearMomentUnreadMsgs()" style="background: #4C5154; border-radius: 6px; display: flex; align-items: center; padding: 6px 16px 6px 6px; cursor: pointer; box-shadow: 0 2px 10px rgba(0,0,0,0.15); transition: opacity 0.2s;">
+                <div style="width: 32px; height: 32px; border-radius: 4px; background-image: url(${latestMsg.authorAvatar}); background-size: cover; background-position: center; margin-right: 12px; background-color: #eee;"></div>
+                <span style="color: #FFFFFF; font-size: 14px; font-weight: 500;">${unreadMsgs.length}条新消息</span>
+            </div>
+        </div>
+    `;
+}
+
+if (posts.length === 0) {
+    feedContainer.innerHTML = unreadHtml + '<div style="text-align:center; padding:40px; color:#999; font-size:14px;">暂无朋友圈动态</div>';
+} else {
+    // 渲染每一条动态 (把提示条拼在最前面)
+    feedContainer.innerHTML = unreadHtml + posts.map(post => {
+        const postDate = new Date(post.timestamp);
+        const diffMins = Math.floor((Date.now() - post.timestamp) / 60000);
+        let timeStr = '';
+        if (diffMins < 1) timeStr = '刚刚';
+        else if (diffMins < 60) timeStr = `${diffMins}分钟前`;
+        else if (diffMins < 1440) timeStr = `${Math.floor(diffMins/60)}小时前`;
+        else timeStr = postDate.toLocaleDateString();
+
+        // Render images if available
+        // 单张图片小尺寸显示，多张网格排列
+const imgCount = (post.images && post.images.length) || 0;
+let imagesHtml = '';
+if (imgCount > 0) {
+    if (imgCount === 1) {
+        // 单张图片：限制最大宽度，不撑满
+        imagesHtml = `
+        <div style="margin-top: 8px;">
+            <img src="${post.images[0]}" style="max-width: 160px; max-height: 160px; width: auto; height: auto; border-radius: 4px; object-fit: cover; display: block;">
+        </div>`;
+    } else {
+        // 多张图片：3列网格，每格固定正方形
+        const cols = Math.min(3, imgCount);
+        imagesHtml = `
+        <div style="display: grid; grid-template-columns: repeat(${cols}, 80px); gap: 4px; margin-top: 8px;">
+            ${post.images.map(imgSrc => `
+                <img src="${imgSrc}" style="width: 80px; height: 80px; border-radius: 4px; object-fit: cover; display: block;">
+            `).join('')}
+        </div>`;
+    }
+}
+
+        // Render likes
+const likes = post.likes || [];
+const hasLiked = likes.includes(currentUserName);
+// ★★★ 小鱼修复：只要有人点赞（不管是谁），爱心就变蓝色 ★★★
+const likeIconFill = likes.length > 0 ? '#576B95' : '#B2B2B2';
+// ★★★ 小鱼修复：顿号也改成蓝色，保持视觉统一 ★★★
+const likeText = likes.length > 0 ? likes.map(name => `<span style="color: #576B95;">${name}</span>`).join('<span style="color: #576B95;">、</span>') : '';
+const likesHtml = likes.length > 0 ? `
+    <div class="moment-likes">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="${likeIconFill}" stroke="${likeIconFill}" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+        ${likeText}
+    </div>
+` : '';
+
+        // Render comments
+        const comments = post.comments || [];
+        const commentsHtml = comments.length > 0 ? `
+    <div class="moment-comments">
+        ${comments.map(comment => {
+            const safeContent = String(comment.content || '').replace(/"/g, '&quot;');
+            const replyPrefix = comment.replyToAuthorName
+                ? `<span style="color:#999;"> 回复 </span><span class="moment-comment-author">${comment.replyToAuthorName}</span>`
+                : '';
+
+            return `
+                <div class="moment-comment-item" 
+                     data-post-id="${post.id}" 
+                     data-comment-id="${comment.id}"
+                     data-author-name="${comment.authorName}"
+                     data-reply-to-author-name="${comment.replyToAuthorName || ''}"
+                     data-comment-content="${safeContent}"
+                     onclick="openReplyToMomentComment('${post.id}', '${comment.id}', '${comment.authorName}', event)">
+                    <span class="moment-comment-author">${comment.authorName}</span>
+                    ${replyPrefix}
+                    <span class="moment-comment-content">：${comment.content}</span>
+                </div>
+            `;
+        }).join('')}
+    </div>
+` : '';
+
+        const likeCommentAreaHtml = (likes.length > 0 || comments.length > 0) ? `
+            <div class="moment-like-comment-area">
+                ${likesHtml}
+                ${commentsHtml}
+            </div>
+        ` : '';
+
+return `
+<div class="moment-post-card" data-post-id="${post.id}" style="display: flex; padding: 15px; border-bottom: 1px solid #F0F0F0; user-select: none; -webkit-user-select: none;">
+            <div style="width: 42px; height: 42px; border-radius: 4px; background-image: url(${post.authorAvatar}); background-size: cover; background-position: center; flex-shrink: 0; margin-right: 12px; background-color: #eee;"></div>
+            <div style="flex: 1; overflow: hidden;">
+                <div style="color: #576B95; font-size: 16px; font-weight: 600; margin-bottom: 4px;">${post.authorName}</div>
+                <div style="color: #333333; font-size: 15px; line-height: 1.5; margin-bottom: 10px; word-wrap: break-word; white-space: pre-wrap;">${post.content}</div>
+                ${imagesHtml}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+<div style="display: flex; align-items: center; gap: 12px;">
+    <span style="color: #B2B2B2; font-size: 13px;">${timeStr}</span>
+    
+    <!-- 可见范围图标 (双人头) 增加 div 包裹防失效 -->
+    <div onclick="openEditMomentVisibility('${post.id}', event)" style="padding: 5px; margin: -5px; cursor: pointer; display: flex; align-items: center;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="${(!post.visibilityIds || post.visibilityIds.length === 0) ? '#B2B2B2' : '#576B95'}">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+    </div>
+
+    <!-- AI 朋友圈群聊互动图标 (纯蓝色实心气泡) 增加 div 包裹防失效 -->
+    <div onclick="triggerAiGroupComments('${post.id}', event)" style="padding: 5px; margin: -5px; cursor: pointer; display: flex; align-items: center;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="#576B95">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+        </svg>
+    </div>
+</div>
+
+    <div style="position: relative; display: flex; align-items: center;">
+        <!-- 两个点按钮 (使用SVG完美居中) -->
+        <div onclick="toggleMomentAction(${post.id}, event)" style="width: 32px; height: 20px; background: #F7F7F7; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#576B95">
+                                <circle cx="6" cy="12" r="2.5"/>
+                                <circle cx="18" cy="12" r="2.5"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                ${likeCommentAreaHtml}
+            </div>
+</div>`;
+    }).join('');
+}
+    // Bind long press events after rendering
+    setTimeout(() => {
+    bindMomentLongPress();
+    bindCommentLongPress();
+}, 100);
+}
+
+
+// 2. 点击进入朋友圈
+if (momentsEntryBtn) {
+  momentsEntryBtn.addEventListener('click', async () => {
+    const avatar = await getData('avatar');
+    const name = await getData('userName');
+    const cover = await getData('momentsCover'); 
+
+    // 设置头像
+    if (avatar) {
+      momentsUserAvatar.style.backgroundImage = `url(${avatar})`;
+      momentsUserAvatar.innerHTML = '';
+    } else {
+      momentsUserAvatar.style.backgroundImage = '';
+      momentsUserAvatar.innerHTML = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#999;font-size:24px;background:#eee;">我</div>';
+    }
+    
+// 设置昵称
+momentsUserName.textContent = name || 'User';
+
+// ★ 强制为封面容器赋予高度，防止高度塌陷
+if (momentsHeader) {
+    // ★ 不再用 JS 强行设置高度和间距，完全交由 CSS 控制
+    // 只保留背景相关的动态设置
+    momentsHeader.style.backgroundSize = 'cover';
+    momentsHeader.style.backgroundPosition = 'center';
+    momentsHeader.style.backgroundColor = '#333';
+}
+
+// 判断是否显示背景和提示文字
+if (cover) {
+  momentsHeader.style.backgroundImage = `url(${cover})`;
+  if(momentsHint) momentsHint.style.display = 'none'; 
+} else {
+  momentsHeader.style.backgroundImage = ''; 
+  if(momentsHint) momentsHint.style.display = 'block'; 
+}
+
+// 渲染朋友圈动态列表
+let feedContainer = document.getElementById('momentsFeedContainer');
+if (!feedContainer) {
+    feedContainer = document.createElement('div');
+    feedContainer.id = 'momentsFeedContainer';
+    momentsPage.appendChild(feedContainer);
+}
+
+// Call the new rendering function
+await renderMomentsFeed();
+    
+    // ★★★ 新增：监听滑动切换顶部导航栏状态 ★★★
+    const nav = document.getElementById('momentsNav');
+    
+    // 每次打开朋友圈时，强制回到顶部，并重置为透明状态
+    momentsPage.scrollTop = 0;
+    nav.classList.remove('scrolled');
+    
+    // 绑定滚动事件
+    momentsPage.onscroll = function() {
+        // 当滑动距离超过 220px (封面快滚出屏幕) 时，切换状态
+        if (this.scrollTop > 220) {
+            nav.classList.add('scrolled');
+        } else {
+            nav.classList.remove('scrolled');
+        }
+    };
+    
+// 渲染完成后立即绑定长按事件，确保新元素也能绑定
+bindMomentLongPress();
+bindCommentLongPress();
+    
+    showPage(momentsPage);
+  });
+}
+
+// 3. 返回发现页
+if (momentsBackBtn) {
+  momentsBackBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // ★★★ 关键修复：阻止点击事件传给封面，防止误触
+
+    // ★★★ 小鱼新增：退出朋友圈时，自动收起评论输入框 ★★★
+    const momentCommentBar = document.getElementById('momentCommentBar');
+    if (momentCommentBar) {
+      momentCommentBar.remove();
+    }
+
+    // ★★★ 小鱼新增：顺手关闭可能残留的朋友圈操作菜单 ★★★
+    const globalMomentActionMenu = document.getElementById('globalMomentActionMenu');
+    if (globalMomentActionMenu) {
+      globalMomentActionMenu.remove();
+    }
+
+    const momentEditMenu = document.getElementById('momentEditMenu');
+    if (momentEditMenu) {
+      momentEditMenu.remove();
+    }
+
+    showPage(mainApp);
+  });
+}
+
+// 4. 点击封面更换图片
+if (momentsHeader) {
+  momentsHeader.addEventListener('click', () => momentsCoverInput.click());
+}
+
+if (momentsCoverInput) {
+  momentsCoverInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        const img = ev.target.result;
+        momentsHeader.style.backgroundImage = `url(${img})`;
+        momentsHint.style.display = 'none'; // ★★★ 上传成功后立即隐藏文字
+        await saveData('momentsCover', img);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+}
+
+// ========================================
+// 小鱼新增：朋友圈关系网辅助函数
+// ========================================
+
+// 获取节点显示名称
+async function getRelationNodeName(nodeId) {
+    if (String(nodeId) === 'user_self') {
+        return await getData('userName') || '用户';
+    }
+    const contacts = await getData('customContacts') || [];
+    const contact = contacts.find(c => String(c.id) === String(nodeId));
+    return contact ? (contact.realName || contact.nickname) : String(nodeId);
+}
+
+// 获取“查看者眼里的发帖人关系说明”
+// viewerId = 正在看这条朋友圈的角色ID
+// posterId = 发帖人ID（可能是 user_self，也可能是某个角色）
+async function getMomentRelationPrompt(viewerId, posterId) {
+    if (!viewerId || !posterId) return '';
+    if (String(viewerId) === String(posterId)) return '';
+
+    const tagGroups = await getData('tag_groups') || [];
+    const allGraphs = await getData('tag_relation_graphs') || {};
+
+    const sharedGroups = tagGroups.filter(g => {
+        const ids = (g.memberIds || []).map(id => String(id));
+        return ids.includes(String(viewerId)) && ids.includes(String(posterId));
+    });
+
+    if (sharedGroups.length === 0) return '';
+
+    const posterName = await getRelationNodeName(posterId);
+
+    let relationLabels = [];
+
+    sharedGroups.forEach(group => {
+        const graph = allGraphs[group.id];
+        if (!graph || !Array.isArray(graph.edges)) return;
+
+        graph.edges.forEach(edge => {
+            const fromId = String(edge.from);
+            const toId = String(edge.to);
+            const label = (edge.label || '').trim();
+            if (!label) return;
+
+            // 单向：只读取“viewer 对 poster”的关系
+            if (!edge.twoWay && fromId === String(viewerId) && toId === String(posterId)) {
+                relationLabels.push(label);
+            }
+
+            // 双向：两边都视为成立，但不强调“双向”这个概念
+            if (edge.twoWay) {
+                const isMatch =
+                    (fromId === String(viewerId) && toId === String(posterId)) ||
+                    (fromId === String(posterId) && toId === String(viewerId));
+
+                if (isMatch) {
+                    relationLabels.push(label);
+                }
+            }
+        });
+    });
+
+    relationLabels = [...new Set(relationLabels.map(s => s.trim()).filter(Boolean))];
+
+    if (relationLabels.length === 0) return '';
+
+    // ★ 核心修复：
+    // 1. 不再返回 [关系提示：...] 这种中括号标签
+    // 2. 改成自然语言，降低AI误判概率
+    // 3. 文案尽量短，避免污染朋友圈正文
+    return `你和${posterName}的关系是${relationLabels.join('、')}。`;
+}
+
+// 获取“某个发帖角色”的同标签组可见对象（排除自己）
+async function getSameTagVisibleCharacters(posterId) {
+    const tagGroups = await getData('tag_groups') || [];
+    const contacts = await getData('customContacts') || [];
+
+    const resultIds = new Set();
+
+    tagGroups.forEach(group => {
+        const ids = (group.memberIds || []).map(id => String(id));
+        if (ids.includes(String(posterId))) {
+            ids.forEach(id => {
+                if (String(id) !== String(posterId) && String(id) !== 'user_self') {
+                    resultIds.add(String(id));
+                }
+            });
+        }
+    });
+
+    return contacts.filter(c => !c.isGroup && resultIds.has(String(c.id)));
+}
+
+/* --- 小鱼新增：朋友圈发表功能逻辑 --- */
+let selectedMomentImages = []; // Global variable to store selected images for Moments
+
+// Add the new page to the allFullscreenPages array
+allFullscreenPages.push(document.getElementById('postMomentPage'));
+
+// Get elements for the new page
+const postMomentBtn = document.getElementById('postMomentBtn');
+const postMomentPage = document.getElementById('postMomentPage');
+const cancelPostMomentBtn = document.getElementById('cancelPostMomentBtn');
+const publishMomentBtn = document.getElementById('publishMomentBtn');
+const momentContentInput = document.getElementById('momentContentInput');
+const momentImagePreviewContainer = document.getElementById('momentImagePreviewContainer');
+const addMomentImageBtn = document.getElementById('addMomentImageBtn');
+const momentImageInput = document.getElementById('momentImageInput');
+
+// 1. Handle click on the camera icon on Moments page
+if (postMomentBtn) {
+  postMomentBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // Prevent momentsHeader click handler
+    openPostMomentPage();
+  });
+}
+
+// 2. Open the post Moments page
+function openPostMomentPage() {
+  // Reset fields
+  momentContentInput.value = '';
+  selectedMomentImages = [];
+  renderMomentImagePreviews();
+  updatePublishMomentBtnState();
+  showPage(postMomentPage);
+}
+
+// 3. Cancel posting Moments
+if (cancelPostMomentBtn) {
+  cancelPostMomentBtn.addEventListener('click', () => {
+    showPage(momentsPage); // Go back to Moments feed
+  });
+}
+
+// 4. Handle image selection for Moments
+if (addMomentImageBtn) {
+  addMomentImageBtn.addEventListener('click', () => {
+    momentImageInput.click();
+  });
+}
+
+if (momentImageInput) {
+  momentImageInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    for (const file of files) {
+      if (file.type.startsWith('image/')) {
+        // Compress image before adding
+        const compressedBase64 = await compressImage(file);
+        selectedMomentImages.push(compressedBase64);
+        if (selectedMomentImages.length >= 9) { // Limit to 9 images
+          addMomentImageBtn.style.display = 'none';
+          break;
+        }
+      }
+    }
+    renderMomentImagePreviews();
+    updatePublishMomentBtnState();
+    momentImageInput.value = ''; // Clear input for next selection
+  });
+}
+
+// 5. Render image previews for Moments
+function renderMomentImagePreviews() {
+  momentImagePreviewContainer.innerHTML = ''; // Clear existing previews
+
+  selectedMomentImages.forEach((imgBase64, index) => {
+    const imgDiv = document.createElement('div');
+    imgDiv.style.cssText = `
+      width: 100%; aspect-ratio: 1;
+      background-image: url(${imgBase64});
+      background-size: cover; background-position: center;
+      border-radius: 4px; position: relative;
+    `;
+    // Add a delete button to each image
+    imgDiv.innerHTML = `
+      <div style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.5); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px; cursor: pointer;" onclick="removeMomentImage(${index})">×</div>
+    `;
+    momentImagePreviewContainer.appendChild(imgDiv);
+  });
+
+  // Add the plus button back if less than 9 images
+  if (selectedMomentImages.length < 9) {
+    const plusBtn = document.createElement('div');
+    plusBtn.id = 'addMomentImageBtn'; // Re-use ID for event delegation if needed, or bind directly
+    plusBtn.style.cssText = `
+      width: 100%; aspect-ratio: 1; background: #F7F7F7; border: 1px solid #E0E0E0; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 32px; color: #BBBBBB; cursor: pointer;
+    `;
+    plusBtn.textContent = '+';
+    plusBtn.onclick = () => momentImageInput.click(); // Re-bind click handler
+    momentImagePreviewContainer.appendChild(plusBtn);
+  }
+}
+
+// 6. Remove image from Moments post
+window.removeMomentImage = function(index) {
+  selectedMomentImages.splice(index, 1);
+  renderMomentImagePreviews();
+  updatePublishMomentBtnState();
+};
+
+// 7. Update "Publish" button state
+if (momentContentInput) {
+  momentContentInput.addEventListener('input', updatePublishMomentBtnState);
+}
+
+function updatePublishMomentBtnState() {
+  const hasContent = momentContentInput.value.trim().length > 0;
+  const hasImages = selectedMomentImages.length > 0;
+
+  if (hasContent || hasImages) {
+    publishMomentBtn.classList.add('active');
+    publishMomentBtn.style.opacity = '1';
+    publishMomentBtn.style.pointerEvents = 'auto';
+  } else {
+    publishMomentBtn.classList.remove('active');
+    publishMomentBtn.style.opacity = '0.5';
+    publishMomentBtn.style.pointerEvents = 'none';
+  }
+}
+
+// ★ 谁可以看：存储当前选中的角色ID列表（空=公开）
+let momentVisibilityIds = []; // 空数组代表公开
+let momentIsPublic = true;    // true=公开，false=指定角色
+
+// 打开谁可以看弹窗 (修复版：强制字符串比对)
+window.openMomentVisibilityPicker = async function() {
+  const overlay = document.getElementById('momentVisibilityOverlay');
+  overlay.style.display = 'flex';
+
+  // 渲染联系人列表
+  const contacts = await getData('customContacts') || [];
+  const singleContacts = contacts.filter(c => !c.isGroup);
+  const listDiv = document.getElementById('momentVisibilityContactList');
+
+  if (singleContacts.length === 0) {
+    listDiv.innerHTML = '<div style="padding:30px; text-align:center; color:#999; font-size:14px;">暂无角色</div>';
+    return;
+  }
+
+  // ★ 核心修复：把当前数组里的所有元素强制转为字符串，方便下面比对
+  const stringVisIds = momentVisibilityIds.map(String);
+
+  listDiv.innerHTML = singleContacts.map(c => {
+    // ★ 核心修复：比对时，把角色ID也强制转为字符串
+    const isChecked = stringVisIds.includes(String(c.id));
+    const avatarStyle = c.avatar ? `background-image:url(${c.avatar}); background-size:cover;` : 'background:#ccc;';
+    return `
+      <div class="moment-vis-row" data-id="${c.id}" onclick="toggleMomentVisContact('${c.id}')"
+           style="display:flex; align-items:center; padding:12px 16px; border-bottom:1px solid #F5F5F5; cursor:pointer;">
+        <div style="width:38px; height:38px; border-radius:4px; ${avatarStyle} flex-shrink:0; margin-right:12px; display:flex; align-items:center; justify-content:center; color:white; font-size:16px;">
+          ${!c.avatar ? (c.nickname[0] || '?') : ''}
+        </div>
+        <span style="flex:1; font-size:15px; color:#333;">${c.nickname}</span>
+        <div class="vis-check-circle" style="width:20px; height:20px; border-radius:50%; border:1.5px solid #C0C0C0; display:flex; align-items:center; justify-content:center; transition:all 0.15s; ${isChecked ? 'background:#07C160; border-color:#07C160;' : ''}">
+          ${isChecked ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // 同步公开按钮状态
+  updateMomentPublicRow();
+};
+
+// 切换公开
+window.toggleMomentPublic = function() {
+  momentIsPublic = true;
+  momentVisibilityIds = [];
+  // 取消所有角色勾选
+  document.querySelectorAll('.moment-vis-row').forEach(row => {
+    const circle = row.querySelector('.vis-check-circle');
+    circle.style.background = '';
+    circle.style.borderColor = '#C0C0C0';
+    circle.innerHTML = '';
+  });
+  updateMomentPublicRow();
+};
+
+// 切换角色勾选 (修复版：强制字符串比对)
+window.toggleMomentVisContact = function(id) {
+  const strId = String(id); // ★ 核心修复：传入的ID强制转字符串
+  const row = document.querySelector(`.moment-vis-row[data-id="${strId}"]`);
+  const circle = row.querySelector('.vis-check-circle');
+  
+  // ★ 核心修复：把数组里所有的元素都当成字符串来找索引
+  const stringVisIds = momentVisibilityIds.map(String);
+  const idx = stringVisIds.indexOf(strId);
+
+  if (idx !== -1) {
+    // 找到了，说明要取消勾选
+    momentVisibilityIds.splice(idx, 1);
+    circle.style.background = '';
+    circle.style.borderColor = '#C0C0C0';
+    circle.innerHTML = '';
+  } else {
+    // 没找到，说明要勾选，存入字符串格式的ID
+    momentVisibilityIds.push(strId);
+    circle.style.background = '#07C160';
+    circle.style.borderColor = '#07C160';
+    circle.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  }
+
+  // 有角色被选中时，取消"公开"
+  if (momentVisibilityIds.length > 0) {
+    momentIsPublic = false;
+  } else {
+    momentIsPublic = true;
+  }
+  updateMomentPublicRow();
+};
+
+// 更新公开行勾选状态
+function updateMomentPublicRow() {
+  const checkEl = document.getElementById('momentPublicCheck');
+  const label = document.getElementById('momentVisibilityLabel');
+  if (momentIsPublic || momentVisibilityIds.length === 0) {
+    checkEl.style.display = 'flex';
+    label.textContent = '公开';
+  } else {
+    checkEl.style.display = 'none';
+    label.textContent = `${momentVisibilityIds.length}人可见`;
+  }
+}
+
+// 关闭弹窗
+window.closeMomentVisibilityPicker = function() {
+  document.getElementById('momentVisibilityOverlay').style.display = 'none';
+};
+
+// 确认选择 (智能分流版：支持发帖与修改历史)
+window.confirmMomentVisibility = async function() {
+  // 如果当前是修改历史帖子模式
+  if (typeof currentVisibilityMode !== 'undefined' && currentVisibilityMode === 'edit' && typeof editingMomentPostId !== 'undefined' && editingMomentPostId) {
+      let posts = await getData('moments_posts') || [];
+      const postIndex = posts.findIndex(p => String(p.id) === String(editingMomentPostId));
+      
+      if (postIndex !== -1) {
+          // 保存新的可见名单
+          posts[postIndex].visibilityIds = momentIsPublic ? [] : [...momentVisibilityIds];
+          await saveData('moments_posts', posts);
+          
+          // 刷新朋友圈界面，双人头颜色会同步更新
+          if (document.getElementById('momentsPage').style.display !== 'none') {
+              await renderMomentsFeed();
+          }
+      }
+      // 恢复为默认发帖模式，防止影响后续发动态
+      editingMomentPostId = null;
+      currentVisibilityMode = 'post';
+  }
+  
+  // 无论哪种模式，最后都关闭弹窗
+  closeMomentVisibilityPicker();
+};
+
+// 8. Publish Moments
+if (publishMomentBtn) {
+  publishMomentBtn.addEventListener('click', async () => {
+    const content = momentContentInput.value.trim();
+    if (!content && selectedMomentImages.length === 0) {
+      customAlert('内容或图片至少需要一项');
+      return;
+    }
+
+    const userName = await getData('userName') || 'User';
+    const userAvatar = await getData('avatar') || 'https://iili.io/fkc3RwJ.jpg';
+
+    const newMoment = {
+      id: Date.now(),
+      authorName: userName,
+      authorAvatar: userAvatar,
+      content: content,
+      images: selectedMomentImages,
+      visibilityIds: momentIsPublic ? [] : [...momentVisibilityIds], // 空=公开
+      timestamp: Date.now()
+    };
+
+    let moments = await getData('moments_posts') || [];
+    moments.unshift(newMoment);
+    await saveData('moments_posts', moments);
+
+// ★ 核心：将朋友圈作为隐藏消息插入对应角色的聊天记录（带关系网提示）
+const contacts = await getData('customContacts') || [];
+const singleContacts = contacts.filter(c => !c.isGroup);
+
+// 决定哪些角色能看到
+const targetContacts = (momentIsPublic || momentVisibilityIds.length === 0)
+  ? singleContacts
+  : singleContacts.filter(c => momentVisibilityIds.map(id => String(id)).includes(String(c.id)));
+
+// 逐个写入目标角色的聊天记录（每个角色都生成自己专属的关系提示）
+for (const contact of targetContacts) {
+  const relationPrompt = await getMomentRelationPrompt(contact.id, 'user_self');
+
+  // 构建朋友圈文字部分的提示词
+  let momentTextDesc = `[系统提示：${userName} 刚发了一条朋友圈（帖子ID: ${newMoment.id}）`;
+  if (content) {
+    momentTextDesc += `，内容是："${content}"`;
+  }
+  if (newMoment.images && newMoment.images.length > 0) {
+    momentTextDesc += `，并附带了 ${newMoment.images.length} 张图片（图片内容见下方）`;
+  }
+  momentTextDesc += `。你已经在朋友圈看到了这条动态。`;
+
+  const likes = newMoment.likes || [];
+  const comments = newMoment.comments || [];
+  if (likes.length > 0) {
+    momentTextDesc += ` 当前点赞：${likes.join('、')}。`;
+  }
+  if (comments.length > 0) {
+    const commentList = comments.map(c => `${c.authorName}: ${c.content}`).join('；');
+    momentTextDesc += ` 当前评论：${commentList}。`;
+  }
+
+  // ★ 核心新增：拼接“查看者眼中的发帖人关系”
+if (relationPrompt) {
+    momentTextDesc += ` 补充背景：${relationPrompt}`;
+}
+
+  momentTextDesc += ` 你可以选择点赞或评论这条朋友圈。正确的行为示例：如果对方在聊天中继续说话，你可以在回复中顺带提一句；如果对方没有主动提起，你也可以主动关心，但语气要自然，就像朋友看到朋友圈后发消息问候一样。切勿把这条背景信息当作用户发给你的直接消息来回复。]`;
+
+  // 构建多模态消息体：文字+图片合并为一条消息
+  let momentMsgContent;
+  if (newMoment.images && newMoment.images.length > 0) {
+    const contentParts = [
+      { type: 'text', text: momentTextDesc }
+    ];
+    newMoment.images.forEach(imgBase64 => {
+      contentParts.push({
+        type: 'image_url',
+        image_url: { url: imgBase64 }
+      });
+    });
+    momentMsgContent = contentParts;
+  } else {
+    momentMsgContent = momentTextDesc;
+  }
+
+  const chatKey = 'chat_messages_' + contact.id;
+  let chatMsgs = await getData(chatKey) || [];
+
+  chatMsgs.push({
+    role: 'user',
+    type: 'moment_hidden',
+    content: momentMsgContent,
+    momentId: newMoment.id,
+    timestamp: newMoment.id,
+    isHidden: true,
+    source: 'online'
+  });
+
+  await saveData(chatKey, chatMsgs);
+}
+
+    // 重置谁可以看状态为公开
+    momentVisibilityIds = [];
+    momentIsPublic = true;
+    const label = document.getElementById('momentVisibilityLabel');
+    if (label) label.textContent = '公开';
+
+    customAlert('朋友圈发布成功！');
+    showPage(momentsPage);
+    await renderMomentsFeed();
+  });
+}
+
+// --- 微信记忆总结功能 (入口) ---
+// isSilent: true 表示自动总结(直接运行); false 表示手动点击(进入多选)
+async function summarizeMemory(isSilent = false) {
+    if (isSilent) {
+        // 自动总结：直接执行后台逻辑
+        await executeSummary([], true);
+    } else {
+        // 兼容旧代码调用，其实现在手动多选直接走 enterMultiSelectMode() 了
+        enterMultiSelectMode();
+    }
+}
+
+// ★★★ 小鱼新增：工具栏一键总结上下文功能 ★★★
+async function summarizeContextMemory() {
+    closeActionSheet(); // 先收起+号面板
+    if (!currentChatId) return;
+
+    // 1. 获取当前设置的上下文长度
+    const savedLimit = await getData('contextLimit_' + currentChatId) || 20;
+    
+    // 2. 获取所有消息
+    const key = 'chat_messages_' + currentChatId;
+    const allMessages = await getData(key) || [];
+    
+    // 3. 截取最近的 N 条消息 (与AI读取的上下文长度一致)
+    // 过滤掉隐藏指令，只总结真实对话
+    const visibleMessages = allMessages.filter(m => !m.isHidden && m.type !== 'system_separator');
+    const targetMessages = visibleMessages.slice(-savedLimit);
+
+    if (targetMessages.length === 0) {
+        customAlert('当前没有可总结的聊天记录');
+        return;
+    }
+
+    if (await customConfirm(`系统将自动提取最近 ${targetMessages.length} 条对话生成记忆，是否继续？`)) {
+        // 直接调用执行总结函数
+        await executeSummary(targetMessages, false);
+    }
+}
+
+// --- 提交选中的消息进行总结 ---
+async function submitSelectedSummary() {
+    if (selectedTimestamps.size === 0) {
+        customAlert('请至少选择一条消息');
+        return;
+    }
+
+    // 1. 获取所有消息
+    const key = 'chat_messages_' + currentChatId;
+    const allMessages = await getData(key) || [];
+    
+    // ★★★ 核心修复：按照消息在聊天记录中的原始顺序进行总结 ★★★
+    // 2. 筛选出选中的消息，并保持原始顺序
+    const targetMessages = allMessages.filter(m => selectedTimestamps.has(m.timestamp));
+    
+    // 3. 按时间戳严格排序（从早到晚）
+    targetMessages.sort((a, b) => a.timestamp - b.timestamp);
+    
+    console.log(`✅ 准备总结 ${targetMessages.length} 条消息，时间范围: ${new Date(targetMessages[0].timestamp).toLocaleString()} ~ ${new Date(targetMessages[targetMessages.length - 1].timestamp).toLocaleString()}`);
+    
+    // 4. 退出多选模式
+    exitMultiSelectMode();
+    
+    // 5. 执行总结
+    await executeSummary(targetMessages, false);
+}
+
+// --- 执行总结核心逻辑 (高浓缩版) ---
+async function executeSummary(manualMessages = [], isSilent = false) {
+    if (!currentChatId) return;
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    let targetMessages = [];
+
+    // 1. 筛选消息
+    if (isSilent) {
+        let lastSummaryIndex = -1;
+        for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].summarized === true) {
+                lastSummaryIndex = i;
+                break;
+            }
+        }
+        const unsummarized = lastSummaryIndex === -1 ? messages : messages.slice(lastSummaryIndex + 1);
+        targetMessages = unsummarized.filter(m => !m.isHidden && m.type !== 'system_separator' && (m.type === 'text' || m.type === 'voice' || m.type === 'inner_voice'));
+        
+        // ★★★ 核心修改：提高门槛到10条 ★★★
+        if (targetMessages.length < 10) {
+            console.log(`未总结消息仅 ${targetMessages.length} 条，未达到10条门槛，跳过总结`);
+            return;
+        }
+    } else {
+        targetMessages = manualMessages;
+    }
+
+    if (targetMessages.length === 0) {
+        if (!isSilent) customAlert('没有有效的内容可总结');
+        return;
+    }
+
+    // 2. 准备数据
+const contact = await getContactDetails(currentChatId);
+const isGroup = contact.isGroup;
+const userName = await getData('userName') || '用户';
+
+// ★★★ 群聊不再需要分发名单，统一存储 ★★★
+
+    // ★★★ 核心修复：构建对话文本（严格按时间顺序 + 清洗图片/语音）★★★
+// 小鱼优化：在总结前，先建立一个 [昵称 -> 真名] 的查找表
+let nicknameToRealNameMap = {};
+if (isGroup) {
+    const allContactsForMap = await getData('customContacts') || [];
+    const groupMemberIds = contact.memberIds || [];
+    const groupMembers = allContactsForMap.filter(c => groupMemberIds.includes(c.id));
+    groupMembers.forEach(m => {
+        // 建立映射：昵称 -> 真名 (如果没有真名就用昵称)
+        nicknameToRealNameMap[m.nickname] = m.realName || m.nickname;
+    });
+}
+
+const conversationText = targetMessages.map((m, index) => {
+    let speaker = m.role === 'user' ? userName : (contact.realName || contact.nickname);
+    
+    // 如果是群聊，尝试把“发送者昵称”翻译回“真名”
+    if (isGroup && m.senderName) {
+        speaker = nicknameToRealNameMap[m.senderName] || m.senderName;
+    }
+    
+    let content = m.content;
+
+        // 清洗特殊消息
+        if (m.type === 'sticker') {
+            if (m.ai_description) {
+                content = `[图片内容: ${m.ai_description}]`;
+            } else if (m.desc) {
+                content = `[表情/图片: ${m.desc}]`;
+            } else {
+                content = `[发送了一张图片]`;
+            }
+        } else if (typeof content === 'string' && content.startsWith('[VOICE:')) {
+            const match = content.match(/^\[VOICE:\d+:(.+)\]$/);
+            content = match ? `(语音) ${match[1]}` : content;
+        } else if (m.type === 'inner_voice') {
+            content = `(内心独白: ${content})`;
+        } else if (m.type === 'pat') {
+            content = `(动作) ${content}`;
+        }
+
+        return `[${index + 1}] ${speaker}: ${content}`;
+    }).join('\n');
+
+    // ★★★ 核心新增：计算建议总结条数（10条对话→1条记忆）★★★
+    const msgCount = targetMessages.length;
+    const maxSummaryCount = Math.max(1, Math.floor(msgCount / 10));
+
+    // UI 反馈
+    let originalTitle = '';
+    if (!isSilent) {
+        originalTitle = document.getElementById('chatTitle').textContent;
+        document.getElementById('chatTitle').textContent = '正在提取记忆...';
+        document.getElementById('chatTitle').classList.add('typing-blink-effect');
+    }
+
+    try {
+        let apiConfig = await getApiConfigForWechat('memorySummary');
+        if (!apiConfig || !apiConfig.apiKey) apiConfig = await getApiConfigForWechat('wechat');
+
+        // 3. 构建 Prompt（群聊和单聊分别处理）
+        let prompt = "";
+        
+        if (isGroup) {
+            // === 群聊模式（第三人称客观记录版）===
+            const groupName = contact.nickname || '群聊';
+            prompt = `你是一个群聊观察者。请以**第三人称客观视角**，总结下面这段"${groupName}"中发生的重要事件。
+
+【对话记录】（已按时间顺序排列）
+${conversationText}
+
+【核心规则】
+1. **客观记录**：用第三人称（他/她/他们）描述群里发生的事，不要代入任何角色的主观感受。
+2. **内容结构**：【谁做了什么】+【其他人的反应/结果】。
+3. **抓大放小**：忽略水群和寒暄，只记录引发讨论、关系变化或重要决定的核心事件。
+4. **高度浓缩**：本次共 ${msgCount} 条对话，请浓缩为 **约${maxSummaryCount}条** 核心记忆。
+5. **长度限制**：每条记忆控制在50字以内。
+
+【输出格式】
+- 直接输出纯文本列表，每行一条记忆。
+- 不要加序号，不要用Markdown。
+- 必须以第三人称开头（如：张三、李四、${userName}等）。
+
+示例：
+${userName}在群里提议周末聚餐，张三和李四都表示赞同，最终决定去吃火锅。
+王五在群里炫耀新买的手机，李四表面附和但语气有些酸溜溜的。
+
+现在开始总结（建议 ${maxSummaryCount} 条左右）：`;
+        } else {
+            // === 单聊模式（第一人称情感版）===
+            prompt = `你是一个专业的对话记忆提取助手。请从下面的聊天记录中，提取出**最核心、最有价值**的关键信息。
+
+【对话记录】（已按时间顺序排列）
+${conversationText}
+
+【核心规则】
+1. **高度浓缩**：本次共 ${msgCount} 条对话，你需要将它们浓缩为 **约${maxSummaryCount}条** 核心记忆
+2. **合并同类事件**：不要逐句记录，将连续相关的多句话合并成一个完整事件
+3. **优先级排序**：只记录对角色发展、关系变化、重要决定有影响的内容，忽略寒暄和闲聊
+4. **固定句式**："谁+做了什么+结果/影响"
+5. **长度限制**：每条记忆30字以内
+
+【输出格式】
+- 直接输出纯文本列表
+- 不要加序号、不要用Markdown
+- 每行一条记忆
+- 如果对话内容过于琐碎无价值，允许少于 ${maxSummaryCount} 条
+
+现在开始提取（建议 ${maxSummaryCount} 条左右）：`;
+        }
+
+        const response = await callAIAPI([{ role: 'user', content: prompt }], apiConfig);
+        
+        if (response && response.trim()) {
+            const lines = response.trim().split('\n').filter(l => l.trim().length > 1);
+            let savedCount = 0;
+
+for (const line of lines) {
+    const cleanLine = line.trim();
+    
+    // ★★★ 核心修改：群聊和单聊统一处理，都存到对应的ID下 ★★★
+    const content = cleanLine.replace(/^[0-9]+[\.\、]\s*/, '').replace(/^-\s*/, '').trim();
+    
+    if (content.length > 0) {
+        // 统一调用保存函数，群聊存到群聊ID，单聊存到单聊ID
+        saveToGroupMemory(currentChatId, contact.nickname, content);
+        savedCount++;
+    }
+    
+    await new Promise(r => setTimeout(r, 50)); 
+}
+
+            if (savedCount > 0) {
+                // 标记已总结
+                const timestampsToMark = new Set(targetMessages.map(m => m.timestamp));
+                let latestMessages = await getData(key) || [];
+                latestMessages.forEach(m => { if (timestampsToMark.has(m.timestamp)) m.summarized = true; });
+                await saveData(key, latestMessages);
+                
+                if (!isSilent) customAlert(`✅ 总结完成，已保存 ${savedCount} 条记忆`);
+                else console.log(`✅ 自动总结完成，保存 ${savedCount} 条`);
+            } else {
+                if (!isSilent) customAlert('AI认为没有值得提取的有效信息');
+            }
+        }
+    } catch (error) {
+        console.error('总结失败', error);
+        if (!isSilent) customAlert('总结失败: ' + error.message);
+    } finally {
+        if (!isSilent) {
+            document.getElementById('chatTitle').textContent = originalTitle;
+            document.getElementById('chatTitle').classList.remove('typing-blink-effect');
+        }
+    }
+}
+
+// 辅助函数：存入群/单聊 ID
+function saveToGroupMemory(id, name, content) {
+    if (window.parent !== window) {
+        window.parent.postMessage({
+            action: 'add-memory',
+            data: {
+                characterId: id,
+                characterName: name,
+                content: content
+            }
+        }, '*');
+    }
+}
+
+// --- 群聊记忆分发管理逻辑 ---
+async function openMemTargetModal() {
+    if (!currentChatId) return;
+    const contacts = await getData('customContacts') || [];
+    const group = contacts.find(c => c.id === currentChatId);
+    if (!group || !group.isGroup) {
+        customAlert("仅群聊支持此设置");
+        return;
+    }
+
+    // 获取已保存的勾选名单
+    const savedTargets = (await getData('groupMemoryTargets_' + currentChatId)) || [];
+    
+    // 获取群成员
+    const memberIds = group.memberIds || [];
+    const members = contacts.filter(c => memberIds.includes(c.id) && c.id !== 'user_self'); // 排除自己
+
+    const listDiv = document.getElementById('memTargetList');
+    listDiv.innerHTML = members.map(m => {
+        const isChecked = savedTargets.includes(m.id) ? 'checked' : '';
+        return `
+            <label style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer;">
+                <input type="checkbox" class="mem-target-checkbox" value="${m.id}" ${isChecked} style="margin-right: 12px; width: 18px; height: 18px; accent-color: #07C160;">
+                <div style="flex: 1; font-size: 16px;">${m.nickname}</div>
+            </label>
+        `;
+    }).join('');
+
+    document.getElementById('memTargetModal').style.display = 'flex';
+}
+
+async function saveMemTargets() {
+    const checkboxes = document.querySelectorAll('.mem-target-checkbox:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => parseInt(cb.value)); // ID通常是数字
+    await saveData('groupMemoryTargets_' + currentChatId, selectedIds);
+    document.getElementById('memTargetModal').style.display = 'none';
+    customAlert(`已设置 ${selectedIds.length} 个记忆分发对象`);
+}
+
+/* ========================================
+   小鱼新增：转账功能核心逻辑
+   ======================================== */
+   
+// 1. 将转账页加入全屏管理
+allFullscreenPages.push(document.getElementById('transferPage'));
+
+let currentTransferMoney = '';
+let currentTransferNote = ''; // ★ 新增：存储转账说明
+let currentTransferTargetId = null; // ★ 新增：记录实际收款人ID
+
+// ★ 新增：编辑转账说明函数
+window.editTransferNote = async function() {
+    const note = await customPrompt('请输入转账说明（最多60个字）：', currentTransferNote);
+    if (note !== null) {
+        currentTransferNote = note.trim().substring(0, 60); 
+        const btn = document.getElementById('transferNoteBtn');
+        if (currentTransferNote) {
+            btn.innerHTML = `${currentTransferNote} <span style="color: #576B95; margin-left: 6px;">修改</span>`;
+            btn.style.color = '#333'; 
+        } else {
+            btn.innerHTML = '添加转账说明';
+            btn.style.color = '#576B95'; 
+        }
+    }
+};
+
+// 2. 打开转账页面 (智能分流：单聊直接进，群聊先进选人页)
+window.openTransferPage = async function() {
+  if (!currentChatId) return;
+  closeActionSheet(); // 关闭底部菜单
+
+  const contact = await getContactDetails(currentChatId);
+  if (!contact) return;
+
+  if (contact.isGroup) {
+      // 群聊：打开选择收款方页面
+      await renderGroupTransferSelect(contact);
+      showPage(document.getElementById('groupTransferSelectPage'));
+  } else {
+      // 单聊：直接进入转账页
+      currentTransferTargetId = currentChatId;
+      await renderTransferPageUI(contact);
+  }
+};
+
+// ★ 新增：渲染群聊收款方选择列表
+async function renderGroupTransferSelect(groupContact) {
+    const listContainer = document.getElementById('groupTransferMemberList');
+    listContainer.innerHTML = '';
+    
+    const allContacts = await getData('customContacts') || [];
+    const memberIds = groupContact.memberIds || [];
+    
+    // 过滤出群成员，排除自己
+    const members = allContacts.filter(c => memberIds.includes(c.id) && c.id !== 'user_self');
+    
+    if (members.length === 0) {
+        listContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">群内没有其他成员</div>';
+        return;
+    }
+
+    members.forEach(m => {
+        const row = document.createElement('div');
+        row.className = 'contact-item';
+        row.style.borderBottom = '1px solid #F0F0F0';
+        
+        const displayAvatar = m.avatar || 'https://iili.io/fkc3RwJ.jpg';
+        
+        row.innerHTML = `
+            <div class="contact-icon" style="background-image: url(${displayAvatar}); background-size: cover; background-color: #ccc; width: 40px; height: 40px; margin-right: 12px; border-radius: 4px;"></div>
+            <span class="contact-name">${m.nickname}</span>
+        `;
+        
+        // 点击某人后，记录目标ID，并跳转到输入金额页面
+        row.onclick = async () => {
+            currentTransferTargetId = m.id;
+            await renderTransferPageUI(m);
+        };
+        
+        listContainer.appendChild(row);
+    });
+}
+
+// ★ 新增：关闭选择收款方页面
+window.closeGroupTransferSelect = function() {
+    showPage(document.getElementById('chatRoomPage'));
+};
+
+// ★ 提取：渲染实际输入金额的页面
+async function renderTransferPageUI(targetContact) {
+  let displayName = targetContact.nickname;
+  if (targetContact.realName) {
+    const lastChar = targetContact.realName.slice(-1);
+    displayName = `${targetContact.nickname} (**${lastChar})`;
+  } else {
+    const lastChar = targetContact.nickname.slice(-1);
+    displayName = `${targetContact.nickname} (**${lastChar})`;
+  }
+
+  let wxId = targetContact.wechatId || '未设置';
+  
+  document.getElementById('transferTargetName').textContent = `转账给 ${displayName}`;
+  document.getElementById('transferTargetId').textContent = `微信号：${wxId}`;
+  
+  const avatarEl = document.getElementById('transferTargetAvatar');
+  if (targetContact.avatar) {
+    avatarEl.style.backgroundImage = `url(${targetContact.avatar})`;
+    avatarEl.innerHTML = '';
+  } else {
+    avatarEl.style.backgroundImage = '';
+    avatarEl.innerHTML = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></svg>';
+  }
+
+  currentTransferMoney = '';
+  currentTransferNote = ''; 
+  document.getElementById('transferNoteBtn').innerHTML = '添加转账说明'; 
+  document.getElementById('transferNoteBtn').style.color = '#576B95';
+  
+  updateMoneyDisplay();
+  showPage(document.getElementById('transferPage'));
+}
+
+// 3. 关闭转账页 (返回聊天或选人页)
+window.closeTransferPage = async function() {
+  const contact = await getContactDetails(currentChatId);
+  if (contact && contact.isGroup) {
+      showPage(document.getElementById('groupTransferSelectPage')); // 群聊退回选人
+  } else {
+      showPage(document.getElementById('chatRoomPage')); // 单聊退回聊天
+  }
+};
+
+// 4. 键盘输入逻辑
+window.inputMoney = function(key) {
+  if (key === 'del') {
+    currentTransferMoney = currentTransferMoney.slice(0, -1);
+    updateMoneyDisplay();
+    return;
+  }
+  if (key === '.') {
+    if (currentTransferMoney === '') return;
+    if (currentTransferMoney.includes('.')) return;
+  }
+  if (currentTransferMoney.includes('.')) {
+    const parts = currentTransferMoney.split('.');
+    if (parts[1].length >= 2) return;
+  }
+  if (parseFloat(currentTransferMoney + key) > 200000) return;
+
+  currentTransferMoney += key;
+  updateMoneyDisplay();
+};
+
+function updateMoneyDisplay() {
+  const display = document.getElementById('transferAmountDisplay');
+  const btn = document.getElementById('btnSendTransfer');
+  
+  if (currentTransferMoney === '') {
+    display.innerHTML = '<span class="cursor-blink"></span>';
+    btn.classList.add('disabled');
+  } else {
+    display.innerHTML = currentTransferMoney + '<span class="cursor-blink"></span>';
+    btn.classList.remove('disabled');
+  }
+}
+
+// 5. 确认转账
+window.confirmTransfer = async function() {
+  const amount = parseFloat(currentTransferMoney);
+  if (!amount || amount <= 0) return;
+
+  showPage(document.getElementById('chatRoomPage')); // 确认后直接回聊天界面
+
+  // 获取实际收款人信息
+  const allContacts = await getData('customContacts') || [];
+  const targetContact = allContacts.find(c => c.id === currentTransferTargetId);
+  const targetName = targetContact ? targetContact.nickname : '对方';
+
+  // 构造发给AI看的内容 (群聊中明确指出转给谁)
+  const contact = await getContactDetails(currentChatId);
+  let aiContent = contact.isGroup ? `[转账给 ${targetName}] ¥${amount.toFixed(2)}` : `[转账] ¥${amount.toFixed(2)}`;
+  if (currentTransferNote) {
+      aiContent += ` (说明: ${currentTransferNote})`;
+  }
+
+  const msg = {
+    role: 'user',
+    type: 'transfer', 
+    amount: amount.toFixed(2),
+    transferNote: currentTransferNote, 
+    content: aiContent, 
+    targetId: currentTransferTargetId, // ★ 记录给谁的
+    targetName: targetName,            // ★ 记录名字
+    timestamp: Date.now()
+  };
+
+  wxDrafts = [];
+  await saveData('chat_drafts_' + currentChatId, null);
+  
+  await saveMessage(currentChatId, msg);
+  appendMessageToUI(msg, null, contact.isGroup); 
+  scrollToBottom();
+  await updateChatList(currentChatId, `[转账] ¥${amount.toFixed(2)}`, Date.now());
+
+  if (typeof aiReplyMode !== 'undefined' && aiReplyMode === 'immediate') {
+      setTimeout(() => getAIResponse(currentChatId), 500);
+  }
+};
+
+// ★★★ 小鱼新增：处理收款逻辑 (双模式终极版) ★★★
+let currentReceivingMsgTimestamp = null; 
+
+// 1. 打开收款页面 (自动判断状态：待收款/已收款/已退还)
+window.openReceiveMoneyPage = function(msg) {
+    currentReceivingMsgTimestamp = msg.timestamp;
+    const status = msg.transferStatus; // pending, accepted, returned
+    
+    // --- 填充基础数据 ---
+    document.getElementById('receiveAmount').textContent = parseFloat(msg.amount).toFixed(2);
+    
+    // 格式化转账时间
+    const transDate = new Date(msg.timestamp);
+    const transTimeStr = transDate.toLocaleString('zh-CN', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+    document.getElementById('receiveTime').textContent = transTimeStr;
+
+    // --- 获取UI元素 ---
+const iconDiv = document.getElementById('receiveIcon');
+const statusDiv = document.getElementById('receiveStatus');
+const balanceLink = document.getElementById('receiveBalanceLink');
+const collectRow = document.getElementById('collectTimeRow');
+const actionArea = document.getElementById('receiveActionArea');
+
+// ★ 新增：处理转账说明显示
+const noteRow = document.getElementById('receiveNoteRow');
+const noteContent = document.getElementById('receiveNoteContent');
+
+if (msg.transferNote && msg.transferNote.trim() !== '') {
+    noteRow.style.display = 'flex';
+    noteContent.textContent = msg.transferNote;
+} else {
+    noteRow.style.display = 'none';
+}
+
+// --- 根据状态切换界面 ---
+    if (status === 'accepted') {
+        // === 模式A：已收款 (绿色对勾) ===
+        iconDiv.innerHTML = `
+            <svg viewBox="0 0 60 60" fill="none">
+                <circle cx="30" cy="30" r="30" fill="#07C160"/>
+                <polyline points="17 31 25 39 43 21" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+        
+        statusDiv.textContent = "你已收款，资金已存入零钱";
+        balanceLink.style.display = 'block';
+        
+        collectRow.style.display = 'flex';
+        collectRow.querySelector('span:first-child').textContent = "收款时间";
+        const collectDate = msg.collectTimestamp ? new Date(msg.collectTimestamp) : new Date();
+        const collectTimeStr = collectDate.toLocaleString('zh-CN', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        document.getElementById('collectTime').textContent = collectTimeStr;
+        
+        actionArea.style.display = 'none'; // 隐藏按钮
+        
+    } else if (status === 'returned') {
+        // === 模式B：已退还 (黄色箭头) ===
+iconDiv.innerHTML = `
+    <svg viewBox="0 0 60 60" fill="none">
+        <circle cx="30" cy="30" r="30" fill="#F6C446"/>
+        <path d="M34 40 A 7 7 0 0 0 34 26 L 20 26" stroke="white" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M25 20 L 20 26 L 25 32" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>`;
+            
+        statusDiv.textContent = "你已退还";
+        balanceLink.style.display = 'none';
+        
+        collectRow.style.display = 'flex';
+        collectRow.querySelector('span:first-child').textContent = "退款时间"; // 修改标签为退款时间
+        const returnDate = msg.returnTimestamp ? new Date(msg.returnTimestamp) : new Date();
+        const returnTimeStr = returnDate.toLocaleString('zh-CN', {year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        document.getElementById('collectTime').textContent = returnTimeStr;
+        
+        actionArea.style.display = 'none'; // 隐藏按钮
+
+    } else {
+        // === 模式C：待收款 (蓝绿时钟) ===
+        iconDiv.innerHTML = `
+            <svg viewBox="0 0 60 60" fill="none">
+                <circle cx="30" cy="30" r="30" fill="#3eb575" fill-opacity="0.1"/>
+                <circle cx="30" cy="30" r="28" stroke="#2ea168" stroke-width="2" fill="none"/>
+                <polyline points="30 16 30 30 40 40" stroke="#2ea168" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>`;
+            
+        statusDiv.textContent = "待你收款";
+        balanceLink.style.display = 'none';
+        collectRow.style.display = 'none';
+        actionArea.style.display = 'flex'; // 显示按钮
+    }
+    
+    document.getElementById('receiveMoneyPage').style.display = 'flex';
+};
+
+// 2. 确认收款按钮逻辑
+document.getElementById('confirmReceiveBtn').addEventListener('click', async () => {
+    if (!currentReceivingMsgTimestamp || !currentChatId) return;
+    
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    
+    const msgIndex = messages.findIndex(m => m.timestamp == currentReceivingMsgTimestamp);
+    if (msgIndex !== -1) {
+        messages[msgIndex].transferStatus = 'accepted';
+        messages[msgIndex].collectTimestamp = Date.now();
+        await saveData(key, messages);
+        
+        // 更新聊天界面气泡
+        updateChatBubbleAfterAction(currentReceivingMsgTimestamp, 'accepted');
+        
+        // 刷新当前页面
+        openReceiveMoneyPage(messages[msgIndex]);
+
+        // 发送"已收款"回执
+        sendTransferReceipt(messages[msgIndex].amount, 'accepted');
+    }
+});
+
+// 3. ★★★ 新增：点击"退还"逻辑 ★★★
+document.getElementById('returnTransferLink').addEventListener('click', async () => {
+    if (!currentReceivingMsgTimestamp || !currentChatId) return;
+    
+    if (!await customConfirm('确认退还这笔转账给对方吗？')) return;
+
+    const key = 'chat_messages_' + currentChatId;
+    let messages = await getData(key) || [];
+    
+    const msgIndex = messages.findIndex(m => m.timestamp == currentReceivingMsgTimestamp);
+    if (msgIndex !== -1) {
+        // 更新状态为 returned
+        messages[msgIndex].transferStatus = 'returned';
+        messages[msgIndex].returnTimestamp = Date.now(); // 记录退还时间
+        await saveData(key, messages);
+        
+        // 更新聊天界面气泡
+        updateChatBubbleAfterAction(currentReceivingMsgTimestamp, 'returned');
+        
+        // 刷新当前页面 (显示黄色图标)
+        openReceiveMoneyPage(messages[msgIndex]);
+
+        // 发送"已退还"回执
+        sendTransferReceipt(messages[msgIndex].amount, 'returned');
+    }
+});
+
+// 辅助：更新聊天气泡状态
+function updateChatBubbleAfterAction(timestamp, status) {
+    const bubble = document.querySelector(`[data-timestamp="${timestamp}"]`);
+    if (bubble) {
+        const iconContainer = bubble.querySelector('.transfer-icon-circle');
+        if (iconContainer) {
+            // 根据状态切换图标
+            if (status === 'accepted') {
+                iconContainer.innerHTML = `<svg width="42" height="42" viewBox="0 0 42 42" fill="none"><circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/><polyline points="12 21 18 27 30 15" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            } else {
+                // 退还图标
+                iconContainer.innerHTML = `<svg width="42" height="42" viewBox="0 0 42 42" fill="none"><circle cx="21" cy="21" r="19" stroke="white" stroke-width="2.5"/><path d="M24 28 A 5 5 0 0 0 24 18 L 13 18" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M17 14 L 13 18 L 17 22" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+            }
+        }
+        
+        const descEl = bubble.querySelector('.transfer-desc');
+        if (descEl) {
+            // ★★★ 核心：AI发来的转账，我退还了 -> 显示"已被退还" ★★★
+            descEl.textContent = status === 'accepted' ? '已被接收' : '已被退还';
+        }
+        
+        const contentDiv = bubble.querySelector('.msg-content');
+        if (contentDiv) contentDiv.classList.add('transfer-processed');
+    }
+}
+
+// 辅助：发送回执消息
+async function sendTransferReceipt(amount, status) {
+    const contentText = status === 'accepted' ? '[已收款]' : '[已退还]';
+    
+    // ★★★ 核心：回执卡片，如果是退还，不需要区分谁发的，都显示"已退还" ★★★
+    // 只有橙色气泡才需要区分 "已被退还" vs "已退还"
+    
+    const receiptMsg = {
+        role: 'user',
+        type: 'transfer',
+        transferStatus: status, // accepted 或 returned
+        amount: amount,
+        content: contentText, 
+        isReceipt: true, 
+        timestamp: Date.now()
+    };
+
+    await saveMessage(currentChatId, receiptMsg);
+    appendMessageToUI(receiptMsg, userAvatarUrl, false); 
+    scrollToBottom();
+    await updateChatList(currentChatId, contentText, Date.now());
+}
+// ★★★ 绑定入口按钮 ★★★
+// 找到原来那个 "转账" 的按钮，把它的 onclick 改为 openTransferPage()
+// 为了保险，我们在页面加载完成后强制绑定一次
+document.addEventListener('DOMContentLoaded', () => {
+    // 找到 action-sheet 里的第6个按钮（转账）
+    // 原代码结构中，转账是第2页的第2个，或者第1页的第6个，根据你的代码：
+    // <!-- 6. 转账 --> ... <span class="action-text">转账</span>
+    
+    const actionItems = document.querySelectorAll('.action-item');
+    actionItems.forEach(item => {
+        if (item.querySelector('.action-text').textContent.trim() === '转账') {
+            item.onclick = openTransferPage;
+        }
+    });
+});
+
+// ========================================
+// 小鱼新增：群聊记忆挂载多选弹窗逻辑
+// ========================================
+window.openMountGroupModal = async function() {
+    if (!currentChatId) return;
+    
+    // 1. 动态创建弹窗DOM（如果不存在）
+    if (!document.getElementById('mountGroupModal')) {
+        const modalHtml = `
+        <div id="mountGroupModal" class="custom-modal-overlay" style="z-index: 10005; align-items: flex-end; display: none;">
+            <div style="width: 100%; background: #fff; border-radius: 12px 12px 0 0; padding: 20px; box-sizing: border-box; max-height: 70vh; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 16px; font-weight: 500;">选择挂载的群聊</span>
+                    <span id="closeMountGroupModal" style="color: #999; font-size: 24px; cursor: pointer; padding: 0 10px;">×</span>
+                </div>
+                <div id="mountGroupList" style="flex: 1; overflow-y: auto; margin-bottom: 15px;"></div>
+                <button id="saveMountGroupBtn" style="width: 100%; padding: 12px; background: #07C160; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer;">保存</button>
+            </div>
+        </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        
+        // 绑定关闭事件
+        document.getElementById('closeMountGroupModal').onclick = () => {
+            document.getElementById('mountGroupModal').style.display = 'none';
+        };
+        document.getElementById('mountGroupModal').onclick = (e) => {
+            if (e.target.id === 'mountGroupModal') e.target.style.display = 'none';
+        };
+    }
+
+    // 2. 获取数据
+    const contacts = await getData('customContacts') || [];
+    const groups = contacts.filter(c => c.isGroup);
+    const mountedGroups = (await getData('mountedGroupIds_' + currentChatId)) || [];
+
+    // 3. 渲染列表
+    const listDiv = document.getElementById('mountGroupList');
+    if (groups.length === 0) {
+        listDiv.innerHTML = '<div style="text-align:center; color:#999; padding:20px;">暂无群聊</div>';
+    } else {
+        listDiv.innerHTML = groups.map(g => {
+            const isChecked = mountedGroups.includes(g.id) ? 'checked' : '';
+            return `
+            <label style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer;">
+                <input type="checkbox" class="mount-group-cb" value="${g.id}" ${isChecked} style="margin-right: 12px; width: 18px; height: 18px; accent-color: #07C160;">
+                <div style="flex: 1; font-size: 16px;">${g.nickname}</div>
+            </label>`;
+        }).join('');
+    }
+
+    // 4. 显示弹窗并绑定保存事件
+    document.getElementById('mountGroupModal').style.display = 'flex';
+    
+    document.getElementById('saveMountGroupBtn').onclick = async () => {
+        const cbs = document.querySelectorAll('.mount-group-cb:checked');
+        const selectedIds = Array.from(cbs).map(cb => cb.value); // 保持字符串
+        
+        await saveData('mountedGroupIds_' + currentChatId, selectedIds);
+        
+        const countSpan = document.getElementById('mountedGroupCount');
+        if (countSpan) countSpan.textContent = selectedIds.length + '个';
+        
+        document.getElementById('mountGroupModal').style.display = 'none';
+        customAlert(`已挂载 ${selectedIds.length} 个群聊`);
+    };
+};
+
+// ★★★ 小鱼新增：朋友圈帖子长按菜单逻辑 ★★★
+
+// 绑定长按事件（在渲染完帖子后调用）
+function bindMomentLongPress() {
+    document.querySelectorAll('.moment-post-card').forEach(card => {
+        let pressTimer = null;
+        let moved = false;
+
+        card.addEventListener('touchstart', (e) => {
+            // ★★★ 核心修复：如果手指按在评论区或点赞区，直接忽略，不触发帖子的长按菜单
+            if (e.target.closest('.moment-like-comment-area')) return;
+
+            moved = false;
+            pressTimer = setTimeout(() => {
+                if (!moved) {
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    const postId = card.dataset.postId;
+                    showMomentEditMenu(postId, e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, 600);
+        }, { passive: true });
+
+        card.addEventListener('touchmove', () => {
+            moved = true;
+            clearTimeout(pressTimer);
+        }, { passive: true });
+
+        card.addEventListener('touchend', () => {
+            clearTimeout(pressTimer);
+        }, { passive: true });
+    });
+}
+
+// 显示删除/编辑菜单
+function showMomentEditMenu(postId, touchX, touchY) {
+    // 移除已有菜单
+    const existing = document.getElementById('momentEditMenu');
+    if (existing) existing.remove();
+
+    const menu = document.createElement('div');
+    menu.id = 'momentEditMenu';
+    menu.style.cssText = `
+        position: fixed;
+        background: #4C5154;
+        border-radius: 6px;
+        color: white;
+        font-size: 15px;
+        overflow: hidden;
+        z-index: 99999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        min-width: 120px;
+    `;
+
+    menu.innerHTML = `
+        <div id="momentEditBtn" style="padding: 13px 22px; display: flex; align-items: center; cursor: pointer; border-bottom: 1px solid #3B3F42;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="margin-right: 8px; flex-shrink:0;">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+            编辑
+        </div>
+        <div id="momentDeleteBtn" style="padding: 13px 22px; display: flex; align-items: center; cursor: pointer; color: #FF6B6B;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FF6B6B" stroke-width="2" style="margin-right: 8px; flex-shrink:0;">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/>
+                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+            </svg>
+            删除
+        </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    // 计算位置，防止超出屏幕
+    const menuW = menu.offsetWidth;
+    const menuH = menu.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let left = touchX - menuW / 2;
+    let top = touchY - menuH - 10;
+
+    if (left < 8) left = 8;
+    if (left + menuW > vw - 8) left = vw - menuW - 8;
+    if (top < 8) top = touchY + 10;
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+
+    // 编辑按钮
+    document.getElementById('momentEditBtn').onclick = async (e) => {
+        e.stopPropagation();
+        menu.remove();
+        await editMomentPost(postId);
+    };
+
+    // 删除按钮
+    document.getElementById('momentDeleteBtn').onclick = async (e) => {
+        e.stopPropagation();
+        menu.remove();
+        await deleteMomentPost(postId);
+    };
+}
+
+// 删除帖子
+async function deleteMomentPost(postId) {
+    if (!await customConfirm('确定要删除这条朋友圈吗？')) return;
+
+    // 1. 先找到要删除的帖子
+    let posts = await getData('moments_posts') || [];
+    const targetPost = posts.find(p => String(p.id) === String(postId));
+    
+    // 2. 从朋友圈列表中删除
+    posts = posts.filter(p => String(p.id) !== String(postId));
+    await saveData('moments_posts', posts);
+
+    // 3. ★★★ 核心修复：遍历所有角色（含群聊），清除任何匹配该帖子的隐藏消息
+    if (targetPost) {
+        const contacts = await getData('customContacts') || [];
+        // ★ 不再只过滤单人，群聊记录里也可能有残留，全部扫一遍
+        for (const contact of contacts) {
+            const chatKey = 'chat_messages_' + contact.id;
+            let chatMsgs = await getData(chatKey) || [];
+            const beforeCount = chatMsgs.length;
+            
+            chatMsgs = chatMsgs.filter(m => {
+                // ★ 同时用 momentId 和 timestamp 两种方式匹配，确保无论哪种格式写入的都能清除
+                if (!m.isHidden) return true; // 非隐藏消息一律保留
+                
+                // 方式1：通过 momentId 字段精准匹配（新格式，同组分发时写入）
+                if (m.momentId && String(m.momentId) === String(targetPost.id)) {
+                    return false;
+                }
+                // 方式2：通过 timestamp 匹配（旧格式，用户发帖时写入的时间戳 === 帖子id）
+                if (m.type === 'moment_hidden' && String(m.timestamp) === String(targetPost.id)) {
+                    return false;
+                }
+                // 方式3：timestamp 错开了1ms以上的同组分发消息（timestamp = momentId + offset）
+                if (m.type === 'moment_hidden' && m.timestamp >= targetPost.id && m.timestamp <= targetPost.id + 100) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            if (chatMsgs.length !== beforeCount) {
+                await saveData(chatKey, chatMsgs);
+                console.log(`🗑️ 已清除角色 ${contact.nickname} 聊天记录中关于帖子 ${targetPost.id} 的隐藏消息`);
+            }
+        }
+    }
+
+    // 4. 直接移除DOM，无需整页刷新
+    const card = document.querySelector(`[data-post-id="${postId}"]`);
+    if (card) {
+        card.style.transition = 'opacity 0.2s';
+        card.style.opacity = '0';
+        setTimeout(() => card.remove(), 200);
+    }
+}
+
+// 编辑帖子（专属大文本框弹窗）
+async function editMomentPost(postId) {
+    let posts = await getData('moments_posts') || [];
+    const post = posts.find(p => String(p.id) === String(postId));
+    if (!post) return;
+
+    const newContent = await momentEditPrompt(post.content);
+    if (newContent === null) return;
+    if (newContent.trim() === '') {
+        customAlert('内容不能为空');
+        return;
+    }
+
+    post.content = newContent.trim();
+    await saveData('moments_posts', posts);
+
+    const card = document.querySelector(`[data-post-id="${postId}"]`);
+    if (card) {
+        const contentEl = card.querySelectorAll('div[style*="color: #333333"]')[0];
+        if (contentEl) contentEl.textContent = newContent.trim();
+    }
+}
+
+// 朋友圈专属编辑弹窗
+function momentEditPrompt(defaultValue = '') {
+    return new Promise((resolve) => {
+        // 移除旧弹窗（防止重复）
+        const old = document.getElementById('momentEditPromptOverlay');
+        if (old) old.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'momentEditPromptOverlay';
+        overlay.style.cssText = `
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        `;
+
+        overlay.innerHTML = `
+            <div style="
+                background: #fff;
+                border-radius: 12px;
+                width: 100%;
+                max-width: 420px;
+                overflow: hidden;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            ">
+                <!-- 标题栏 -->
+                <div style="
+                    padding: 14px 16px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #333;
+                    border-bottom: 1px solid #F0F0F0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                ">
+                    <span>编辑朋友圈</span>
+                    <span id="momentEditCharCount" style="font-size: 12px; color: #999; font-weight: 400;">0 字</span>
+                </div>
+
+                <!-- 文本输入区 -->
+                <div style="padding: 12px 16px;">
+                    <textarea id="momentEditTextarea" style="
+                        width: 100%;
+                        height: 180px;
+                        border: 1px solid #E8E8E8;
+                        border-radius: 8px;
+                        padding: 12px;
+                        font-size: 15px;
+                        line-height: 1.6;
+                        color: #333;
+                        resize: none;
+                        box-sizing: border-box;
+                        outline: none;
+                        font-family: inherit;
+                        background: #FAFAFA;
+                    ">${defaultValue}</textarea>
+                </div>
+
+                <!-- 底部按钮 -->
+                <div style="
+                    display: flex;
+                    border-top: 1px solid #F0F0F0;
+                ">
+                    <div id="momentEditCancelBtn" style="
+                        flex: 1;
+                        padding: 14px;
+                        text-align: center;
+                        font-size: 16px;
+                        color: #999;
+                        cursor: pointer;
+                        border-right: 1px solid #F0F0F0;
+                    ">取消</div>
+                    <div id="momentEditSaveBtn" style="
+                        flex: 1;
+                        padding: 14px;
+                        text-align: center;
+                        font-size: 16px;
+                        color: #07C160;
+                        font-weight: 600;
+                        cursor: pointer;
+                    ">保存</div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const textarea = document.getElementById('momentEditTextarea');
+        const charCount = document.getElementById('momentEditCharCount');
+
+        // 初始化字数
+        charCount.textContent = textarea.value.length + ' 字';
+
+        // 实时更新字数
+        textarea.addEventListener('input', () => {
+            charCount.textContent = textarea.value.length + ' 字';
+        });
+
+        // 自动聚焦并将光标移到末尾
+        setTimeout(() => {
+            textarea.focus();
+            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+        }, 100);
+
+        // 取消
+        document.getElementById('momentEditCancelBtn').onclick = () => {
+            overlay.remove();
+            resolve(null);
+        };
+
+        // 保存
+        document.getElementById('momentEditSaveBtn').onclick = () => {
+            const val = textarea.value;
+            overlay.remove();
+            resolve(val);
+        };
+
+        // 点击遮罩关闭
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.remove();
+                resolve(null);
+            }
+        });
+    });
+}
+
+// 绑定评论长按删除事件
+// 绑定评论长按删除事件
+function bindCommentLongPress() {
+    // 先克隆替换所有评论元素，彻底清除旧的事件监听器
+    document.querySelectorAll('.moment-comment-item').forEach(function(item) {
+        const clone = item.cloneNode(true);
+        item.parentNode.replaceChild(clone, item);
+    });
+
+    // 给所有评论绑定长按事件（你是朋友圈主人，可以删任何人的评论）
+    document.querySelectorAll('.moment-comment-item').forEach(function(item) {
+        let pressTimer = null;
+        let moved = false;
+
+        item.addEventListener('touchstart', function(e) {
+            // ★ 核心修复：阻止事件冒泡给帖子卡片
+            e.stopPropagation(); 
+            
+            moved = false;
+            pressTimer = setTimeout(function() {
+                if (!moved) {
+                    if (navigator.vibrate) navigator.vibrate(50);
+                    const postId = item.dataset.postId;
+                    const commentId = item.dataset.commentId;
+                    const content = item.dataset.commentContent || '';
+                    const preview = content.length > 15 ? content.substring(0, 15) + '…' : content;
+                    
+                    customConfirm('确认要删除"' + preview + '"吗？').then(function(confirmed) {
+                        if (confirmed) deleteMomentComment(postId, commentId);
+                    });
+                }
+            }, 600);
+        }, { passive: false }); // ★ 核心修复：把 passive 改为 false，确保 stopPropagation 生效
+
+        item.addEventListener('touchmove', function() {
+            moved = true;
+            clearTimeout(pressTimer);
+        }, { passive: true });
+
+        item.addEventListener('touchend', function() {
+            clearTimeout(pressTimer);
+        }, { passive: true });
+        
+        item.addEventListener('touchcancel', function() {
+            clearTimeout(pressTimer);
+        }, { passive: true });
+    });
+}
+
+// 删除评论
+function deleteMomentComment(postId, commentId) {
+    getData('moments_posts').then(function(postsData) {
+        const posts = postsData || [];
+        const postIndex = posts.findIndex(function(p) {
+            return String(p.id) === String(postId);
+        });
+        if (postIndex === -1) return;
+
+        const post = posts[postIndex];
+        post.comments = (post.comments || []).filter(function(c) {
+            return String(c.id) !== String(commentId);
+        });
+
+        saveData('moments_posts', posts).then(function() {
+            renderMomentsFeed().then(function() {
+                requestAnimationFrame(function() {
+                    requestAnimationFrame(function() {
+                        bindCommentLongPress();
+                    });
+                });
+            });
+        });
+    });
+}
+
+// 全局点击监听：点击其他区域关闭长按菜单
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('momentEditMenu');
+    if (menu && !menu.contains(e.target)) menu.remove();
+});
+
+// ★★★ 小鱼新增：朋友圈点赞/评论弹窗逻辑（挂载body版，彻底解决遮挡）★★★
+// ★ 核心修复：改回普通函数，内部用 .then() 处理异步，解决onclick无反应问题
+window.toggleMomentAction = function(postId, event) {
+    event.stopPropagation();
+
+    // 先移除已有的全局弹窗
+    const existing = document.getElementById('globalMomentActionMenu');
+    if (existing) {
+        if (existing.dataset.postId === String(postId)) {
+            existing.remove();
+            return;
+        }
+        existing.remove();
+    }
+
+    const btn = event.currentTarget;
+    const rect = btn.getBoundingClientRect();
+
+    // 先同步创建菜单（不等待异步），再异步更新点赞状态
+    const menu = document.createElement('div');
+    menu.id = 'globalMomentActionMenu';
+    menu.dataset.postId = String(postId);
+    menu.style.cssText = `
+        position: fixed;
+        background: #4C5154;
+        border-radius: 4px;
+        color: white;
+        font-size: 14px;
+        overflow: hidden;
+        white-space: nowrap;
+        z-index: 99999;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+        display: flex;
+        align-items: center;
+    `;
+
+    // 先用默认状态渲染（未点赞）
+    menu.innerHTML = `
+        <div id="momentLikeBtnInner" style="padding: 10px 18px; display: flex; align-items: center; cursor: pointer; border-right: 1px solid #5a5e61;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="margin-right: 6px; flex-shrink:0;">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+            </svg>
+            <span id="momentLikeBtnText">赞</span>
+        </div>
+        <div id="momentCommentBtnInner" style="padding: 10px 18px; display: flex; align-items: center; cursor: pointer;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" style="margin-right: 6px; flex-shrink:0;">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+            </svg>
+            评论
+        </div>
+    `;
+
+    document.body.appendChild(menu);
+
+    // 定位菜单
+    const menuW = menu.offsetWidth;
+    const menuH = menu.offsetHeight;
+    const vw = window.innerWidth;
+
+    let left = rect.right - menuW;
+    let top = rect.top - menuH - 6;
+
+    if (left < 8) left = 8;
+    if (left + menuW > vw - 8) left = vw - menuW - 8;
+    if (top < 8) top = rect.bottom + 6;
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+
+    // 异步检查点赞状态，更新按钮文字
+    Promise.all([getData('userName'), getData('moments_posts')]).then(([userName, posts]) => {
+        const currentUserName = userName || '用户';
+        const post = (posts || []).find(p => String(p.id) === String(postId));
+        const hasLiked = post && post.likes && post.likes.includes(currentUserName);
+        const likeTextEl = document.getElementById('momentLikeBtnText');
+        if (likeTextEl) {
+            likeTextEl.textContent = hasLiked ? '取消赞' : '赞';
+        }
+    });
+
+    // 绑定点赞按钮
+    document.getElementById('momentLikeBtnInner').onclick = function(e) {
+        e.stopPropagation();
+        menu.remove();
+        toggleMomentLike(postId);
+    };
+
+    // 绑定评论按钮
+    document.getElementById('momentCommentBtnInner').onclick = function(e) {
+        e.stopPropagation();
+        menu.remove();
+        openMomentCommentBar(postId);
+    };
+};
+
+// ★★★ 点赞/取消点赞功能 ★★★
+function toggleMomentLike(postId) {
+    getData('userName').then(function(userName) {
+        const currentUserName = userName || '用户';
+        getData('moments_posts').then(function(postsData) {
+            const posts = postsData || [];
+            const postIndex = posts.findIndex(p => String(p.id) === String(postId));
+            if (postIndex === -1) return;
+
+            const post = posts[postIndex];
+            post.likes = post.likes || [];
+
+            const userLikedIndex = post.likes.indexOf(currentUserName);
+            if (userLikedIndex !== -1) {
+                post.likes.splice(userLikedIndex, 1); // 取消点赞
+            } else {
+                post.likes.push(currentUserName); // 点赞
+            }
+
+            saveData('moments_posts', posts).then(function() {
+                // ★★★ 小鱼核心修复：刷新后立即重新绑定评论长按事件 ★★★
+                renderMomentsFeed().then(function() {
+                    // 用双重 requestAnimationFrame 确保 DOM 完全渲染完成后再绑定
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(function() {
+                            bindCommentLongPress();
+                        });
+                    });
+                });
+            });
+        });
+    });
+}
+
+// ★★★ 底部评论输入栏（仿微信样式）★★★
+// ★★★ 朋友圈评论回复状态 ★★★
+let currentMomentReplyTarget = null;
+
+// 点击某条评论 -> 进入“回复某人”模式
+window.openReplyToMomentComment = async function(postId, commentId, authorName, event) {
+    if (event) event.stopPropagation();
+
+    const currentUserName = await getData('userName') || '用户';
+
+    // 自己的评论不进入回复模式
+    if (authorName === currentUserName) return;
+
+    openMomentCommentBar(postId, {
+        commentId: commentId,
+        authorName: authorName
+    });
+};
+
+// ★★★ 底部评论输入栏（支持普通评论 / 回复评论）★★★
+function openMomentCommentBar(postId, replyTarget = null) {
+    currentMomentReplyTarget = replyTarget;
+
+    const old = document.getElementById('momentCommentBar');
+    if (old) old.remove();
+
+    const bar = document.createElement('div');
+    bar.id = 'momentCommentBar';
+    bar.style.cssText = `
+        position: fixed;
+        bottom: 0; left: 0; width: 100%;
+        background: #F7F7F7;
+        border-top: 1px solid #E0E0E0;
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        box-sizing: border-box;
+        z-index: 99999;
+        gap: 10px;
+    `;
+
+    const placeholderText = replyTarget ? `回复 ${replyTarget.authorName}` : '评论';
+
+    bar.innerHTML = `
+        <input id="momentCommentInput" type="text" placeholder="${placeholderText}"
+            style="flex: 1; background: #FFFFFF; border: none; border-radius: 4px;
+                   padding: 8px 12px; font-size: 15px; outline: none; color: #333;">
+        <div id="momentCommentEmojiBtn" style="width: 28px; height: 28px; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#333">
+                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+            </svg>
+        </div>
+        <div id="momentCommentSendBtn" style="
+            background: #07C160; color: white; font-size: 14px; font-weight: 600;
+            padding: 7px 16px; border-radius: 4px; cursor: pointer; flex-shrink: 0;
+            opacity: 0.5; pointer-events: none;">
+            发送
+        </div>
+    `;
+
+    document.body.appendChild(bar);
+
+    const input = document.getElementById('momentCommentInput');
+    const sendBtn = document.getElementById('momentCommentSendBtn');
+
+    input.addEventListener('input', function() {
+        if (input.value.trim().length > 0) {
+            sendBtn.style.opacity = '1';
+            sendBtn.style.pointerEvents = 'auto';
+        } else {
+            sendBtn.style.opacity = '0.5';
+            sendBtn.style.pointerEvents = 'none';
+        }
+    });
+
+    setTimeout(function() { input.focus(); }, 100);
+
+    sendBtn.onclick = async function() {
+        const content = input.value.trim();
+        if (!content) return;
+
+        const currentUserName = await getData('userName') || '用户';
+        const currentUserAvatar = await getData('avatar') || 'https://iili.io/fkc3RwJ.jpg';
+
+        let posts = await getData('moments_posts') || [];
+        const postIndex = posts.findIndex(function(p) {
+            return String(p.id) === String(postId);
+        });
+        if (postIndex === -1) return;
+
+        const post = posts[postIndex];
+        post.comments = post.comments || [];
+
+        const newComment = {
+            id: Date.now(),
+            authorName: currentUserName,
+            authorAvatar: currentUserAvatar,
+            content: content,
+            timestamp: Date.now()
+        };
+
+        // 如果当前是“回复某人”状态，就记录被回复对象
+        if (replyTarget && replyTarget.authorName) {
+            newComment.replyToAuthorName = replyTarget.authorName;
+        }
+
+        post.comments.push(newComment);
+        await saveData('moments_posts', posts);
+
+        // 先关输入栏
+        bar.remove();
+        document.removeEventListener('click', closeBarHandler);
+
+        // 先刷新评论区，立即看到“我 回复 某人：xxx”
+        await renderMomentsFeed();
+
+        // 如果回复对象是角色，那么继续触发该角色AI回复
+        if (replyTarget && replyTarget.authorName && replyTarget.authorName !== currentUserName) {
+            await triggerAiReplyToMomentComment(postId, replyTarget.authorName, content);
+        }
+    };
+
+    function closeBarHandler(e) {
+        if (!bar.contains(e.target)) {
+            bar.remove();
+            document.removeEventListener('click', closeBarHandler);
+        }
+    }
+
+    setTimeout(function() {
+        document.addEventListener('click', closeBarHandler);
+    }, 300);
+}
+
+// ★★★ 用户回复角色评论后，触发该角色AI继续评论 ★★★
+async function triggerAiReplyToMomentComment(postId, targetAuthorName, userReplyContent) {
+    try {
+        let posts = await getData('moments_posts') || [];
+        const postIndex = posts.findIndex(p => String(p.id) === String(postId));
+        if (postIndex === -1) return;
+
+        const post = posts[postIndex];
+        const contacts = await getData('customContacts') || [];
+
+        // 按“评论显示名”找回对应角色
+        const role = contacts.find(c =>
+            !c.isGroup &&
+            (c.nickname === targetAuthorName || c.realName === targetAuthorName)
+        );
+
+        if (!role) {
+            console.warn('未找到要回复评论的角色:', targetAuthorName);
+            return;
+        }
+
+        const roleDetail = await getContactDetails(role.id) || role;
+        const currentUserName = await getData('userName') || '用户';
+
+        const imageInfo = (post.images && post.images.length > 0)
+            ? `这条朋友圈附带了 ${post.images.length} 张图片。`
+            : '这条朋友圈没有图片。';
+
+        const commentsText = (post.comments || []).map(c => {
+            const replyPart = c.replyToAuthorName ? ` 回复 ${c.replyToAuthorName}` : '';
+            return `${c.authorName}${replyPart}: ${c.content}`;
+        }).join('\n') || '暂无评论';
+
+        const prompt = `
+你现在正在扮演微信角色「${roleDetail.realName || roleDetail.nickname}」。
+
+【角色人设】
+${roleDetail.persona || '无特殊设定'}
+
+【当前场景】
+你正在微信朋友圈的评论区里，与用户互动。
+你之前已经在这条朋友圈下面评论过，现在用户专门回复了你，你需要继续以该角色身份进行评论回复。
+
+【朋友圈发布者】
+${post.authorName}
+
+【朋友圈正文】
+${post.content || '（无文字内容）'}
+
+【图片信息】
+${imageInfo}
+
+【当前评论区全部内容】
+${commentsText}
+
+【用户刚刚回复你的内容】
+${currentUserName} 回复 ${targetAuthorName}: ${userReplyContent}
+
+【回复要求】
+1. 你必须继续以「${roleDetail.realName || roleDetail.nickname}」的人设说话。
+2. 回复要像真实朋友圈评论，自然、简短、生活化。
+3. 根据情绪和内容，你可以回复 1 到 3 条评论（比如第一条先感叹，第二条再补充）。
+4. 必须严格输出一个 JSON 数组，数组里包含你的评论字符串。
+5. 绝对不要输出 Markdown 代码块，只输出纯 JSON 数组。
+
+示例格式：
+["哈哈哈哈确实", "下次带我一个！"]
+或
+["太棒了吧！"]
+`;
+
+        // ★ 小鱼新增：将图片转化为多模态格式传给 AI
+        let userContent = [];
+        userContent.push({ type: 'text', text: prompt });
+        
+        if (post.images && post.images.length > 0) {
+            // 限制最多传前 4 张图片，防止请求体过大导致超时
+            const imgsToPass = post.images.slice(0, 4);
+            imgsToPass.forEach(imgBase64 => {
+                userContent.push({
+                    type: 'image_url',
+                    image_url: { url: imgBase64 }
+                });
+            });
+        }
+
+        const apiConfig = await getApiConfigForWechat('wechat');
+        let aiText = await callAIAPI([
+            { role: 'system', content: '你是一个朋友圈评论回复助手，只输出JSON数组。' },
+            { role: 'user', content: userContent }
+        ], apiConfig);
+
+        aiText = String(aiText || '').replace(/```json/g, '').replace(/```/g, '').trim();
+        if (!aiText) return;
+
+        let replies = [];
+        try {
+            replies = JSON.parse(aiText);
+            if (!Array.isArray(replies)) {
+                replies = [String(replies)];
+            }
+        } catch (e) {
+            // 解析失败的降级处理：尝试按换行符分割，并去除残余的引号和括号
+            replies = aiText.split('\n')
+                .map(l => l.trim().replace(/^["'\[\]]+|["'\[\]]+$/g, '').replace(/,$/, ''))
+                .filter(l => l.length > 0);
+        }
+
+        if (replies.length === 0) return;
+
+        // 重新读取最新数据，防止并发覆盖
+        posts = await getData('moments_posts') || [];
+        const latestPostIndex = posts.findIndex(p => String(p.id) === String(postId));
+        if (latestPostIndex === -1) return;
+
+        posts[latestPostIndex].comments = posts[latestPostIndex].comments || [];
+        
+        // ★ 核心修改：利用循环，把 AI 生成的多条评论一条条插入数据库
+        for (let i = 0; i < replies.length; i++) {
+            const replyText = replies[i];
+            if (!replyText) continue;
+
+            const newComment = {
+                id: Date.now() + i, // 确保多条评论ID不同
+                authorName: roleDetail.nickname || roleDetail.realName || targetAuthorName,
+                authorAvatar: roleDetail.avatar || 'https://iili.io/fkc3RwJ.jpg',
+                replyToAuthorName: currentUserName,
+                content: replyText,
+                timestamp: Date.now() + i
+            };
+
+            posts[latestPostIndex].comments.push(newComment);
+
+            // AI在评论区回复你时，多条评论也分别写入未读消息池
+            await addMomentUnreadMsg({
+                type: 'comment',
+                postId: postId,
+                authorName: newComment.authorName,
+                authorAvatar: newComment.authorAvatar,
+                content: newComment.content,
+                timestamp: newComment.timestamp
+            });
+        }
+
+        await saveData('moments_posts', posts);
+
+        // 如果当前正在朋友圈页，立即刷新显示
+        if (document.getElementById('momentsPage').style.display !== 'none') {
+            await renderMomentsFeed();
+        }
+
+    } catch (error) {
+        console.error('朋友圈评论AI回复失败:', error);
+    }
+}
+
+// 全局点击监听：点击其他区域自动关闭菜单
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('globalMomentActionMenu');
+    if (menu && !menu.contains(e.target)) {
+        menu.remove();
+    }
+});
+
+/* ========================================
+   小鱼新增：朋友圈动态可见性修改 & AI群聊式互动
+   ======================================== */
+
+let editingMomentPostId = null;
+let currentVisibilityMode = 'post'; // 标记当前是发帖(post)还是修改(edit)
+
+// 1. 打开修改可见范围弹窗 (直接复用原生函数，绝对不报错)
+window.openEditMomentVisibility = async function(postId, event) {
+    event.stopPropagation();
+    editingMomentPostId = postId;
+    currentVisibilityMode = 'edit'; // 切换为修改模式
+
+    let posts = await getData('moments_posts') || [];
+    const post = posts.find(p => String(p.id) === String(postId));
+    if (!post) return;
+
+    // ★★★ 核心修复：读取历史数据时，强制把所有ID映射为字符串 ★★★
+    momentVisibilityIds = post.visibilityIds ? post.visibilityIds.map(String) : [];
+    momentIsPublic = momentVisibilityIds.length === 0;
+
+    // ★★★ 核心修复：把弹窗移动到最外层 body，防止它被隐藏的父页面(发帖页)遮蔽 ★★★
+    const overlay = document.getElementById('momentVisibilityOverlay');
+    if (overlay && overlay.parentNode !== document.body) {
+        document.body.appendChild(overlay); // 强制搬家到最外层
+    }
+    if (overlay) {
+        overlay.style.zIndex = '100000'; // 确保显示在最顶层
+    }
+
+    // 直接调用原生的打开函数，它会根据全局变量完美渲染勾选状态和半屏弹窗
+    await window.openMomentVisibilityPicker();
+};
+
+// 2. 触发 AI 朋友圈群聊式互动 (修复版：触发顶部提示条)
+window.triggerAiGroupComments = async function(postId, event) {
+    event.stopPropagation();
+    const btn = event.currentTarget;
+
+    // 视觉反馈：半透明并禁用点击，防止重复触发
+    btn.style.opacity = '0.3';
+    btn.style.pointerEvents = 'none';
+
+    try {
+        let posts = await getData('moments_posts') || [];
+        const post = posts.find(p => String(p.id) === String(postId));
+        if (!post) throw new Error("找不到该帖子");
+
+        // 1. 获取能看到这条帖子的角色池
+        const contacts = await getData('customContacts') || [];
+        const singleContacts = contacts.filter(c => !c.isGroup);
+        
+        let visibleContacts = [];
+        if (!post.visibilityIds || post.visibilityIds.length === 0) {
+            visibleContacts = singleContacts; // 公开，所有人可见
+        } else {
+            visibleContacts = singleContacts.filter(c => post.visibilityIds.map(String).includes(String(c.id)));
+        }
+
+        if (visibleContacts.length === 0) {
+            customAlert('该帖子没有可见的角色，无法生成互动');
+            return;
+        }
+
+        // 2. 随机抽取 1 到 3 个角色参与本次互动
+        const pickCount = Math.min(visibleContacts.length, Math.floor(Math.random() * 3) + 1);
+        const shuffled = visibleContacts.sort(() => 0.5 - Math.random());
+        const selectedChars = shuffled.slice(0, pickCount);
+
+        // 构建角色人设描述
+        const charDescriptions = selectedChars.map(c => 
+            `- ${c.nickname} (真名: ${c.realName || c.nickname}): ${c.persona || '无特殊设定'}`
+        ).join('\n');
+
+        // 3. 构建当前帖子和评论区上下文
+        const imageInfo = (post.images && post.images.length > 0) ? `附带了 ${post.images.length} 张图片。` : '无图片。';
+        const commentsText = (post.comments || []).map(c => 
+            `${c.authorName}${c.replyToAuthorName ? ' 回复 '+c.replyToAuthorName : ''}: ${c.content}`
+        ).join('\n') || '暂无评论';
+        const likesText = (post.likes || []).join('、') || '暂无点赞';
+
+        // 4. 组装 Prompt
+        const prompt = `
+你现在是微信朋友圈的后台AI，负责模拟角色的自然互动。
+当前有一条朋友圈：
+发布者：${post.authorName}
+内容：${post.content || '（无文字内容）'}
+图片：${imageInfo}
+当前点赞：${likesText}
+当前评论：\n${commentsText}
+
+你可以操控以下 ${pickCount} 个角色进行互动：
+${charDescriptions}
+
+任务：
+请根据这些人设和当前朋友圈的氛围，随机生成 2 到 4 个互动动作（点赞或评论）。
+角色之间可以互相回复，也可以单独回复发布者。
+
+输出格式必须是严格的 JSON 数组：
+[
+  {"action": "like", "authorName": "角色名"},
+  {"action": "comment", "authorName": "角色名", "content": "评论内容", "replyTo": "被回复人名字(可选，不回复特定人则留空)"}
+]
+注意：
+1. authorName 必须是上面提供的角色昵称或真名。
+2. 评论要符合朋友圈的简短、生活化风格。
+3. 绝对不要输出 Markdown 代码块，只输出纯 JSON 数组。
+`;
+
+        // ★ 小鱼新增：将图片转化为多模态格式传给 AI
+let userContent = [];
+userContent.push({ type: 'text', text: prompt });
+
+if (post.images && post.images.length > 0) {
+    // 限制最多传前 4 张图片，防止请求体过大导致超时
+    const imgsToPass = post.images.slice(0, 4);
+    imgsToPass.forEach(imgBase64 => {
+        userContent.push({
+            type: 'image_url',
+            image_url: { url: imgBase64 }
+        });
+    });
+}
+
+const apiConfig = await getApiConfigForWechat('wechat');
+let aiText = await callAIAPI([
+    { role: 'system', content: '你是一个朋友圈评论回复助手，只能输出一条简短自然的中文评论。' },
+    { role: 'user', content: userContent }
+], apiConfig);
+
+        // 5. 解析并应用动作
+        aiText = String(aiText || '').replace(/```json/g, '').replace(/```/g, '').trim();
+        const actions = JSON.parse(aiText);
+
+        let updated = false;
+        post.comments = post.comments || [];
+        post.likes = post.likes || [];
+
+        for (const act of actions) {
+            const char = selectedChars.find(c => c.nickname === act.authorName || c.realName === act.authorName);
+            if (!char) continue;
+
+            if (act.action === 'like') {
+                if (!post.likes.includes(char.nickname)) {
+                    post.likes.push(char.nickname);
+                    updated = true;
+                    
+                    // ★★★ 核心修复：把点赞写入未读消息池 ★★★
+                    if (typeof addMomentUnreadMsg === 'function') {
+                        await addMomentUnreadMsg({
+                            type: 'like',
+                            postId: postId,
+                            authorName: char.nickname,
+                            authorAvatar: char.avatar || 'https://iili.io/fkc3RwJ.jpg',
+                            timestamp: Date.now()
+                        });
+                    }
+                }
+            } else if (act.action === 'comment' && act.content) {
+                post.comments.push({
+                    id: Date.now() + Math.random(),
+                    authorName: char.nickname,
+                    authorAvatar: char.avatar || 'https://iili.io/fkc3RwJ.jpg',
+                    content: act.content,
+                    replyToAuthorName: act.replyTo || null,
+                    timestamp: Date.now()
+                });
+                updated = true;
+                
+                // ★★★ 核心修复：把评论写入未读消息池 ★★★
+                if (typeof addMomentUnreadMsg === 'function') {
+                    await addMomentUnreadMsg({
+                        type: 'comment',
+                        postId: postId,
+                        authorName: char.nickname,
+                        authorAvatar: char.avatar || 'https://iili.io/fkc3RwJ.jpg',
+                        content: act.content,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        }
+
+        // 6. 保存并刷新
+        if (updated) {
+            await saveData('moments_posts', posts);
+            await renderMomentsFeed();
+        } else {
+            customAlert('AI 觉得没什么好说的，没有生成新互动');
+        }
+
+    } catch (error) {
+        console.error('AI批量评论失败:', error);
+        customAlert('生成失败，请检查网络或API配置');
+    } finally {
+        // 恢复按钮状态
+        btn.style.opacity = '1';
+        btn.style.pointerEvents = 'auto';
+    }
+};
+
+/* ========================================
+   小鱼新增：标签分组管理系统 (UI + 逻辑)
+   ======================================== */
+
+// 1. 动态注入标签管理页面的 HTML 结构
+const tagsHtml = `
+<!-- 标签分组列表页 -->
+<div class="fullscreen-page" id="tagsManagePage" style="background: #EDEDED; z-index: 400;">
+  <div class="nav-bar" style="background: #EDEDED; border-bottom: 1px solid rgba(0,0,0,0.1); justify-content: space-between;">
+    <svg class="nav-icon" onclick="showPage(mainApp)" style="cursor: pointer;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+    <h1 style="font-size: 17px; font-weight: 600;">所有标签</h1>
+    <div style="color: #07C160; font-weight: 500; font-size: 16px; cursor: pointer;" onclick="createNewTagGroup()">新建</div>
+  </div>
+  <div class="content" style="background: #FFFFFF;" id="tagsListContainer">
+    <!-- 动态生成标签列表 -->
+  </div>
+</div>
+
+<!-- 标签成员选择页 -->
+<div class="fullscreen-page" id="tagMemberSelectPage" style="background: #EDEDED; z-index: 401;">
+  <div class="nav-bar" style="background: #EDEDED; border-bottom: 1px solid rgba(0,0,0,0.1); justify-content: space-between;">
+    <span style="font-size: 16px; color: #333; cursor: pointer;" onclick="document.getElementById('tagMemberSelectPage').style.display='none'">取消</span>
+    <h1 style="font-size: 17px; font-weight: 600;">选择联系人</h1>
+    <div id="saveTagMembersBtn" class="save-button active">完成</div>
+  </div>
+  <div class="content" style="background: #FFFFFF;" id="tagMemberContactList"></div>
+</div>
+
+<!-- 标签关系网页 -->
+<div class="fullscreen-page" id="tagRelationPage" style="background:#F6F6F6; z-index:402;">
+  <div class="nav-bar" style="background:#F6F6F6; border-bottom:1px solid rgba(0,0,0,0.08); justify-content:space-between;">
+    <svg class="nav-icon" onclick="closeTagRelationPage()" style="cursor:pointer;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="15 18 9 12 15 6"></polyline>
+    </svg>
+<h1 id="tagRelationTitle" style="font-size:17px; font-weight:600;">关系网</h1>
+<div style="display:flex; align-items:center; gap:12px;">
+  <div id="tagRelationRefreshBtn" onclick="generateTagRelationGraphByAI()" style="width:28px; height:28px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#07C160;">
+    <svg viewBox="0 0 24 24" style="width:24px; height:24px; fill:none; stroke:currentColor; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round;">
+      <path d="M21 2v6h-6"></path>
+      <path d="M3 12a9 9 0 0 1 15.55-6.36L21 8"></path>
+      <path d="M3 22v-6h6"></path>
+      <path d="M21 12a9 9 0 0 1-15.55 6.36L3 16"></path>
+    </svg>
+  </div>
+</div>
+  </div>
+
+  <div class="content" style="padding:12px; box-sizing:border-box; overflow-y:auto;">
+    <div style="background:#FFFFFF; border-radius:12px; padding:12px; margin-bottom:12px;">
+      <div style="font-size:15px; font-weight:600; margin-bottom:8px;">关系图</div>
+
+      <!-- 外层滚动容器：支持横向 + 纵向滑动 -->
+      <div id="tagRelationScrollWrap" style="
+        width:100%;
+        height:520px;
+        overflow:auto;
+        -webkit-overflow-scrolling:touch;
+        background:#FAFAFA;
+        border-radius:10px;
+        border:1px solid #F0F0F0;
+      ">
+        <!-- 真正的大画布：会被JS动态改宽高 -->
+        <div id="tagRelationCanvasWrap" style="
+          position:relative;
+          width:900px;
+          height:900px;
+          background:#FAFAFA;
+        ">
+          <svg id="tagRelationSvg" width="900" height="900" style="position:absolute; left:0; top:0;"></svg>
+          <div id="tagRelationNodesLayer" style="position:absolute; left:0; top:0; width:900px; height:900px;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:14px; margin-top:10px; font-size:12px; color:#666; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:6px;"><span style="width:18px; height:2px; background:#576B95; display:inline-block;"></span>单向关系</div>
+        <div style="display:flex; align-items:center; gap:6px;"><span style="width:18px; height:2px; background:#07C160; display:inline-block;"></span>双向关系</div>
+        <div style="color:#999;">可上下左右滑动查看完整关系图</div>
+      </div>
+    </div>
+
+<div style="background:#FFFFFF; border-radius:12px; padding:12px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <div style="font-size:15px; font-weight:600;">关系说明</div>
+    <div onclick="openCreateRelationDialog()" style="padding:6px 12px; background:#07C160; color:#fff; border-radius:999px; font-size:13px; cursor:pointer;">
+      新建关系
+    </div>
+  </div>
+  <div id="tagRelationTextList" style="font-size:14px; color:#333; line-height:1.7;">
+    暂无关系数据，请点击右上角“AI生成”
+  </div>
+</div>
+  </div>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', tagsHtml);
+
+// 小鱼新增：关系编辑操作菜单
+const relationEditorHtml = `
+<div id="relationActionSheet" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:10020; align-items:flex-end;">
+  <div style="width:100%; background:#F7F7F7; border-radius:14px 14px 0 0; padding:10px 12px 20px; box-sizing:border-box;">
+    <div id="editRelationBtn" style="background:#fff; height:52px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#333; margin-bottom:8px; cursor:pointer;">编辑关系</div>
+    <div id="deleteRelationBtn" style="background:#fff; height:52px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#FA5151; margin-bottom:10px; cursor:pointer;">删除关系</div>
+    <div id="cancelRelationActionBtn" style="background:#fff; height:52px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#333; cursor:pointer;">取消</div>
+  </div>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', relationEditorHtml);
+
+// 小鱼新增：关系方向选择弹窗
+const relationCreateModalHtml = `
+<div id="relationCreateModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:10021; align-items:center; justify-content:center; padding:20px; box-sizing:border-box;">
+  <div style="width:100%; max-width:420px; background:#FFFFFF; border-radius:16px; overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,0.18);">
+    <div style="padding:16px 18px; border-bottom:1px solid #F2F2F2; font-size:17px; font-weight:600; color:#333;">
+      新建关系
+    </div>
+
+    <div style="padding:16px 18px;">
+      <div style="margin-bottom:14px;">
+        <div style="font-size:14px; color:#666; margin-bottom:6px;">起点</div>
+        <select id="relationFromSelect" style="width:100%; height:42px; border:1px solid #E5E5E5; border-radius:10px; padding:0 12px; font-size:15px; background:#FAFAFA; outline:none;">
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:14px; color:#666; margin-bottom:6px;">终点</div>
+        <select id="relationToSelect" style="width:100%; height:42px; border:1px solid #E5E5E5; border-radius:10px; padding:0 12px; font-size:15px; background:#FAFAFA; outline:none;">
+        </select>
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <div style="font-size:14px; color:#666; margin-bottom:6px;">箭头</div>
+        <select id="relationArrowSelect" style="width:100%; height:42px; border:1px solid #E5E5E5; border-radius:10px; padding:0 12px; font-size:15px; background:#FAFAFA; outline:none;">
+          <option value="single">单向（A → B）</option>
+          <option value="double">双向（A ↔ B）</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom:4px;">
+        <div style="font-size:14px; color:#666; margin-bottom:6px;">关系</div>
+        <input id="relationLabelInput" type="text" placeholder="请输入关系，例如：朋友 / 依赖 / 暗恋"
+          style="width:100%; height:42px; border:1px solid #E5E5E5; border-radius:10px; padding:0 12px; box-sizing:border-box; font-size:15px; background:#FAFAFA; outline:none;">
+      </div>
+    </div>
+
+    <div style="display:flex; border-top:1px solid #F2F2F2;">
+      <div id="cancelCreateRelationBtn" style="flex:1; height:50px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#666; border-right:1px solid #F2F2F2; cursor:pointer;">
+        取消
+      </div>
+      <div id="confirmCreateRelationBtn" style="flex:1; height:50px; display:flex; align-items:center; justify-content:center; font-size:16px; color:#07C160; font-weight:600; cursor:pointer;">
+        确定
+      </div>
+    </div>
+  </div>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', relationCreateModalHtml);
+
+// 小鱼新增：弹出关系方向选择器
+// 这里整段删除，不需要替换
+
+/* ========================================
+   小鱼新增：关系网刷新按钮旋转动画
+   ======================================== */
+if (!document.getElementById('tagRelationSpinStyle')) {
+    const style = document.createElement('style');
+    style.id = 'tagRelationSpinStyle';
+    style.textContent = `
+      @keyframes tagRelationSpin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      #tagRelationRefreshBtn.spinning svg {
+        animation: tagRelationSpin 0.9s linear infinite;
+      }
+    `;
+    document.head.appendChild(style);
+}
+
+// 2. 将新页面加入全局管理数组，防止返回键失效
+allFullscreenPages.push(
+  document.getElementById('tagsManagePage'),
+  document.getElementById('tagRelationPage')
+);
+
+// 3. 绑定通讯录“标签”按钮点击事件
+document.getElementById('tagsGroupBtn').addEventListener('click', async () => {
+    await renderTagGroups();
+    showPage(document.getElementById('tagsManagePage'));
+});
+
+// 4. 渲染标签列表
+async function renderTagGroups() {
+    const container = document.getElementById('tagsListContainer');
+    const groups = await getData('tag_groups') || [];
+    
+    if (groups.length === 0) {
+        container.innerHTML = '<div style="padding: 40px; text-align: center; color: #999;">暂无标签分组<br><br>将角色加入同一标签后，<br>可生成该组的AI关系网</div>';
+        return;
+    }
+
+    container.innerHTML = groups.map(g => {
+        const count = g.memberIds ? g.memberIds.length : 0;
+        return `
+        <div style="padding:16px; border-bottom:1px solid #F0F0F0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                <div>
+                    <div style="font-size:16px; color:#333; margin-bottom:4px;">${g.name}</div>
+                    <div style="font-size:13px; color:#999;">${count} 个成员</div>
+                </div>
+                <span style="color:#FA5151; font-size:14px; cursor:pointer;" onclick="deleteTagGroup('${g.id}', event)">删除</span>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <div onclick="editTagGroup('${g.id}')" style="flex:1; height:36px; border-radius:8px; background:#F5F5F5; display:flex; align-items:center; justify-content:center; font-size:14px; color:#333; cursor:pointer;">
+                    编辑成员
+                </div>
+                <div onclick="openTagRelationPage('${g.id}')" style="flex:1; height:36px; border-radius:8px; background:#E8F7EE; display:flex; align-items:center; justify-content:center; font-size:14px; color:#07C160; cursor:pointer;">
+                    关系网
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// 5. 新建标签分组
+window.createNewTagGroup = async function() {
+    const name = await customPrompt('请输入新标签的名称：');
+    if (name && name.trim()) {
+        let groups = await getData('tag_groups') || [];
+        groups.push({
+            id: 'tag_' + Date.now(),
+            name: name.trim(),
+            memberIds: []
+        });
+        await saveData('tag_groups', groups);
+        await renderTagGroups();
+    }
+};
+
+// 6. 删除标签分组
+window.deleteTagGroup = async function(id, event) {
+    event.stopPropagation(); // 阻止触发编辑
+    if (await customConfirm('确定要删除这个标签分组吗？\n(仅删除分组，不会删除角色)')) {
+        let groups = await getData('tag_groups') || [];
+        groups = groups.filter(g => g.id !== id);
+        await saveData('tag_groups', groups);
+        await renderTagGroups();
+    }
+};
+
+// 7. 编辑标签分组成员
+let currentEditingTagId = null;
+let tempSelectedTagMembers = new Set();
+
+window.editTagGroup = async function(id) {
+    currentEditingTagId = id;
+    tempSelectedTagMembers.clear();
+    
+    const groups = await getData('tag_groups') || [];
+    const group = groups.find(g => g.id === id);
+    if (!group) return;
+    
+    // ★ 核心修复：统一转为字符串再存入 Set，避免数字/字符串类型不匹配
+    (group.memberIds || []).forEach(mid => tempSelectedTagMembers.add(String(mid)));
+    
+    // 获取所有单人角色（排除群聊）
+    const allContacts = await getData('customContacts') || [];
+    const singleContacts = allContacts.filter(c => !c.isGroup);
+    
+    const listContainer = document.getElementById('tagMemberContactList');
+    listContainer.innerHTML = singleContacts.map(c => {
+        // ★ 核心修复：比较时也统一转为字符串
+        const isChecked = tempSelectedTagMembers.has(String(c.id));
+        const avatarStyle = c.avatar ? `background-image: url(${c.avatar})` : 'background-color: #ccc';
+        return `
+        <div class="group-contact-row ${isChecked ? 'selected' : ''}" onclick="toggleTagMember(this, '${String(c.id)}')">
+            <div class="group-checkbox"></div>
+            <div class="contact-icon" style="${avatarStyle}; background-size: cover; width: 40px; height: 40px; margin-right: 12px; border-radius: 4px;"></div>
+            <span class="contact-name">${c.nickname}</span>
+        </div>`;
+    }).join('');
+    
+    document.getElementById('tagMemberSelectPage').style.display = 'block';
+};
+
+// 8. 切换成员选中状态
+window.toggleTagMember = function(element, charId) {
+    // ★ 核心修复：操作 Set 时始终用字符串
+    const strId = String(charId);
+    element.classList.toggle('selected');
+    if (tempSelectedTagMembers.has(strId)) {
+        tempSelectedTagMembers.delete(strId);
+    } else {
+        tempSelectedTagMembers.add(strId);
+    }
+};
+
+// 9. 保存成员修改
+document.getElementById('saveTagMembersBtn').addEventListener('click', async () => {
+    if (!currentEditingTagId) return;
+    
+    let groups = await getData('tag_groups') || [];
+    const groupIndex = groups.findIndex(g => g.id === currentEditingTagId);
+    
+    if (groupIndex !== -1) {
+        groups[groupIndex].memberIds = Array.from(tempSelectedTagMembers);
+        await saveData('tag_groups', groups);
+        
+        document.getElementById('tagMemberSelectPage').style.display = 'none';
+        await renderTagGroups();
+        customAlert('成员保存成功！\n同组角色发朋友圈时将互相可见。');
+    }
+});
+
+/* ========================================
+   小鱼新增：标签分组关系网系统
+   ======================================== */
+
+let currentRelationTagId = null;
+let currentRelationFocusNodeId = null;
+let currentEditingRelationIndex = null; // 当前长按操作的关系索引
+let relationLongPressTimer = null;
+
+// 1. 打开关系网页
+window.openTagRelationPage = async function(tagId) {
+    currentRelationTagId = tagId;
+    currentRelationFocusNodeId = null; // 每次打开时默认看完整关系网
+
+    const groups = await getData('tag_groups') || [];
+    const group = groups.find(g => g.id === tagId);
+    if (!group) return;
+
+    document.getElementById('tagRelationTitle').textContent = `${group.name} 的关系网`;
+
+    // ★★★ 核心修复：先显示页面，再渲染 ★★★
+    showPage(document.getElementById('tagRelationPage'));
+
+    const allGraphs = await getData('tag_relation_graphs') || {};
+    const graphData = allGraphs[tagId];
+
+    if (graphData) {
+        // ★★★ 再等一帧，确保DOM真的显示出来，SVG才能正确计算文字尺寸 ★★★
+        requestAnimationFrame(async () => {
+            await renderTagRelationGraph(graphData, group);
+        });
+    } else {
+        const svg = document.getElementById('tagRelationSvg');
+        const nodeLayer = document.getElementById('tagRelationNodesLayer');
+        const canvasWrap = document.getElementById('tagRelationCanvasWrap');
+
+        canvasWrap.style.width = '900px';
+        canvasWrap.style.height = '900px';
+        svg.setAttribute('width', '900');
+        svg.setAttribute('height', '900');
+        nodeLayer.style.width = '900px';
+        nodeLayer.style.height = '900px';
+
+        svg.innerHTML = '';
+        nodeLayer.innerHTML = '';
+        document.getElementById('tagRelationTextList').innerHTML = '暂无关系数据，请点击右上角“AI生成”';
+    }
+};
+
+// 2. 关闭关系网页
+window.closeTagRelationPage = function() {
+    currentRelationFocusNodeId = null;
+    showPage(document.getElementById('tagsManagePage'));
+};
+
+// 3. AI生成关系网
+window.generateTagRelationGraphByAI = async function() {
+    if (!currentRelationTagId) return;
+
+    const groups = await getData('tag_groups') || [];
+    const group = groups.find(g => g.id === currentRelationTagId);
+    if (!group) return;
+
+    const contacts = await getData('customContacts') || [];
+    const userName = await getData('userName') || '用户';
+    const userPersona = await getData('userPersona') || '未设置';
+    const memberIds = group.memberIds || [];
+
+    const members = contacts.filter(c => memberIds.map(String).includes(String(c.id)));
+    if (members.length === 0) {
+        customAlert('该标签组没有角色，无法生成关系网');
+        return;
+    }
+
+    const titleEl = document.getElementById('tagRelationTitle');
+    const oldTitle = titleEl.textContent;
+    const refreshBtn = document.getElementById('tagRelationRefreshBtn');
+
+    titleEl.textContent = 'AI正在生成关系网...';
+    if (refreshBtn) refreshBtn.classList.add('spinning');
+
+    try {
+        const memberText = members.map(m => {
+            return `角色ID:${m.id}
+角色名:${m.realName || m.nickname}
+显示名:${m.nickname}
+人设:${m.persona || '无'}
+`;
+        }).join('\n-----------------\n');
+
+        const prompt = `
+你是一个“角色关系网生成器”。
+请根据下面这个标签分组中的所有角色人设，生成一个关系网。
+
+【用户信息】
+用户ID:user_self
+用户名:${userName}
+用户人设:${userPersona}
+
+【标签组名】
+${group.name}
+
+【组内角色列表】
+${memberText}
+
+【任务要求】
+1. 你要同时分析：
+   - 角色 与 角色 之间的关系
+   - 角色 与 用户 之间的关系
+2. 关系可以是：
+   - 单向关系：A单方面认为与B是什么关系
+   - 双向关系：A和B彼此都认可这个关系
+3. 关系标签要简短明确，例如：
+   - 朋友
+   - 暗恋
+   - 敌对
+   - 依赖
+   - 欣赏
+   - 保护
+   - 利用
+   - 主仆
+   - 家人
+   - 同伴
+   - 竞争对手
+   - 师徒
+4. 不要胡编得太离谱，要尽量根据人设合理推断。
+5. 最多输出 12 条关系，优先保留最重要、最有戏剧性的关系。
+6. 必须严格输出 JSON，不要加解释，不要加 markdown 代码块。
+
+【JSON输出格式】
+{
+  "nodes": [
+    {"id":"user_self","name":"${userName}","type":"user"},
+    {"id":"角色ID","name":"角色名","type":"character"}
+  ],
+  "edges": [
+    {"from":"A_ID","to":"B_ID","label":"关系名","twoWay":false},
+    {"from":"A_ID","to":"B_ID","label":"关系名","twoWay":true}
+  ],
+  "summary": [
+    "一句话总结1",
+    "一句话总结2"
+  ]
+}
+`;
+
+        const apiConfig = await getApiConfigForWechat('wechat');
+        let response = await callAIAPI([{ role: 'user', content: prompt }], apiConfig);
+
+        let cleanStr = response.replace(/```json/g, '').replace(/```/g, '').trim();
+        const firstBrace = cleanStr.indexOf('{');
+        const lastBrace = cleanStr.lastIndexOf('}');
+        if (firstBrace !== -1 && lastBrace !== -1) {
+            cleanStr = cleanStr.substring(firstBrace, lastBrace + 1);
+        }
+
+        const graphData = JSON.parse(cleanStr);
+
+        if (!Array.isArray(graphData.nodes)) graphData.nodes = [];
+        if (!Array.isArray(graphData.edges)) graphData.edges = [];
+        if (!Array.isArray(graphData.summary)) graphData.summary = [];
+
+        if (!graphData.nodes.find(n => String(n.id) === 'user_self')) {
+            graphData.nodes.unshift({
+                id: 'user_self',
+                name: userName,
+                type: 'user'
+            });
+        }
+
+        const validIds = new Set(['user_self', ...memberIds.map(id => String(id))]);
+        graphData.nodes = graphData.nodes.filter(n => validIds.has(String(n.id)));
+        graphData.edges = graphData.edges.filter(e => validIds.has(String(e.from)) && validIds.has(String(e.to)));
+
+        const allGraphs = await getData('tag_relation_graphs') || {};
+        allGraphs[currentRelationTagId] = graphData;
+        await saveData('tag_relation_graphs', allGraphs);
+
+        requestAnimationFrame(async () => {
+            await renderTagRelationGraph(graphData, group);
+            customAlert('关系网生成成功');
+        });
+
+    } catch (error) {
+        console.error('关系网生成失败:', error);
+        customAlert('关系网生成失败：' + error.message);
+    } finally {
+        titleEl.textContent = oldTitle;
+        if (refreshBtn) refreshBtn.classList.remove('spinning');
+    }
+};
+
+// 4. 渲染关系图
+async function renderTagRelationGraph(graphData, group) {
+    const svg = document.getElementById('tagRelationSvg');
+    const nodeLayer = document.getElementById('tagRelationNodesLayer');
+    const textList = document.getElementById('tagRelationTextList');
+    const canvasWrap = document.getElementById('tagRelationCanvasWrap');
+    const scrollWrap = document.getElementById('tagRelationScrollWrap');
+
+    svg.innerHTML = '';
+    nodeLayer.innerHTML = '';
+
+    const contacts = await getData('customContacts') || [];
+    const userAvatar = await getData('avatar') || '';
+    const userName = await getData('userName') || '用户';
+
+    let nodes = graphData.nodes || [];
+    let edges = graphData.edges || [];
+
+    // =========================
+    // 小鱼新增：焦点模式过滤逻辑
+    // =========================
+    let focusNodeId = currentRelationFocusNodeId;
+
+    if (focusNodeId) {
+        // 只保留和当前焦点角色有关的关系
+        edges = edges.filter(e => String(e.from) === String(focusNodeId) || String(e.to) === String(focusNodeId));
+
+        const usedNodeIds = new Set([String(focusNodeId)]);
+        edges.forEach(e => {
+            usedNodeIds.add(String(e.from));
+            usedNodeIds.add(String(e.to));
+        });
+
+        nodes = nodes.filter(n => usedNodeIds.has(String(n.id)));
+    }
+
+    // 节点数量越多，画布越大
+    const nodeCount = Math.max(nodes.length, 1);
+    const canvasSize = Math.max(900, 260 + nodeCount * 120);
+    const width = canvasSize;
+    const height = canvasSize;
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    canvasWrap.style.width = width + 'px';
+    canvasWrap.style.height = height + 'px';
+    svg.setAttribute('width', width);
+    svg.setAttribute('height', height);
+    nodeLayer.style.width = width + 'px';
+    nodeLayer.style.height = height + 'px';
+
+    function getAvatarByNode(node) {
+        if (String(node.id) === 'user_self') {
+            return userAvatar || '';
+        }
+        const contact = contacts.find(c => String(c.id) === String(node.id));
+        return contact && contact.avatar ? contact.avatar : '';
+    }
+
+    const userNode = nodes.find(n => String(n.id) === 'user_self') || {
+        id: 'user_self',
+        name: userName,
+        type: 'user'
+    };
+
+    const charNodes = nodes.filter(n => String(n.id) !== 'user_self');
+
+    const positionedNodes = [];
+
+    // =========================
+    // 小鱼新增：如果有焦点角色，则该角色放中心
+    // =========================
+    let centerNode = null;
+    if (focusNodeId) {
+        centerNode = nodes.find(n => String(n.id) === String(focusNodeId));
+    }
+    if (!centerNode) {
+        centerNode = userNode;
+    }
+
+    positionedNodes.push({
+        ...centerNode,
+        x: centerX,
+        y: centerY,
+        avatar: getAvatarByNode(centerNode)
+    });
+
+    // 其他节点围绕中心节点分布
+    const otherNodes = nodes.filter(n => String(n.id) !== String(centerNode.id));
+
+    const rings = [
+        { radius: 180, max: 6 },
+        { radius: 300, max: 10 },
+        { radius: 420, max: 16 }
+    ];
+
+    let cursor = 0;
+    rings.forEach(ring => {
+        const remain = otherNodes.length - cursor;
+        if (remain <= 0) return;
+
+        const takeCount = Math.min(remain, ring.max);
+        for (let i = 0; i < takeCount; i++) {
+            const node = otherNodes[cursor + i];
+            const angle = (Math.PI * 2 / takeCount) * i - Math.PI / 2;
+            positionedNodes.push({
+                ...node,
+                x: centerX + ring.radius * Math.cos(angle),
+                y: centerY + ring.radius * Math.sin(angle),
+                avatar: getAvatarByNode(node)
+            });
+        }
+        cursor += takeCount;
+    });
+
+    while (cursor < otherNodes.length) {
+        const remain = otherNodes.length - cursor;
+        const takeCount = Math.min(remain, 20);
+        const dynamicRadius = 540 + (cursor * 8);
+        for (let i = 0; i < takeCount; i++) {
+            const node = otherNodes[cursor + i];
+            const angle = (Math.PI * 2 / takeCount) * i - Math.PI / 2;
+            positionedNodes.push({
+                ...node,
+                x: centerX + dynamicRadius * Math.cos(angle),
+                y: centerY + dynamicRadius * Math.sin(angle),
+                avatar: getAvatarByNode(node)
+            });
+        }
+        cursor += takeCount;
+    }
+
+svg.innerHTML = `
+  <defs>
+    <marker id="arrowBlue" markerWidth="6" markerHeight="6" refX="5.2" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 z" fill="#576B95"></path>
+    </marker>
+    <marker id="arrowGreen" markerWidth="6" markerHeight="6" refX="5.2" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L6,3 L0,6 z" fill="#07C160"></path>
+    </marker>
+  </defs>
+`;
+
+    function getNodeById(id) {
+        return positionedNodes.find(n => String(n.id) === String(id));
+    }
+
+    function getEdgeOffset(edge, index) {
+        const key = [String(edge.from), String(edge.to)].sort().join('_');
+        let hash = 0;
+        for (let i = 0; i < key.length; i++) {
+            hash += key.charCodeAt(i);
+        }
+        const base = ((hash + index * 17) % 5) - 2;
+        return base * 28;
+    }
+
+    function buildCurvePath(fromNode, toNode, bendAmount) {
+        const dx = toNode.x - fromNode.x;
+        const dy = toNode.y - fromNode.y;
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+        const nodeRadius = 34;
+        const startX = fromNode.x + (dx / len) * nodeRadius;
+        const startY = fromNode.y + (dy / len) * nodeRadius;
+        const endX = toNode.x - (dx / len) * nodeRadius;
+        const endY = toNode.y - (dy / len) * nodeRadius;
+
+        const nx = -dy / len;
+        const ny = dx / len;
+
+        const midX = (startX + endX) / 2;
+        const midY = (startY + endY) / 2;
+
+        const controlX = midX + nx * bendAmount;
+        const controlY = midY + ny * bendAmount;
+
+        return {
+            d: `M ${startX} ${startY} Q ${controlX} ${controlY} ${endX} ${endY}`,
+            labelX: (startX + 2 * controlX + endX) / 4,
+            labelY: (startY + 2 * controlY + endY) / 4
+        };
+    }
+
+// 单独建立标签层，保证关系文字气泡永远压在线条上面
+const labelLayer = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+labelLayer.setAttribute('id', 'tagRelationLabelLayer');
+// 小鱼修复：这里先不要 append 到 svg，等所有线条画完后再挂上去
+
+// 画关系曲线
+edges.forEach((edge, index) => {
+        const fromNode = getNodeById(edge.from);
+        const toNode = getNodeById(edge.to);
+        if (!fromNode || !toNode) return;
+
+        const color = edge.twoWay ? '#07C160' : '#576B95';
+        const markerId = edge.twoWay ? 'arrowGreen' : 'arrowBlue';
+
+        let bend = getEdgeOffset(edge, index);
+        if (String(edge.from) === String(centerNode.id) || String(edge.to) === String(centerNode.id)) {
+            bend = bend === 0 ? 40 : bend * 1.4;
+        }
+        if (edge.twoWay && bend === 0) bend = 36;
+
+        const pathInfo = buildCurvePath(fromNode, toNode, bend);
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('d', pathInfo.d);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', color);
+        path.setAttribute('stroke-width', edge.twoWay ? '2.1' : '1.7');
+        path.setAttribute('stroke-dasharray', edge.twoWay ? '0' : '6 5');
+        path.setAttribute('marker-end', `url(#${markerId})`);
+        path.setAttribute('opacity', '0.95');
+        svg.appendChild(path);
+
+        if (edge.twoWay) {
+            const reversePathInfo = buildCurvePath(toNode, fromNode, -bend);
+            const path2 = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path2.setAttribute('d', reversePathInfo.d);
+            path2.setAttribute('fill', 'none');
+            path2.setAttribute('stroke', color);
+            path2.setAttribute('stroke-width', '2.1');
+            path2.setAttribute('marker-end', `url(#${markerId})`);
+            path2.setAttribute('opacity', '0.9');
+            svg.appendChild(path2);
+        }
+
+// 关系标签半透明底板（小鱼修复版：首次渲染也稳定显示）
+const labelGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+
+const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+text.setAttribute('x', pathInfo.labelX);
+text.setAttribute('y', pathInfo.labelY);
+text.setAttribute('fill', color);
+text.setAttribute('font-size', '12');
+text.setAttribute('text-anchor', 'middle');
+text.setAttribute('font-weight', '600');
+text.setAttribute('dominant-baseline', 'middle');
+text.setAttribute('paint-order', 'stroke');
+text.textContent = edge.label || '关系';
+
+labelGroup.appendChild(text);
+labelLayer.appendChild(labelGroup);
+
+let bbox;
+try {
+    bbox = text.getBBox();
+} catch (e) {
+    bbox = { x: pathInfo.labelX - 18, y: pathInfo.labelY - 8, width: 36, height: 16 };
+}
+
+if (!bbox.width || !bbox.height) {
+    const approxWidth = Math.max(28, (String(edge.label || '关系').length * 12));
+    bbox = {
+        x: pathInfo.labelX - approxWidth / 2,
+        y: pathInfo.labelY - 10,
+        width: approxWidth,
+        height: 20
+    };
+}
+
+const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+rect.setAttribute('x', bbox.x - 10);
+rect.setAttribute('y', bbox.y - 6);
+rect.setAttribute('width', bbox.width + 20);
+rect.setAttribute('height', bbox.height + 12);
+rect.setAttribute('rx', '11');
+rect.setAttribute('ry', '11');
+rect.setAttribute('fill', '#FFFDF8');
+rect.setAttribute('fill-opacity', '0.88');
+rect.setAttribute('stroke', '#E9DEC9');
+rect.setAttribute('stroke-opacity', '0.9');
+rect.setAttribute('stroke-width', '0.8');
+rect.setAttribute('filter', '');
+
+labelGroup.insertBefore(rect, text);
+    });
+    
+    // 小鱼修复：所有线条和箭头都画完之后，最后再把标签层压到最上面
+svg.appendChild(labelLayer);
+
+    // 画节点（头像 + 文字半透明气泡）
+    positionedNodes.forEach(node => {
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `
+          position:absolute;
+          left:${node.x - 42}px;
+          top:${node.y - 42}px;
+          width:84px;
+          text-align:center;
+          transform:translateZ(0);
+          cursor:pointer;
+        `;
+
+        const isUser = String(node.id) === 'user_self';
+        const isFocused = String(node.id) === String(centerNode.id) && !!focusNodeId;
+
+        const borderColor = isUser ? '#07C160' : '#8CCBB3';
+        const bgColor = isUser ? '#07C160' : '#A7D8C7';
+        const displayAvatar = node.avatar || '';
+
+        wrapper.innerHTML = `
+          <div style="
+            width:58px;
+            height:58px;
+            margin:0 auto 6px auto;
+            border-radius:50%;
+            overflow:hidden;
+            border:${isFocused ? '4px solid #FFB020' : '3px solid ' + borderColor};
+            background:${bgColor};
+            box-shadow:${isFocused ? '0 0 0 4px rgba(255,176,32,0.18), 0 6px 14px rgba(0,0,0,0.16)' : '0 4px 10px rgba(0,0,0,0.12)'};
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background-image:${displayAvatar ? `url(${displayAvatar})` : 'none'};
+            background-size:cover;
+            background-position:center;
+          ">
+            ${!displayAvatar ? `
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="8" r="4"></circle>
+                <path d="M5 20c1.5-4 4-6 7-6s5.5 2 7 6"></path>
+              </svg>
+            ` : ''}
+          </div>
+
+          <div style="
+            display:inline-block;
+            max-width:84px;
+            padding:3px 8px;
+            border-radius:999px;
+            background:rgba(255,255,255,0.72);
+            backdrop-filter:blur(2px);
+            -webkit-backdrop-filter:blur(2px);
+            font-size:13px;
+            color:#333;
+            font-weight:600;
+            line-height:1.35;
+            word-break:break-all;
+            box-shadow:0 2px 6px rgba(0,0,0,0.08);
+          ">${node.name || '未命名'}</div>
+        `;
+
+        wrapper.addEventListener('click', async (e) => {
+            e.stopPropagation();
+
+            // 再点一次当前焦点，恢复全图
+            if (currentRelationFocusNodeId && String(currentRelationFocusNodeId) === String(node.id)) {
+                currentRelationFocusNodeId = null;
+            } else {
+                currentRelationFocusNodeId = node.id;
+            }
+
+            const groups = await getData('tag_groups') || [];
+            const group = groups.find(g => g.id === currentRelationTagId);
+            const allGraphs = await getData('tag_relation_graphs') || {};
+            const graphData = allGraphs[currentRelationTagId];
+            if (group && graphData) {
+                await renderTagRelationGraph(graphData, group);
+            }
+        });
+
+        nodeLayer.appendChild(wrapper);
+    });
+
+    // 点击空白恢复完整视图
+    canvasWrap.onclick = async function(e) {
+        if (e.target === canvasWrap || e.target === svg || e.target === nodeLayer) {
+            if (currentRelationFocusNodeId) {
+                currentRelationFocusNodeId = null;
+                const groups = await getData('tag_groups') || [];
+                const group = groups.find(g => g.id === currentRelationTagId);
+                const allGraphs = await getData('tag_relation_graphs') || {};
+                const graphData = allGraphs[currentRelationTagId];
+                if (group && graphData) {
+                    await renderTagRelationGraph(graphData, group);
+                }
+            }
+        }
+    };
+
+    setTimeout(() => {
+        if (scrollWrap) {
+            scrollWrap.scrollLeft = Math.max(0, centerX - scrollWrap.clientWidth / 2);
+            scrollWrap.scrollTop = Math.max(0, centerY - scrollWrap.clientHeight / 2);
+        }
+    }, 30);
+
+    // 文字说明
+    const summaryList = graphData.summary || [];
+    const edgeTextList = edges.map((e, index) => {
+    const fromNode = getNodeById(e.from);
+    const toNode = getNodeById(e.to);
+    if (!fromNode || !toNode) return '';
+
+    return `
+      <div class="relation-text-item"
+           data-relation-index="${index}"
+           style="padding:10px 0; border-bottom:1px solid #F5F5F5; user-select:none; -webkit-user-select:none;">
+        ${fromNode.name}
+        <span style="color:${e.twoWay ? '#07C160' : '#576B95'}; font-weight:600; margin:0 4px;">
+          ${e.twoWay ? '↔' : '→'}
+        </span>
+        ${toNode.name}
+        ：${e.label}
+      </div>
+    `;
+}).filter(Boolean).join('');
+
+let modeText = '';
+if (focusNodeId) {
+    const focusNode = positionedNodes.find(n => String(n.id) === String(focusNodeId));
+    if (focusNode) {
+        modeText = `<div style="margin-bottom:10px; padding:8px 10px; background:#FFF7E8; color:#A26A00; border-radius:8px; font-size:13px;">当前为「${focusNode.name} 视角」：仅显示该角色认知中的相关关系。再次点击该头像或点击空白处可恢复完整关系网。</div>`;
+    }
+}
+
+textList.innerHTML = `
+  ${modeText}
+  ${summaryList.length > 0 && !focusNodeId ? `
+    <div style="margin-bottom:10px;">
+      ${summaryList.map(item => `<div style="padding:4px 0; color:#666;">• ${item}</div>`).join('')}
+    </div>
+  ` : ''}
+  ${edgeTextList || '当前视角下暂无关系说明'}
+`;
+
+// 小鱼新增：给底部文字关系绑定长按事件
+bindRelationTextLongPress(edges);
+}
+
+/* ========================================
+   小鱼新增：底部文字版关系网 - 长按编辑/删除/新建
+   ======================================== */
+
+// 1. 绑定长按
+function bindRelationTextLongPress(currentEdges) {
+    document.querySelectorAll('.relation-text-item').forEach(item => {
+        let moved = false;
+
+        item.addEventListener('touchstart', (e) => {
+            moved = false;
+            relationLongPressTimer = setTimeout(() => {
+                if (!moved) {
+                    const idx = parseInt(item.dataset.relationIndex);
+                    currentEditingRelationIndex = idx;
+                    showRelationActionSheet();
+                    if (navigator.vibrate) navigator.vibrate(50);
+                }
+            }, 550);
+        }, { passive: true });
+
+        item.addEventListener('touchmove', () => {
+            moved = true;
+            clearTimeout(relationLongPressTimer);
+        }, { passive: true });
+
+        item.addEventListener('touchend', () => {
+            clearTimeout(relationLongPressTimer);
+        }, { passive: true });
+
+        // 兼容PC右键
+        item.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            const idx = parseInt(item.dataset.relationIndex);
+            currentEditingRelationIndex = idx;
+            showRelationActionSheet();
+        });
+    });
+}
+
+// 2. 打开操作菜单
+function showRelationActionSheet() {
+    document.getElementById('relationActionSheet').style.display = 'flex';
+}
+
+// 3. 关闭操作菜单
+function closeRelationActionSheet(clearIndex = false) {
+    document.getElementById('relationActionSheet').style.display = 'none';
+    if (clearIndex) {
+        currentEditingRelationIndex = null;
+    }
+}
+
+// 4. 绑定关闭事件
+document.getElementById('cancelRelationActionBtn').addEventListener('click', () => closeRelationActionSheet(true));
+document.getElementById('relationActionSheet').addEventListener('click', (e) => {
+    if (e.target.id === 'relationActionSheet') closeRelationActionSheet(true);
+});
+
+// 5. 编辑关系
+document.getElementById('editRelationBtn').addEventListener('click', async () => {
+    const savedIndex = currentEditingRelationIndex; // 先缓存
+    closeRelationActionSheet(false); // 关闭菜单，但不清空索引
+    currentEditingRelationIndex = savedIndex;
+    await editCurrentRelation();
+});
+
+document.getElementById('deleteRelationBtn').addEventListener('click', async () => {
+    const savedIndex = currentEditingRelationIndex; // 先缓存
+    closeRelationActionSheet(false); // 关闭菜单，但不清空索引
+    currentEditingRelationIndex = savedIndex;
+    await deleteCurrentRelation();
+});
+
+// 7. 编辑当前关系
+window.editCurrentRelation = async function() {
+    if (currentEditingRelationIndex === null || !currentRelationTagId) return;
+
+    const allGraphs = await getData('tag_relation_graphs') || {};
+    const graphData = allGraphs[currentRelationTagId];
+    if (!graphData || !graphData.edges || !graphData.edges[currentEditingRelationIndex]) return;
+
+    const edge = graphData.edges[currentEditingRelationIndex];
+    const nodes = graphData.nodes || [];
+
+    const fromNode = nodes.find(n => String(n.id) === String(edge.from));
+    const toNode = nodes.find(n => String(n.id) === String(edge.to));
+    if (!fromNode || !toNode) return;
+
+    const newLabel = await customPrompt(
+        `编辑关系名称\n\n${fromNode.name} ${edge.twoWay ? '↔' : '→'} ${toNode.name}`,
+        edge.label || ''
+    );
+
+    if (newLabel === null) return;
+
+    edge.label = newLabel.trim() || '关系';
+
+    allGraphs[currentRelationTagId] = graphData;
+    await saveData('tag_relation_graphs', allGraphs);
+
+    const groups = await getData('tag_groups') || [];
+    const group = groups.find(g => g.id === currentRelationTagId);
+    if (group) await renderTagRelationGraph(graphData, group);
+
+    currentEditingRelationIndex = null;
+};
+
+// 8. 删除当前关系
+window.deleteCurrentRelation = async function() {
+    if (currentEditingRelationIndex === null || !currentRelationTagId) return;
+
+    const allGraphs = await getData('tag_relation_graphs') || {};
+    const graphData = allGraphs[currentRelationTagId];
+    if (!graphData || !graphData.edges || !graphData.edges[currentEditingRelationIndex]) return;
+
+    const edge = graphData.edges[currentEditingRelationIndex];
+    const nodes = graphData.nodes || [];
+
+    const fromNode = nodes.find(n => String(n.id) === String(edge.from));
+    const toNode = nodes.find(n => String(n.id) === String(edge.to));
+
+    if (!await customConfirm(`确定删除这条关系吗？\n\n${fromNode ? fromNode.name : edge.from} ${edge.twoWay ? '↔' : '→'} ${toNode ? toNode.name : edge.to}：${edge.label}`)) {
+        return;
+    }
+
+    graphData.edges.splice(currentEditingRelationIndex, 1);
+
+    allGraphs[currentRelationTagId] = graphData;
+    await saveData('tag_relation_graphs', allGraphs);
+
+    const groups = await getData('tag_groups') || [];
+    const group = groups.find(g => g.id === currentRelationTagId);
+    if (group) await renderTagRelationGraph(graphData, group);
+
+    currentEditingRelationIndex = null;
+};
+
+// 小鱼新增：打开“新建关系”统一弹窗
+window.openCreateRelationDialog = async function() {
+    if (!currentRelationTagId) return;
+
+    const allGraphs = await getData('tag_relation_graphs') || {};
+    const graphData = allGraphs[currentRelationTagId];
+    if (!graphData) {
+        customAlert('请先点击右上角“AI生成”初始化关系网');
+        return;
+    }
+
+    const nodes = graphData.nodes || [];
+    if (nodes.length < 2) {
+        customAlert('节点数量不足，无法新建关系');
+        return;
+    }
+
+    const fromSelect = document.getElementById('relationFromSelect');
+    const toSelect = document.getElementById('relationToSelect');
+    const arrowSelect = document.getElementById('relationArrowSelect');
+    const labelInput = document.getElementById('relationLabelInput');
+    const modal = document.getElementById('relationCreateModal');
+
+    // 渲染下拉选项
+    const optionsHtml = nodes.map(node => {
+        return `<option value="${node.id}">${node.name}</option>`;
+    }).join('');
+
+    fromSelect.innerHTML = optionsHtml;
+    toSelect.innerHTML = optionsHtml;
+
+    // 默认值
+    fromSelect.selectedIndex = 0;
+    toSelect.selectedIndex = nodes.length > 1 ? 1 : 0;
+    arrowSelect.value = 'single';
+    labelInput.value = '';
+
+    modal.style.display = 'flex';
+};
+
+// 小鱼新增：关闭新建关系弹窗
+window.closeCreateRelationDialog = function() {
+    document.getElementById('relationCreateModal').style.display = 'none';
+};
+
+// 取消按钮
+document.getElementById('cancelCreateRelationBtn').addEventListener('click', closeCreateRelationDialog);
+
+// 点击遮罩关闭
+document.getElementById('relationCreateModal').addEventListener('click', (e) => {
+    if (e.target.id === 'relationCreateModal') {
+        closeCreateRelationDialog();
+    }
+});
+
+// 确认新建
+document.getElementById('confirmCreateRelationBtn').addEventListener('click', async () => {
+    if (!currentRelationTagId) return;
+
+    const allGraphs = await getData('tag_relation_graphs') || {};
+    const graphData = allGraphs[currentRelationTagId];
+    if (!graphData) return;
+
+    const fromId = document.getElementById('relationFromSelect').value;
+    const toId = document.getElementById('relationToSelect').value;
+    const arrowType = document.getElementById('relationArrowSelect').value;
+    const label = document.getElementById('relationLabelInput').value.trim();
+
+    if (!fromId || !toId) {
+        customAlert('请选择起点和终点');
+        return;
+    }
+
+    if (String(fromId) === String(toId)) {
+        customAlert('起点和终点不能相同');
+        return;
+    }
+
+    graphData.edges = graphData.edges || [];
+    graphData.edges.push({
+        from: fromId,
+        to: toId,
+        label: label || '关系',
+        twoWay: arrowType === 'double'
+    });
+
+    allGraphs[currentRelationTagId] = graphData;
+    await saveData('tag_relation_graphs', allGraphs);
+
+    closeCreateRelationDialog();
+
+    const groups = await getData('tag_groups') || [];
+    const group = groups.find(g => g.id === currentRelationTagId);
+    if (group) await renderTagRelationGraph(graphData, group);
+});
+
+// 9. 新建关系
+// 这里整段删除，不需要替换
+
+// ★★★ 小鱼终极修复：后台静默同步昵称变更雷达 ★★★
+// 自动检测角色是否改名，一旦改名立即同步所有历史数据
+async function autoSyncCharacterNames() {
+    try {
+        const contacts = await getData('customContacts');
+        if (!contacts || !Array.isArray(contacts)) return;
+
+        const savedMapStr = localStorage.getItem('wechat_name_map');
+        let nameMap = savedMapStr ? JSON.parse(savedMapStr) : {};
+        let needsSave = false;
+
+        for (const contact of contacts) {
+            if (contact.isGroup) continue; // 只处理单人角色
+            const id = contact.id;
+            const currentName = contact.nickname;
+            const oldName = nameMap[id];
+
+            // 发现名字发生了改变！
+            if (oldName && oldName !== currentName) {
+                console.log(`[同步雷达] 检测到角色改名: "${oldName}" -> "${currentName}"，正在修复历史数据...`);
+                
+                // 1. 修复群聊历史
+                const groups = contacts.filter(c => c.isGroup);
+                for (const group of groups) {
+                    const key = 'chat_messages_' + group.id;
+                    let msgs = await getData(key) || [];
+                    let changed = false;
+                    msgs.forEach(m => {
+                        if (m.senderName === oldName) { m.senderName = currentName; changed = true; }
+                    });
+                    if (changed) await saveData(key, msgs);
+                }
+
+                // 2. 修复朋友圈 (作者、点赞、评论)
+                let moments = await getData('moments_posts') || [];
+                let mChanged = false;
+                moments.forEach(post => {
+                    if (post.authorName === oldName) { post.authorName = currentName; mChanged = true; }
+                    if (post.likes && post.likes.includes(oldName)) {
+                        post.likes = post.likes.map(n => n === oldName ? currentName : n);
+                        mChanged = true;
+                    }
+                    if (post.comments) {
+                        post.comments.forEach(c => {
+                            if (c.authorName === oldName) { c.authorName = currentName; mChanged = true; }
+                            if (c.replyToAuthorName === oldName) { c.replyToAuthorName = currentName; mChanged = true; }
+                        });
+                    }
+                });
+                if (mChanged) {
+                    await saveData('moments_posts', moments);
+                    // 如果正停留在朋友圈页面，自动刷新一下画面
+                    const momentsPage = document.getElementById('momentsPage');
+                    if (momentsPage && momentsPage.style.display !== 'none' && typeof renderMomentsFeed === 'function') {
+                        await renderMomentsFeed();
+                    }
+                }
+
+                // 3. 修复关系网
+                let graphs = await getData('tag_relation_graphs') || {};
+                let gChanged = false;
+                Object.keys(graphs).forEach(tagId => {
+                    let g = graphs[tagId];
+                    if (g && g.nodes) {
+                        g.nodes.forEach(n => {
+                            if (n.name === oldName) { n.name = currentName; gChanged = true; }
+                        });
+                    }
+                });
+                if (gChanged) await saveData('tag_relation_graphs', graphs);
+
+                // 4. 刷新当前聊天界面 (如果正在和该角色或包含该角色的群聊天)
+                if (typeof currentChatId !== 'undefined' && currentChatId) {
+                    const currContact = contacts.find(c => c.id === currentChatId);
+                    if (currContact && (currContact.id === id || (currContact.isGroup && currContact.memberIds.includes(id)))) {
+                        if (typeof renderMessages === 'function') {
+                            await renderMessages(currentChatId);
+                        }
+                    }
+                }
+
+                // 更新记录本
+                nameMap[id] = currentName;
+                needsSave = true;
+            } else if (!oldName && currentName) {
+                // 第一次记录该角色
+                nameMap[id] = currentName;
+                needsSave = true;
+            }
+        }
+
+        if (needsSave) {
+            localStorage.setItem('wechat_name_map', JSON.stringify(nameMap));
+        }
+    } catch (e) {
+        console.error("后台同步昵称出错:", e);
+    }
+}
+
+// 启动雷达：每隔 2 秒在后台静默检查一次
+setInterval(autoSyncCharacterNames, 2000);
+// 页面刚加载时也立即执行一次
+setTimeout(autoSyncCharacterNames, 1000);
+
+/* ========================================
+   小鱼新增：视频/语音通话系统 (全屏沉浸式 + 通话记录 + 悬浮小窗)
+   ======================================== */
+// 1. 动态注入通话相关的 HTML 界面
+const callSystemHtml = `
+<style>
+@keyframes callPulse {
+    0% { box-shadow: 0 0 0 0 rgba(7, 193, 96, 0.7); }
+    70% { box-shadow: 0 0 0 15px rgba(7, 193, 96, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(7, 193, 96, 0); }
+}
+</style>
+
+<!-- 底部选择弹窗 -->
+<div id="callSelectActionSheet" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:100000; align-items:flex-end;">
+    <div style="width:100%; background:#F7F7F7; border-radius:16px 16px 0 0; overflow:hidden;">
+        <div style="background:#fff; height:60px; display:flex; align-items:center; justify-content:center; font-size:17px; color:#333; border-bottom:1px solid #F0F0F0; cursor:pointer;" onclick="customAlert('暂未开放视频通话，请选择语音通话')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:10px;"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+            视频通话
+        </div>
+        <div id="startVoiceCallBtn" style="background:#fff; height:60px; display:flex; align-items:center; justify-content:center; font-size:17px; color:#333; cursor:pointer;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:10px;"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            语音通话
+        </div>
+        <div style="height:8px; background:#F7F7F7;"></div>
+        <div onclick="document.getElementById('callSelectActionSheet').style.display='none'" style="background:#fff; height:60px; display:flex; align-items:center; justify-content:center; font-size:17px; color:#333; cursor:pointer;">取消</div>
+    </div>
+</div>
+
+<!-- ★ 新增：AI主动来电界面 -->
+<div id="incomingCallOverlay" style="display:none; position:fixed; inset:0; background:linear-gradient(180deg, #2A2D31 0%, #111214 100%); z-index:100001; flex-direction:column; align-items:center; padding-top:max(env(safe-area-inset-top), 40px); color:white; font-family:system-ui, sans-serif;">
+    <div id="incomingMinimizeBtn" style="position:absolute; top:max(env(safe-area-inset-top), 20px); left:20px; padding:10px; cursor:pointer; z-index:100002;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="12" height="12" rx="2" ry="2"></rect>
+            <rect x="10" y="10" width="10" height="10" rx="2" ry="2"></rect>
+        </svg>
+    </div>
+    
+    <div id="incomingCallAvatar" style="width:110px; height:110px; border-radius:16px; background-size:cover; background-position:center; margin-top:10vh; margin-bottom:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3);"></div>
+    <div id="incomingCallName" style="font-size:28px; font-weight:500; margin-bottom:12px; letter-spacing:1px;"></div>
+    
+    <div style="margin-top:auto; margin-bottom:12vh; font-size:16px; color:#aaa; letter-spacing:1px;">邀请你语音通话...</div>
+    
+    <div style="display:flex; justify-content:space-around; width:100%; max-width:320px; padding:0 30px; margin-bottom:8vh; box-sizing:border-box;">
+        <div id="incomingRejectBtn" style="display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+            <div style="width:72px; height:72px; border-radius:50%; background:#FA5151; display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 4px 15px rgba(250,81,81,0.4);">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+            </div>
+            <span style="font-size:14px; color:#aaa;">拒绝</span>
+        </div>
+        <div id="incomingAcceptBtn" style="display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+            <div style="width:72px; height:72px; border-radius:50%; background:#07C160; display:flex; align-items:center; justify-content:center; margin-bottom:12px; animation: callPulse 2s infinite;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="white"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            </div>
+            <span style="font-size:14px; color:#aaa;">接听</span>
+        </div>
+    </div>
+</div>
+
+<!-- 全屏语音通话界面 -->
+<div id="voiceCallOverlay" style="display:none; position:fixed; inset:0; background:linear-gradient(180deg, #2A2D31 0%, #111214 100%); z-index:100001; flex-direction:column; align-items:center; padding-top:max(env(safe-area-inset-top), 40px); color:white; font-family:system-ui, sans-serif;">
+    
+    <!-- 左上角小窗模式按钮 -->
+    <div id="minimizeCallBtn" style="position:absolute; top:max(env(safe-area-inset-top), 30px); left:10px; padding:10px; cursor:pointer; z-index:100002;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="4" y="4" width="12" height="12" rx="2" ry="2"></rect>
+            <rect x="10" y="10" width="10" height="10" rx="2" ry="2"></rect>
+        </svg>
+    </div>
+
+    <!-- 右上角钟表按钮 -->
+    <div id="openCallHistoryBtn" style="position:absolute; top:max(env(safe-area-inset-top), 30px); right:10px; padding:10px; cursor:pointer; z-index:100002;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+    </div>
+
+    <div id="callAvatar" style="width:110px; height:110px; border-radius:16px; background-size:cover; background-position:center; margin-top:6vh; margin-bottom:20px; box-shadow:0 10px 30px rgba(0,0,0,0.3);"></div>
+    <div id="callName" style="font-size:28px; font-weight:500; margin-bottom:12px; letter-spacing:1px;"></div>
+    <div id="callStatus" style="font-size:15px; color:#888; margin-bottom:40px; letter-spacing:1px;">等待对方接受邀请...</div>
+    
+    <div id="callSubtitle" style="display:none; font-size:20px; color:white; text-align:center; padding:0 30px; margin-top:auto; margin-bottom:40px; min-height:60px; line-height:1.5; text-shadow:0 2px 4px rgba(0,0,0,0.5);"></div>
+    
+    <div style="display:flex; flex-direction:column-reverse; width:100%; margin-top:auto; margin-bottom:max(env(safe-area-inset-bottom), 20px);">
+        <!-- 底部按钮区 -->
+        <div style="display:flex; justify-content:space-between; width:100%; max-width:320px; padding:0 30px; margin:0 auto; box-sizing:border-box;">
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <div style="width:68px; height:68px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+                </div>
+                <span style="font-size:13px; color:#aaa;">麦克风已开</span>
+            </div>
+            <div id="callHangupBtn" style="display:flex; flex-direction:column; align-items:center; cursor:pointer;">
+                <div style="width:68px; height:68px; border-radius:50%; background:#FA5151; display:flex; align-items:center; justify-content:center; margin-bottom:12px; box-shadow:0 4px 15px rgba(250,81,81,0.4);">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="white"><path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.67c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/></svg>
+                </div>
+                <span style="font-size:13px; color:#aaa;">取消</span>
+            </div>
+            <div style="display:flex; flex-direction:column; align-items:center;">
+                <div style="width:68px; height:68px; border-radius:50%; background:rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center; margin-bottom:12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                </div>
+                <span style="font-size:13px; color:#aaa;">扬声器已关</span>
+            </div>
+        </div>
+        
+        <div id="callInputArea" style="display:none; width:100%; padding:15px 20px 20px 20px; box-sizing:border-box; background:transparent;">
+            <div style="display:flex; gap:12px; align-items:center;">
+                <input id="callInput" type="text" placeholder="回复对方..." style="flex:1; height:44px; border-radius:22px; border:none; padding:0 20px; outline:none; font-size:15px; background:rgba(255,255,255,0.18); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:white; box-shadow:inset 0 1px 3px rgba(0,0,0,0.2);">
+                <button id="callSendBtn" style="width:64px; height:44px; border-radius:22px; background:rgba(7,193,96,0.85); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); color:white; border:none; font-size:15px; font-weight:600; cursor:pointer; box-shadow:0 2px 8px rgba(7,193,96,0.3);">发送</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 通话记录半透明面板 -->
+<div id="callHistoryPanel" style="display:none; position:fixed; inset:0; background:rgba(20,20,20,0.85); z-index:100003; flex-direction:column; backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);">
+    <div style="padding-top:max(env(safe-area-inset-top), 20px); background:rgba(20,20,20,0.5); flex-shrink:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:15px 24px; border-bottom:1px solid rgba(255,255,255,0.08);">
+            <div style="font-size:22px; font-weight:bold; color:white; letter-spacing:1px;">通话记录</div>
+            <div id="closeCallHistoryBtn" style="cursor:pointer; padding:5px;">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </div>
+        </div>
+    </div>
+    <div id="callHistoryList" style="flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:24px; box-sizing:border-box; overscroll-behavior-y:contain;"></div>
+</div>
+
+<!-- 全局悬浮小窗 -->
+<div id="floatingCallWindow" style="display:none; position:fixed; top:max(env(safe-area-inset-top, 80px), 80px); left:auto; right:15px; width:72px; height:72px; background:white; border-radius:18px; box-shadow:0 6px 20px rgba(0,0,0,0.15); z-index:999999; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; transition:transform 0.2s ease;">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="#07C160" style="margin-bottom:4px;">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+    </svg>
+    <span id="floatingCallTime" style="color:#07C160; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:0.5px;">等待</span>
+</div>
+`;
+document.body.insertAdjacentHTML('beforeend', callSystemHtml);
+
+// 2. 全局状态变量
+let isCallActive = false;
+let windowIsIncomingCall = false; // ★ 新增：标记是否为来电状态
+let callStartTime = 0;
+let callTimerInterval = null;
+let callVibrateInterval = null;
+
+let currentCallHistory = [];
+let currentCallUserName = '闻念'; 
+
+// ★★★ 核心新增：拦截 AI 的主动来电指令 ★★★
+let callInitiator = 'user'; // 记录通话发起方：'user' 或 'ai'
+
+// ★ 新增：来电铃声与柔和振动控制
+async function startCallRing() {
+    const ringtoneData = await getData('ringtone');
+    const player = document.getElementById('ringtonePlayer');
+    
+    // 如果有设置铃声，优先播放铃声
+    if (ringtoneData && ringtoneData.src && player) {
+        player.src = ringtoneData.src;
+        player.loop = true; // 循环播放
+        player.play().catch(e => {
+            console.warn("铃声自动播放受限，降级为振动", e);
+            fallbackVibrate();
+        });
+    } else {
+        // 没有铃声则直接振动
+        fallbackVibrate();
+    }
+}
+
+function fallbackVibrate() {
+    if (navigator.vibrate) {
+        // ★ 修复：更柔和的振动节奏（振动300ms，停顿1500ms）
+        navigator.vibrate([300, 1500, 300, 1500]);
+        if (callVibrateInterval) clearInterval(callVibrateInterval);
+        callVibrateInterval = setInterval(() => navigator.vibrate([300, 1500]), 1800);
+    }
+}
+
+function stopCallRing() {
+    const player = document.getElementById('ringtonePlayer');
+    if (player) {
+        player.pause();
+        player.currentTime = 0;
+    }
+    if (callVibrateInterval) clearInterval(callVibrateInterval);
+    if (navigator.vibrate) navigator.vibrate(0); // 强制停止振动
+}
+
+const originalAppendMessageToUI = appendMessageToUI;
+window.appendMessageToUI = function(msg, otherAvatar, isGroupChat = false) {
+    // 1. 拦截新发出的来电指令
+    if (msg.type === 'call_invite') {
+        // 立即修改数据库中的类型，防止刷新页面时重复弹窗
+        getData('chat_messages_' + currentChatId).then(msgs => {
+            if (msgs) {
+                const idx = msgs.findIndex(m => m.timestamp === msg.timestamp);
+                if (idx !== -1) {
+                    msgs[idx].type = 'call_invite_processed';
+                    msgs[idx].content = '发起了语音通话 ᯅ';
+                    msgs[idx].isHidden = true; // ★ 增加隐藏属性，防止首页列表预览显示
+                    saveData('chat_messages_' + currentChatId, msgs);
+                }
+            }
+        });
+
+        const incomingOverlay = document.getElementById('incomingCallOverlay');
+        if (incomingOverlay) {
+            const avatarUrl = otherAvatar || 'https://iili.io/fkc3RwJ.jpg';
+            document.getElementById('incomingCallAvatar').style.backgroundImage = `url(${avatarUrl})`;
+            
+            // 准确获取角色名称
+            getData('customContacts').then(contacts => {
+                const c = (contacts || []).find(x => x.id === currentChatId);
+                const dName = msg.senderName || (c ? c.nickname : '对方');
+                document.getElementById('incomingCallName').textContent = dName;
+            });
+            
+            incomingOverlay.style.display = 'flex';
+            windowIsIncomingCall = true;
+            callInitiator = 'ai'; // ★ 标记为 AI 发起
+            
+            startCallRing(); // ★ 触发铃声或振动
+        }
+        return; // 拦截，不在聊天界面渲染
+    }
+    
+    // 2. 处理历史记录中的来电指令（已处理过的）
+    if (msg.type === 'call_invite_processed') {
+        return; // ★ 彻底拦截，绝对不在聊天界面显示
+    }
+    
+    originalAppendMessageToUI(msg, otherAvatar, isGroupChat);
+};
+
+// ★ 处理 AI 来电的拒绝逻辑
+document.getElementById('incomingRejectBtn').addEventListener('click', async () => {
+    document.getElementById('incomingCallOverlay').style.display = 'none';
+    stopCallRing(); // ★ 停止铃声/振动
+    windowIsIncomingCall = false;
+    
+    // ★ 以角色身份在聊天界面显示“已取消”
+    const contact = await getContactDetails(currentChatId);
+    const recordMsg = {
+        role: 'assistant',
+        type: 'text',
+        content: '已拒绝 ᯅ',
+        senderName: contact.nickname,
+        timestamp: Date.now()
+    };
+    await saveMessage(currentChatId, recordMsg);
+    originalAppendMessageToUI(recordMsg, contact.avatar, contact.isGroup);
+    scrollToBottom();
+    await updateChatList(currentChatId, '已拒绝 ᯅ', Date.now());
+    
+    // 告诉 AI 用户拒绝了
+    const { apiMessages } = await buildApiMessages(currentChatId);
+    apiMessages.push({
+        role: 'user',
+        content: `[系统提示] 用户拒绝了你的语音通话邀请。请用一两句话回复缓解尴尬或表达遗憾。`
+    });
+    try {
+        const wechatApiConfig = await getApiConfigForWechat('wechat');
+        let response = await callAIAPI(apiMessages, wechatApiConfig);
+        await handleAIResponsePayload(response, contact, [], currentChatId, activeChatSessionToken);
+    } catch(e) {}
+});
+
+// ★ 处理 AI 来电的接听逻辑
+document.getElementById('incomingAcceptBtn').addEventListener('click', async () => {
+    document.getElementById('incomingCallOverlay').style.display = 'none';
+    stopCallRing(); // ★ 停止铃声/振动
+    windowIsIncomingCall = false;
+    
+    document.getElementById('voiceCallOverlay').style.display = 'flex';
+    document.getElementById('callAvatar').style.backgroundImage = document.getElementById('incomingCallAvatar').style.backgroundImage;
+    document.getElementById('callName').textContent = document.getElementById('incomingCallName').textContent;
+    document.getElementById('callStatus').textContent = '00:00';
+    
+    const subEl = document.getElementById('callSubtitle');
+    subEl.style.display = 'block';
+    subEl.textContent = '...';
+    
+    document.getElementById('callInputArea').style.display = 'none';
+    document.querySelector('#callHangupBtn span').textContent = '挂断';
+    
+    isCallActive = true;
+    callStartTime = Date.now();
+    if (callTimerInterval) clearInterval(callTimerInterval);
+    callTimerInterval = setInterval(() => {
+        const duration = Math.floor((Date.now() - callStartTime) / 1000);
+        const m = String(Math.floor(duration / 60)).padStart(2, '0');
+        const s = String(duration % 60).padStart(2, '0');
+        document.getElementById('callStatus').textContent = `${m}:${s}`;
+        const floatingTimeEl = document.getElementById('floatingCallTime');
+        if (floatingTimeEl) floatingTimeEl.textContent = `${m}:${s}`;
+    }, 1000);
+    
+    currentCallHistory = [];
+    currentCallUserName = await getData('userName') || '闻念';
+    if (typeof renderCallHistory === 'function') renderCallHistory();
+    
+    const { apiMessages } = await buildApiMessages(currentChatId);
+    apiMessages.push({
+        role: 'user',
+        content: `[系统提示] 用户已接听了你的语音通话。请直接说出 3~5 句开场白（严格使用 [{"type": "call_accept", "content": "第一句话"}, ...] 格式）`
+    });
+    
+    await fetchAndPlayCallResponse(apiMessages);
+});
+
+// 来电界面的小窗模式
+document.getElementById('incomingMinimizeBtn').addEventListener('click', () => {
+    document.getElementById('incomingCallOverlay').style.display = 'none';
+    const floatingWindow = document.getElementById('floatingCallWindow');
+    floatingWindow.style.display = 'flex';
+    document.getElementById('floatingCallTime').textContent = '来电中';
+});
+
+// 渲染通话记录函数
+window.renderCallHistory = function() {
+    const listEl = document.getElementById('callHistoryList');
+    if (!listEl) return;
+    
+    if (currentCallHistory.length === 0) {
+        listEl.innerHTML = '<div style="text-align:center; color:rgba(255,255,255,0.4); margin-top:40px; font-size:14px;">暂无通话记录</div>';
+        return;
+    }
+    
+    listEl.innerHTML = currentCallHistory.map(item => {
+        const isAI = item.role === 'ai';
+        const nameColor = isAI ? '#E6D3A8' : '#C4A47C'; 
+        
+        const starIcon = isAI ? `
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-right:4px; margin-top:-2px;">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>` : '';
+            
+        const voiceIcon = isAI ? `
+            <div style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,0.15); margin-left:8px;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="white">
+                    <path d="M11 5L6 9H2v6h4l5 4V5z"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </div>` : '';
+            
+        const paddingLeft = isAI ? '20px' : '0px';
+        
+        return `
+        <div style="display:flex; flex-direction:column; margin-bottom:24px; animation: fadeIn 0.3s ease;">
+            <div style="display:flex; align-items:center; color:${nameColor}; font-size:15px; margin-bottom:8px;">
+                ${starIcon}
+                <span style="font-weight:500; letter-spacing:1px;">${item.name}</span>
+                ${voiceIcon}
+            </div>
+            <div style="color:#F5F5F5; font-size:16px; line-height:1.6; padding-left:${paddingLeft}; letter-spacing:0.5px;">
+                ${item.content}
+            </div>
+        </div>
+        `;
+    }).join('');
+    
+    listEl.scrollTop = listEl.scrollHeight;
+};
+
+document.getElementById('openCallHistoryBtn').addEventListener('click', () => {
+    document.getElementById('callHistoryPanel').style.display = 'flex';
+    renderCallHistory(); 
+    setTimeout(() => {
+        const listEl = document.getElementById('callHistoryList');
+        if (listEl) listEl.scrollTop = listEl.scrollHeight;
+    }, 50);
+});
+
+document.getElementById('closeCallHistoryBtn').addEventListener('click', () => {
+    document.getElementById('callHistoryPanel').style.display = 'none';
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const historyList = document.getElementById('callHistoryList');
+    if (historyList) {
+        historyList.addEventListener('touchmove', (e) => {
+            e.stopPropagation(); 
+        }, { passive: false });
+    }
+});
+
+// 小窗模式自由拖拽与贴边逻辑
+let isDraggingCallWindow = false;
+let callWindowStartX, callWindowStartY;
+let callWindowInitialLeft, callWindowInitialTop;
+const floatingWindow = document.getElementById('floatingCallWindow');
+
+floatingWindow.addEventListener('touchstart', (e) => {
+    isDraggingCallWindow = false;
+    const touch = e.touches[0];
+    callWindowStartX = touch.clientX;
+    callWindowStartY = touch.clientY;
+    
+    const rect = floatingWindow.getBoundingClientRect();
+    callWindowInitialLeft = rect.left;
+    callWindowInitialTop = rect.top;
+    
+    floatingWindow.style.transition = 'none'; 
+}, { passive: true });
+
+floatingWindow.addEventListener('touchmove', (e) => {
+    if (!isCallActive && !windowIsIncomingCall) return;
+    const touch = e.touches[0];
+    const dx = touch.clientX - callWindowStartX;
+    const dy = touch.clientY - callWindowStartY;
+    
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+        isDraggingCallWindow = true;
+    }
+    
+    if (isDraggingCallWindow) {
+        e.preventDefault(); 
+        let newLeft = callWindowInitialLeft + dx;
+        let newTop = callWindowInitialTop + dy;
+        
+        const maxX = window.innerWidth - floatingWindow.offsetWidth;
+        const maxY = window.innerHeight - floatingWindow.offsetHeight;
+        
+        newLeft = Math.max(0, Math.min(newLeft, maxX));
+        newTop = Math.max(0, Math.min(newTop, maxY));
+        
+        floatingWindow.style.left = newLeft + 'px';
+        floatingWindow.style.top = newTop + 'px';
+        floatingWindow.style.right = 'auto'; 
+    }
+}, { passive: false });
+
+floatingWindow.addEventListener('touchend', (e) => {
+    if (!isCallActive && !windowIsIncomingCall) return;
+    floatingWindow.style.transition = 'all 0.3s ease'; 
+    if (isDraggingCallWindow) {
+        const rect = floatingWindow.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        if (centerX < window.innerWidth / 2) {
+            floatingWindow.style.left = '15px';
+        } else {
+            floatingWindow.style.left = (window.innerWidth - rect.width - 15) + 'px';
+        }
+    }
+});
+
+document.getElementById('minimizeCallBtn').addEventListener('click', () => {
+    document.getElementById('voiceCallOverlay').style.display = 'none';
+    document.getElementById('callHistoryPanel').style.display = 'none'; 
+    document.getElementById('floatingCallWindow').style.display = 'flex';
+});
+
+floatingWindow.addEventListener('click', (e) => {
+    if (isDraggingCallWindow) {
+        e.stopPropagation();
+        return; 
+    }
+    document.getElementById('floatingCallWindow').style.display = 'none';
+    
+    if (windowIsIncomingCall) {
+        document.getElementById('incomingCallOverlay').style.display = 'flex';
+    } else {
+        document.getElementById('voiceCallOverlay').style.display = 'flex';
+        const listEl = document.getElementById('callHistoryList');
+        if(listEl) listEl.scrollTop = listEl.scrollHeight;
+    }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const actionItems = document.querySelectorAll('.action-item');
+    let foundCallBtn = false;
+    actionItems.forEach(item => {
+        const textEl = item.querySelector('.action-text');
+        if (textEl && textEl.textContent.trim() === '视频通话') {
+            item.onclick = () => {
+                closeActionSheet();
+                document.getElementById('callSelectActionSheet').style.display = 'flex';
+            };
+            foundCallBtn = true;
+        }
+    });
+    
+    if (!foundCallBtn) {
+        const track = document.getElementById('actionSheetTrack');
+        if (track) {
+            const firstPage = track.querySelector('.action-page');
+            if (firstPage) {
+                const callBtnHtml = `
+                <div class="action-item" onclick="closeActionSheet(); document.getElementById('callSelectActionSheet').style.display = 'flex';">
+                    <div class="action-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5"><polygon points="23 7 16 12 23 17 23 7"></polygon><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
+                    </div>
+                    <span class="action-text">视频通话</span>
+                </div>`;
+                firstPage.insertAdjacentHTML('beforeend', callBtnHtml);
+            }
+        }
+    }
+});
+
+let callAutoReplyTimer = null;
+
+function resetCallAutoReplyTimer() {
+    if (callAutoReplyTimer) clearTimeout(callAutoReplyTimer);
+    if (!isCallActive) return;
+    
+    callAutoReplyTimer = setTimeout(async () => {
+        if (!isCallActive) return;
+        const inputVal = document.getElementById('callInput').value.trim();
+        if (inputVal !== '') {
+            resetCallAutoReplyTimer();
+            return;
+        }
+        
+        document.getElementById('callSubtitle').textContent = '...';
+        document.getElementById('callSubtitle').style.color = '#aaa';
+        
+        const { apiMessages } = await buildApiMessages(currentChatId);
+        apiMessages.push({
+            role: 'user',
+            content: `[语音通话中] (用户长时间未说话) 请根据当前情境主动找话题、继续刚才的话题或询问用户在干嘛，必须根据人设生成 3~5 句连贯的回复（严格使用 [{"type": "call_accept", "content": "第一句话"}...] 格式）`
+        });
+        
+        await fetchAndPlayCallResponse(apiMessages);
+    }, 60000); 
+}
+
+// ★ 新增：将当前通话状态持久化到数据库
+async function saveCallState() {
+    if (!currentChatId) return;
+    const state = isCallActive ? {
+        chatId: currentChatId,
+        startTime: callStartTime,
+        history: currentCallHistory,
+        userName: currentCallUserName,
+        initiator: callInitiator,
+        avatarUrl: document.getElementById('callAvatar') ? document.getElementById('callAvatar').style.backgroundImage : '',
+        callerName: document.getElementById('callName') ? document.getElementById('callName').textContent : ''
+    } : null;
+    await saveData('active_call_state', state);
+}
+
+// ★ 新增：从数据库恢复通话状态（页面加载时调用）
+async function restoreCallState() {
+    const state = await getData('active_call_state');
+    if (!state || !state.chatId) return; // 没有残留通话，直接返回
+
+    // 恢复全局变量
+    currentChatId = state.chatId;
+    currentCallHistory = state.history || [];
+    currentCallUserName = state.userName || '闻念';
+    callInitiator = state.initiator || 'user';
+    callStartTime = state.startTime || 0;
+    isCallActive = true;
+
+    // 恢复悬浮小窗
+    const floatingWindow = document.getElementById('floatingCallWindow');
+    const floatingTimeEl = document.getElementById('floatingCallTime');
+
+    if (floatingWindow) {
+        floatingWindow.style.display = 'flex';
+        floatingWindow.style.top = 'max(env(safe-area-inset-top, 80px), 80px)';
+        floatingWindow.style.left = 'auto';
+        floatingWindow.style.right = '15px';
+    }
+
+    // 恢复计时器（从真实开始时间推算，而非从0开始）
+    if (callStartTime > 0 && floatingTimeEl) {
+        const updateTime = () => {
+            const duration = Math.floor((Date.now() - callStartTime) / 1000);
+            const m = String(Math.floor(duration / 60)).padStart(2, '0');
+            const s = String(duration % 60).padStart(2, '0');
+            if (floatingTimeEl) floatingTimeEl.textContent = `${m}:${s}`;
+            const statusEl = document.getElementById('callStatus');
+            if (statusEl) statusEl.textContent = `${m}:${s}`;
+        };
+        updateTime(); // 立即更新一次，防止第一秒显示空白
+        callTimerInterval = setInterval(updateTime, 1000);
+    } else if (floatingTimeEl) {
+        floatingTimeEl.textContent = '等待';
+    }
+
+    // 恢复全屏界面的头像和名字（供点击小窗后展示）
+    const callAvatarEl = document.getElementById('callAvatar');
+    const callNameEl = document.getElementById('callName');
+    if (callAvatarEl && state.avatarUrl) callAvatarEl.style.backgroundImage = state.avatarUrl;
+    if (callNameEl && state.callerName) callNameEl.textContent = state.callerName;
+
+    // 同步刷新通话记录面板（数据已恢复，随时可以打开查看）
+    if (typeof renderCallHistory === 'function') renderCallHistory();
+
+    // ★ 核心修复：恢复全屏界面的字幕内容
+    // 从历史记录中取出最后一条，回显到字幕框，让用户重新进入时不会看到空白
+    const subEl = document.getElementById('callSubtitle');
+    if (subEl && currentCallHistory.length > 0) {
+        const lastRecord = currentCallHistory[currentCallHistory.length - 1];
+        subEl.style.display = 'block';
+        subEl.textContent = lastRecord.content;
+        // 根据发言方决定字幕颜色：AI说的白色，用户说的绿色
+        subEl.style.color = lastRecord.role === 'user' ? '#95EC69' : 'white';
+    } else if (subEl && callStartTime > 0) {
+        // 如果通话已接通但暂无记录（刚接通就退出了），显示省略号占位
+        subEl.style.display = 'block';
+        subEl.textContent = '...';
+        subEl.style.color = '#aaa';
+    }
+
+    // ★ 同步恢复挂断按钮的文字（已接通显示"挂断"，等待中显示"取消"）
+    const hangupSpan = document.querySelector('#callHangupBtn span');
+    if (hangupSpan) {
+        hangupSpan.textContent = callStartTime > 0 ? '挂断' : '取消';
+    }
+
+    console.log(`✅ 通话状态已恢复，聊天ID: ${currentChatId}，历史记录: ${currentCallHistory.length}条`);
+}
+
+async function fetchAndPlayCallResponse(apiMessages) {
+    if (callAutoReplyTimer) clearTimeout(callAutoReplyTimer); 
+    try {
+        const wechatApiConfig = await getApiConfigForWechat('wechat');
+        let response = await callAIAPI(apiMessages, wechatApiConfig);
+        
+        let replyMsgs = [];
+        try {
+            let cleanStr = response.replace(/```json/g, '').replace(/```/g, '');
+            const firstBracket = cleanStr.indexOf('[');
+            const lastBracket = cleanStr.lastIndexOf(']');
+            if (firstBracket !== -1 && lastBracket !== -1) {
+                const msgs = JSON.parse(cleanStr.substring(firstBracket, lastBracket + 1));
+                replyMsgs = msgs.filter(m => m.type === 'call_accept' || m.type === 'text');
+            } else {
+                throw new Error("API未返回标准JSON数组");
+            }
+        } catch (parseError) {
+            console.warn("通话解析降级：", parseError);
+            const rawText = response.replace(/```.*/g, '').replace(/\[\{.*\}\]/g, '').trim();
+            const sentences = rawText.split(/(?<=[。！？!?])/).filter(s => s.trim());
+            replyMsgs = sentences.map(s => ({ content: s.trim() }));
+        }
+        
+        const contact = await getContactDetails(currentChatId);
+        
+        for (const replyMsg of replyMsgs) {
+            if (!isCallActive) break; 
+            
+            const subEl = document.getElementById('callSubtitle');
+            subEl.style.display = 'block';
+            subEl.textContent = replyMsg.content;
+            subEl.style.color = 'white';
+            
+            currentCallHistory.push({
+                role: 'ai',
+                name: contact.realName || contact.nickname,
+                content: replyMsg.content
+            });
+            if (typeof renderCallHistory === 'function') renderCallHistory();
+            
+            await saveCallState(); // ★ 每条新记录写入后立即持久化
+            await new Promise(r => setTimeout(r, 2500));
+        }
+        resetCallAutoReplyTimer();
+    } catch (e) {
+        console.error(e);
+        if (isCallActive) {
+            document.getElementById('callSubtitle').textContent = `信号异常：${e.message || '网络连接失败'}`;
+            document.getElementById('callSubtitle').style.color = '#FA5151';
+            resetCallAutoReplyTimer(); 
+        }
+    }
+}
+
+document.getElementById('callSendBtn').addEventListener('click', async () => {
+    const input = document.getElementById('callInput');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    
+    document.getElementById('callInputArea').style.display = 'none';
+    
+    document.getElementById('callSubtitle').textContent = text;
+    document.getElementById('callSubtitle').style.color = '#95EC69'; 
+    
+    currentCallHistory.push({
+        role: 'user',
+        name: currentCallUserName,
+        content: text
+    });
+    if (typeof renderCallHistory === 'function') renderCallHistory();
+    
+    const { apiMessages } = await buildApiMessages(currentChatId);
+    apiMessages.push({
+        role: 'user',
+        content: `[语音通话中] 用户对你说："${text}"。请直接回复你接下来要说的话，必须根据人设生成 3~5 句连贯的回复（严格使用 [{"type": "call_accept", "content": "第一句话"}, {"type": "call_accept", "content": "第二句话"}...] 格式）`
+    });
+    
+    await fetchAndPlayCallResponse(apiMessages);
+});
+
+document.getElementById('callInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') document.getElementById('callSendBtn').click();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const buttonArea = document.querySelector('#voiceCallOverlay > div:last-child > div:first-child');
+        if (buttonArea) {
+            const micColumn = buttonArea.querySelector('div:first-child');
+            if (micColumn) {
+                micColumn.style.cursor = 'pointer';
+                micColumn.onclick = () => {
+                    const inputArea = document.getElementById('callInputArea');
+                    if (inputArea.style.display === 'none' || !inputArea.style.display) {
+                        inputArea.style.display = 'block';
+                        setTimeout(() => document.getElementById('callInput').focus(), 100);
+                    } else {
+                        inputArea.style.display = 'none';
+                    }
+                };
+            }
+        }
+    }, 300); 
+});
+
+// 发起语音通话逻辑
+const oldStartBtn = document.getElementById('startVoiceCallBtn');
+const newStartBtn = oldStartBtn.cloneNode(true);
+oldStartBtn.parentNode.replaceChild(newStartBtn, oldStartBtn);
+
+newStartBtn.addEventListener('click', async () => {
+    if (!currentChatId) return;
+    
+    document.getElementById('callSelectActionSheet').style.display = 'none';
+    document.getElementById('voiceCallOverlay').style.display = 'flex';
+    document.getElementById('floatingCallWindow').style.display = 'none'; 
+    
+    document.getElementById('floatingCallWindow').style.top = 'max(env(safe-area-inset-top, 80px), 80px)';
+    document.getElementById('floatingCallWindow').style.left = 'auto';
+    document.getElementById('floatingCallWindow').style.right = '15px';
+    
+    const contact = await getContactDetails(currentChatId);
+    document.getElementById('callAvatar').style.backgroundImage = `url(${contact.avatar || 'https://iili.io/fkc3RwJ.jpg'})`;
+    document.getElementById('callName').textContent = contact.nickname;
+    document.getElementById('callStatus').textContent = '等待对方接受邀请...';
+    document.getElementById('floatingCallTime').textContent = '等待'; 
+    document.getElementById('callSubtitle').style.display = 'none';
+    document.getElementById('callInputArea').style.display = 'none';
+    document.querySelector('#callHangupBtn span').textContent = '取消';
+    
+    currentCallHistory = [];
+    currentCallUserName = await getData('userName') || '闻念';
+    if (typeof renderCallHistory === 'function') renderCallHistory();
+    
+isCallActive = true;
+windowIsIncomingCall = false;
+callInitiator = 'user';
+callStartTime = 0; 
+if (callAutoReplyTimer) clearTimeout(callAutoReplyTimer);
+
+await saveCallState(); // ★ 通话开始时立即持久化
+startCallRing();
+
+    const { apiMessages, availableStickers } = await buildApiMessages(currentChatId);
+    
+    apiMessages.push({
+        role: 'user',
+        content: `[系统级别绝对指令] 用户向你发起了语音通话。请根据当前情境和人设决定是否接听。
+如果你想拒绝，必须严格回复 3~5 句话解释原因：[{"type": "call_reject", "content": "拒绝的理由1"}, {"type": "call_reject", "content": "理由2"}...]
+如果你想接听，必须严格回复 3~5 句话作为开场白：[{"type": "call_accept", "content": "接通后的开场白1"}, {"type": "call_accept", "content": "开场白2"}...]
+注意：只能选择其中一种状态，必须是JSON数组格式！`
+    });
+
+    try {
+        const wechatApiConfig = await getApiConfigForWechat('wechat');
+        let response = await callAIAPI(apiMessages, wechatApiConfig);
+        await handleAIResponsePayload(response, contact, availableStickers, currentChatId, activeChatSessionToken);
+        
+        if (isCallActive) {
+            resetCallAutoReplyTimer();
+        }
+    } catch (e) {
+        console.error("通话请求失败", e);
+        stopCallRing(); // ★ 报错时停止铃声
+        clearInterval(callVibrateInterval);
+        clearInterval(callTimerInterval);
+        if (callAutoReplyTimer) clearTimeout(callAutoReplyTimer);
+        document.getElementById('voiceCallOverlay').style.display = 'none';
+        document.getElementById('floatingCallWindow').style.display = 'none';
+        isCallActive = false;
+        callStartTime = 0;
+        
+        const recordMsg = {
+            role: 'user',
+            type: 'text',
+            content: '对方无响应 ᯅ',
+            timestamp: Date.now()
+        };
+        await saveMessage(currentChatId, recordMsg);
+        originalAppendMessageToUI(recordMsg, null, false);
+        scrollToBottom();
+        await updateChatList(currentChatId, '对方无响应 ᯅ', Date.now());
+    }
+});
+
+// 挂断/取消通话逻辑
+const oldHangupBtn = document.getElementById('callHangupBtn');
+const newHangupBtn = oldHangupBtn.cloneNode(true);
+oldHangupBtn.parentNode.replaceChild(newHangupBtn, oldHangupBtn);
+
+newHangupBtn.addEventListener('click', async () => {
+    if (!isCallActive) return;
+    stopCallRing(); // ★ 主动挂断时停止铃声
+    clearInterval(callVibrateInterval);
+    clearInterval(callTimerInterval);
+    if (callAutoReplyTimer) clearTimeout(callAutoReplyTimer); 
+    document.getElementById('voiceCallOverlay').style.display = 'none';
+    document.getElementById('callHistoryPanel').style.display = 'none'; 
+    document.getElementById('floatingCallWindow').style.display = 'none'; 
+    isCallActive = false;
+    
+    let recordText = '已取消 ᯅ';
+    let isRealCall = false; 
+    if (callStartTime > 0) {
+        isRealCall = true;
+        const duration = Math.floor((Date.now() - callStartTime) / 1000);
+        const m = String(Math.floor(duration / 60)).padStart(2, '0');
+        const s = String(duration % 60).padStart(2, '0');
+        recordText = `通话时长 ${m}:${s} ᯅ`;
+    }
+    
+    const contact = await getContactDetails(currentChatId);
+    const recordRole = callInitiator === 'ai' ? 'assistant' : 'user';
+    const recordMsg = {
+        role: recordRole,
+        type: 'text',
+        content: recordText,
+        senderName: recordRole === 'assistant' ? contact.nickname : undefined,
+        timestamp: Date.now()
+    };
+    await saveMessage(currentChatId, recordMsg);
+    originalAppendMessageToUI(recordMsg, recordRole === 'assistant' ? contact.avatar : null, contact.isGroup);
+    scrollToBottom();
+    await updateChatList(currentChatId, recordText, Date.now());
+    
+    callStartTime = 0;
+await saveData('active_call_state', null); // ★ 通话结束后彻底清除持久化记录
+
+if (isRealCall) {
+        setTimeout(async () => {
+            const { apiMessages, availableStickers } = await buildApiMessages(currentChatId);
+            apiMessages.push({
+                role: 'user',
+                content: `[系统提示] 语音通话刚刚结束。请根据刚才的通话内容和人设，在微信聊天里主动发 3~5 条文字消息作为通话后的跟进（例如：叮嘱、道别、回味等）。严格使用 [{"type": "text", "content": "第一句话"}, {"type": "text", "content": "第二句话"}...] 格式。`
+            });
+            
+            try {
+                document.getElementById('chatTitle').textContent = '对方正在输入...';
+                document.getElementById('chatTitle').classList.add('typing-blink-effect');
+                
+                const wechatApiConfig = await getApiConfigForWechat('wechat');
+                let response = await callAIAPI(apiMessages, wechatApiConfig);
+                await handleAIResponsePayload(response, contact, availableStickers, currentChatId, activeChatSessionToken);
+            } catch (e) {
+                console.error("通话后追击回复失败", e);
+            }
+        }, 800);
+    }
+});
