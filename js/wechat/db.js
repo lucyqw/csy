@@ -3,18 +3,21 @@
 // [FunctionDeclaration] Function: initDB
 function initDB() {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      // 小鱼修改：强制硬编码一个全新的数据库名字，彻底避开与父项目的冲突！
+      const request = indexedDB.open('WeChatAppDB_V2', 1);
       request.onerror = (event) => reject(`数据库打开失败: ${event.target.error}`);
       request.onsuccess = (event) => {
         db = event.target.result;
-        console.log('数据库打开成功');
+        console.log('微信专属数据库打开成功');
         resolve(db);
       };
       request.onupgradeneeded = (event) => {
         db = event.target.result;
-        if (!db.objectStoreNames.contains(STORE_NAME)) {
-          db.createObjectStore(STORE_NAME, { keyPath: 'id' });
-          console.log('对象仓库创建成功');
+        // 小鱼修改：如果没拿到 STORE_NAME，默认创建一个 'userProfile' 仓库
+        const storeName = typeof STORE_NAME !== 'undefined' ? STORE_NAME : 'userProfile';
+        if (!db.objectStoreNames.contains(storeName)) {
+          db.createObjectStore(storeName, { keyPath: 'id' });
+          console.log('微信对象仓库创建成功');
         }
       };
     });
