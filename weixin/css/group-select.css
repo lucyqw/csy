@@ -1,0 +1,46 @@
+/* 自动拆分生成: css/group-select.css */
+
+/* ★★★ 小鱼新增：群聊选择列表样式 ★★★ */
+.group-contact-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid #F0F0F0;
+  cursor: pointer;
+}
+
+.group-checkbox {
+  width: 24px;
+  height: 24px;
+  border: 1px solid #C7C7CC;
+  border-radius: 50%;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+/* 选中状态 */
+.group-contact-row.selected .group-checkbox {
+  background: #07C160;
+  border-color: #07C160;
+}
+
+.group-contact-row.selected .group-checkbox::after {
+  content: '';
+  width: 10px;
+  height: 5px;
+  border-left: 2px solid white;
+  border-bottom: 2px solid white;
+  transform: rotate(-45deg) translate(2px, -2px);
+}
+
+/* 确保群聊选择页的内容能滚动且不被遮挡 */
+#groupSelectPage .content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 50px;
+}
+

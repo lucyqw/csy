@@ -1,0 +1,53 @@
+/* 自动拆分生成: css/draft-toolbar.css */
+
+}
+
+/* --- 微信风格草稿箱工具栏 (微调位置) --- */
+.wx-draft-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 5px 0 15px 55px; /* 增加底部padding防止贴底，左侧避开头像 */
+  margin-top: -5px; /* 紧贴上一条消息 */
+  font-size: 12px;
+  color: #999;
+  opacity: 0;
+  animation: fadeIn 0.3s ease-out forwards; /* 使用刚才定义的动画 */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.wx-draft-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(0,0,0,0.05);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.wx-draft-btn {
+  cursor: pointer;
+  padding: 4px 8px;
+  font-weight: bold;
+  user-select: none;
+}
+
+.wx-draft-btn:active { color: #07C160; }
+
+.wx-refresh-btn {
+  width: 24px; 
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.05);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  cursor: pointer;
+}
+
+.wx-refresh-btn:active { background: rgba(0,0,0,0.15); }
+
+.wx-refresh-btn svg { width: 14px; height: 14px; fill: #666; }
+

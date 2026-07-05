@@ -1,0 +1,192 @@
+/* 自动拆分生成: css/pages/ringtone.css */
+
+/* 小鱼注释：来电铃声页面样式 */
+.ringtone-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 60px;
+  background: #FFFFFF;
+  margin: 10px;
+  border-radius: 8px;
+}
+
+.ringtone-icon-wrapper {
+  width: 100px;
+  height: 100px;
+  background-color: #90EE90; /* 淡绿色 */
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-bottom: 20px;
+  position: relative; /* 小鱼新增：为绝对定位子元素提供参照 */
+}
+
+/* 小鱼新增：播放图标（三角形） */
+.play-icon {
+  display: block;
+}
+
+/* 小鱼新增：暂停图标（两条竖杠） */
+.pause-icon {
+  display: none;
+  width: 40px;
+  height: 40px;
+}
+
+.pause-icon rect {
+  fill: white;
+}
+
+/* 小鱼新增：当正在播放时切换图标 */
+.ringtone-icon-wrapper.playing .play-icon {
+  display: none;
+}
+
+.ringtone-icon-wrapper.playing .pause-icon {
+  display: block;
+}
+
+/* 小鱼新增：历史记录列表项样式 */
+.history-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #F0F0F0;
+  cursor: pointer;
+  background: #FFFFFF;
+}
+
+.history-item:active {
+  background: var(--bg-color);
+}
+
+.history-item-icon {
+  width: 28px;
+  height: 28px;
+  background-color: #90EE90;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  font-size: 18px;
+  color: white;
+}
+
+.history-item-name {
+  flex: 1;
+  font-size: 16px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-item.current {
+  background: #F0F0F0;
+}
+
+.history-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.ringtone-content p {
+  font-size: 16px;
+  color: var(--text-primary);
+  margin-bottom: 30px;
+}
+
+.ringtone-change-btn {
+  background-color: #F0F0F0;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 60px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ringtone-footer-link {
+  padding: 20px;
+  text-align: center;
+  color: #5B9DF5;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* 小鱼注释：更换铃声弹窗样式 */
+.ringtone-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-content {
+  background: #FFFFFF;
+  padding: 20px;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.modal-content h3 {
+  margin: 0;
+  text-align: center;
+}
+
+.modal-content p {
+  font-size: 14px;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0 0 10px 0;
+}
+
+.modal-content input[type="text"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 14px;
+  box-sizing: border-box; /* 小鱼新增：确保宽度计算正确 */
+}
+
+/* 小鱼新增：自定义名称输入框的特殊样式 */
+#ringtoneNameInput {
+  border-style: dashed; /* 虚线边框，区分必填和选填 */
+  color: var(--text-secondary);
+}
+
+#ringtoneNameInput:focus {
+  border-style: solid;
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.file-input-label {
+  display: block;
+  padding: 10px;
+  background-color: var(--primary-color);
+  color: white;
+  text-align: center;
+  border-radius: 6px;
+  cursor: pointer;
+}
+

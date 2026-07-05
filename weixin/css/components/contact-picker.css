@@ -1,0 +1,8 @@
+/* 自动拆分生成: css/components/contact-picker.css */
+
+/* 选择联系人弹窗样式 */
+.select-contact-list {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+

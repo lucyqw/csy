@@ -1,0 +1,224 @@
+/* 自动拆分生成: css/transfer.css */
+
+}
+
+/* --- 小鱼新增：转账页面与气泡样式 --- */
+.transfer-header {
+  text-align: center;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.transfer-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 4px;
+  background-size: cover;
+  background-position: center;
+  margin: 0 auto 10px;
+  background-color: #ccc;
+}
+
+.transfer-info h2 {
+  font-size: 16px;
+  font-weight: 500;
+  color: #000;
+  margin-bottom: 5px;
+}
+
+.transfer-info p {
+  font-size: 12px;
+  color: #7f7f7f;
+}
+
+.transfer-input-box {
+  background: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 0 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.transfer-label {
+  font-size: 14px;
+  color: #000;
+  margin-bottom: 15px;
+}
+
+.transfer-amount-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.currency-symbol {
+  font-size: 30px;
+  font-weight: 600;
+  margin-right: 10px;
+}
+
+#transferAmountDisplay {
+  font-size: 40px;
+  font-weight: 600;
+  flex: 1;
+  height: 50px;
+  line-height: 50px;
+}
+
+/* 模拟光标 */
+.cursor-blink {
+  display: inline-block;
+  width: 2px;
+  height: 40px;
+  background-color: #07C160;
+  animation: blink 1s infinite;
+  vertical-align: text-bottom;
+  margin-left: 2px;
+}
+
+}
+
+/* 自定义数字键盘 */
+.custom-keypad {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #F7F7F7;
+  display: grid;
+  grid-template-columns: 3fr 1fr; /* 左边数字，右边功能键 */
+}
+
+.keypad-numbers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background: #ccc;
+  gap: 1px;
+}
+
+.keypad-btn {
+  background: #fff;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.keypad-btn:active { background: #eee; }
+
+.keypad-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: #ccc;
+  padding-left: 1px;
+}
+
+.keypad-del {
+  background: #fff;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.keypad-confirm {
+  background: #07C160;
+  color: white;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.keypad-confirm.disabled {
+  background: #07C160;
+  opacity: 0.5;
+}
+
+/* --- 聊天气泡：转账样式 (高仿版) --- */
+.transfer-bubble {
+  width: 235px;
+  background-color: #f79c47 !important; /* 默认深橙色 */
+  border-radius: 4px;
+  padding: 0 !important;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* ★★★ 新增：处理后(接收/退回)的浅色背景 ★★★ */
+.msg-content.transfer-processed .transfer-bubble {
+    background-color: #fbe0c4 !important; /* 浅橙色 */
+}
+
+/* 隐藏普通气泡的尖角颜色覆盖 */
+.message-bubble.self .msg-content.transfer-mode::after { border-left-color: #f79c47; }
+
+.message-bubble.other .msg-content.transfer-mode::after { border-right-color: #f79c47; }
+
+/* ★★★ 新增：处理后(接收/退回)的浅色尖角 ★★★ */
+.message-bubble.self .msg-content.transfer-processed::after { border-left-color: #fbe0c4 !important; }
+
+.message-bubble.other .msg-content.transfer-processed::after { border-right-color: #fbe0c4 !important; }
+
+.transfer-content-top {
+  padding: 15px;
+  display: flex;
+  align-items: flex-start;
+}
+
+.transfer-icon-circle {
+  width: 42px;
+  height: 42px;
+  margin-right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.transfer-text-col {
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 42px;
+  flex: 1;
+  min-width: 0; /* 关键：防止文字过长撑破容器 */
+}
+
+.transfer-amt { 
+  font-size: 17px; 
+  font-weight: 500; 
+  line-height: 1.2;
+}
+
+.transfer-desc { 
+  font-size: 13px; 
+  opacity: 0.9;
+  margin-top: 2px;
+  font-weight: 400;
+  white-space: nowrap; /* 强制文字在一行显示，不换行 */
+  overflow: hidden; /* 隐藏超出容器的部分 */
+  text-overflow: ellipsis; /* 超出的部分用省略号(...)代替 */
+}
+
+.transfer-footer {
+  background-color: transparent;
+  padding: 4px 15px;
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+  border-top: 1px solid rgba(255,255,255,0.2);
+}
+

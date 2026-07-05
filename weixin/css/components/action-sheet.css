@@ -1,0 +1,52 @@
+/* 自动拆分生成: css/components/action-sheet.css */
+
+/* 小鱼新增：底部操作菜单样式 */
+.action-sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 3000;
+  display: flex;
+  align-items: flex-end;
+}
+
+/* 小鱼新增：底部操作菜单样式 */
+.action-sheet-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 3000;
+  display: flex;
+  align-items: flex-end;
+}
+
+.action-sheet button {
+  width: 100%;
+  padding: 16px;
+  background: #FFFFFF;
+  border: none;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.action-sheet button:first-child {
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+.action-sheet button:nth-child(2) {
+  border-radius: 0 0 10px 10px;
+}
+
+.action-sheet .cancel-btn {
+  margin-top: 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+

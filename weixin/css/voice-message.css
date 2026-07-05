@@ -1,0 +1,163 @@
+/* 自动拆分生成: css/voice-message.css */
+
+/* --- 小鱼新增：语音条样式 --- */
+.voice-bubble {
+  display: flex;
+  align-items: center;
+  /* 最小宽度60px，最大宽度160px，根据秒数动态计算 */
+  min-width: 60px;
+  height: 20px;
+  cursor: pointer;
+  user-select: none;
+}
+
+/* 自己的语音（绿色背景，声波在右） */
+.message-bubble.self .voice-bubble {
+  flex-direction: row; /* 小鱼修改：改为正常顺序，让图标在秒数右边 */
+  justify-content: flex-end; /* 内容靠右对齐 */
+}
+
+/* 对方的语音（白色背景） */
+.message-bubble.other .voice-bubble {
+  flex-direction: row-reverse; /* 保持反向：让图标在左，秒数在右 */
+  justify-content: flex-end;   /* 小鱼修改：在反向模式下，flex-end 才是视觉上的“靠左对齐” */
+}
+
+.voice-duration {
+  font-size: 15px;
+  margin: 0 8px;
+  color: #000;
+}
+
+.voice-icon {
+  width: 18px;
+  height: 18px;
+  opacity: 0.6;
+}
+
+/* --- 小鱼终极版：语音播放动画 (扩散循环) --- */
+
+/* 1. 默认状态：所有线条为纯黑色 */
+.voice-icon path {
+  opacity: 1; /* 小鱼修改：改为1，让图标完全不透明，显示纯黑色 */
+  transition: opacity 0.2s;
+}
+
+/* 播放时清除默认样式干扰 */
+.voice-bubble.playing .voice-icon {
+  animation: none;
+}
+
+/* 2. 定义扩散动画：瞬间变亮，然后保持一会儿，最后变暗 */
+@keyframes signalLoop {
+  0% { opacity: 0.4; }
+
+10% { opacity: 1; }
+
+50% { opacity: 0.4; }
+
+100% {
+    opacity: 1;
+    transform: translateY(0) scale(1); /* 结束位置：复原 */
+  }
+
+/* 变暗 */
+}
+
+/* 3. 依次应用动画 (圆点 -> 中间 -> 外圈) */
+
+/* 第1笔：圆点 (立即亮) */
+.voice-bubble.playing .voice-icon path:nth-child(1) {
+  animation: signalLoop 1.2s infinite;
+  animation-delay: 0s;
+}
+
+/* 第2笔：中间弧 (延迟0.4s亮) */
+.voice-bubble.playing .voice-icon path:nth-child(2) {
+  animation: signalLoop 1.2s infinite;
+  animation-delay: 0.4s;
+}
+
+/* 第3笔：外圈弧 (延迟0.8s亮) */
+.voice-bubble.playing .voice-icon path:nth-child(3) {
+  animation: signalLoop 1.2s infinite;
+  animation-delay: 0.8s;
+}
+
+/* 2. 语音模式下的外层容器：彻底透明，隐藏原有的尖角 */
+.msg-content.voice-mode {
+  background-color: transparent !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* 隐藏原有的绿色/白色尖角 */
+.msg-content.voice-mode::after {
+  display: none !important;
+}
+
+/* 3. 内部包装器：垂直排列 */
+.voice-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+.message-bubble.self .voice-wrapper { align-items: flex-end; }
+
+.message-bubble.other .voice-wrapper { align-items: flex-start; }
+
+/* --- 新的尖角逻辑 (加在 voice-bubble 上) --- */
+/* 自己的尖角 */
+.message-bubble.self .voice-bubble::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 100%; 
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid #95EC69;
+}
+
+/* 对方的尖角 */
+.message-bubble.other .voice-bubble::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 100%; 
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-right: 6px solid #FFFFFF;
+}
+
+/* 5. 下方：文字条 (完全独立，有间距) */
+.voice-text-panel {
+  display: none; /* 默认隐藏 */
+  margin-top: 8px; /* ★★★ 核心：这里控制分离的距离 ★★★ */
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 15px;
+  line-height: 1.4;
+  word-break: break-all;
+  max-width: 100%;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+  
+  /* 默认颜色（对方-白色） */
+  background-color: #FFFFFF;
+  color: #333;
+  position: relative; /* 确保层级 */
+}
+
+/* 自己的文字条（绿色） */
+.message-bubble.self .voice-text-panel {
+  background-color: #95EC69;
+  color: black;
+  text-align: left;
+}
+
+.voice-text-panel.show {
+  display: block;
+  animation: fadeIn 0.2s ease;
+}
+

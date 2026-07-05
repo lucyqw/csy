@@ -1,0 +1,181 @@
+/* 自动拆分生成: css/sticker.css */
+
+/* --- 表情包弹窗样式优化 --- */
+
+/* 新增：表情面板的分区标题样式 */
+.emoji-section-title {
+  grid-column: 1 / -1; /* 让标题横跨整行 */
+  font-size: 12px;
+  color: #5A5A5A;
+  padding: 15px 0 5px 4px;
+  text-align: left;
+  font-weight: 400;
+  user-select: none;
+}
+
+/* 1. 顶部库选择栏 (图标模式) */
+#chatStickerLibTab {
+  display: flex;
+  overflow-x: auto;
+  padding: 8px 12px;
+  background: #F5F5F5; /* 浅灰背景 */
+  gap: 15px;
+  align-items: center;
+}
+
+/* 单个库图标按钮 */
+.sticker-tab-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: all 0.2s;
+  background-color: #ddd; /* ★ 新增：为没有封面的库提供默认灰色背景 */
+  background-size: cover;
+  background-position: center;
+}
+
+/* 选中状态：背景变白，完全不透明 */
+.sticker-tab-btn.active {
+  background-color: #FFFFFF;
+  opacity: 1;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* 3. Emoji 单元格样式 (一行8个) */
+.emoji-cell {
+  font-size: 25px; /* ★ 修改：缩小字体，防止溢出 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  aspect-ratio: 1;
+}
+
+.emoji-cell:active {
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* 4. 图片表情单元格样式 (一行5个) */
+.chat-sticker-item {
+  position: relative;
+  aspect-ratio: 1;
+  background-size: cover;
+  background-position: center;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: #f9f9f9;
+}
+
+.chat-sticker-desc {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 10px;
+  text-align: center;
+  padding: 2px 0;
+  border-radius: 0 0 6px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sticker-lib-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+}
+
+.sticker-lib-cover {
+  width: 50px;
+  height: 50px;
+  background-color: #eee;
+  border-radius: 6px;
+  margin-right: 15px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+  font-size: 12px;
+}
+
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  padding: 15px;
+}
+
+.sticker-img-box {
+  aspect-ratio: 1;
+  background: #f5f5f5;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.sticker-desc {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  font-size: 10px;
+  text-align: center;
+  padding: 2px 0;
+  border-radius: 0 0 6px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-tab {
+  border-bottom: 2px solid transparent; /* 默认底部线条透明 */
+  transition: all 0.3s; /* 添加平滑过渡 */
+}
+
+.import-tab.active {
+  color: var(--primary-color);
+  font-weight: bold;
+  border-bottom-color: var(--primary-color); /* 激活时线条变绿 */
+}
+
+/* 小鱼新增：让表情包详情页标题显示为手型光标，提示可点击 */
+#currentLibTitle {
+  cursor: pointer;
+  user-select: none; /* 防止双击时选中文字 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#currentLibTitle:active {
+  opacity: 0.5; /* 点击时的视觉反馈 */
+}
+
+/* 给标题加个小铅笔图标暗示可编辑 (伪元素) */
+#currentLibTitle::after {
+  content: '✎';
+  font-size: 12px;
+  color: #999;
+  margin-left: 4px;
+  opacity: 0.5;
+}
+

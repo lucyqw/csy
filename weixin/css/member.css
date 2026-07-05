@@ -1,0 +1,37 @@
+/* 自动拆分生成: css/member.css */
+
+.member-avatar-img {
+  width: 52px; /* ★ 缩小到 48px */
+  height: 52px;
+  border-radius: 6px;
+  background-size: cover;
+  background-position: center;
+  background-color: #eee;
+  margin-bottom: 6px;
+}
+
+.add-member-btn {
+  width: 52px; /* ★ 缩小到 48px */
+  height: 52px;
+  border: 1px dashed #CCCCCC;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #CCCCCC;
+  font-size: 32px; /* 符号也稍微调小 */
+  font-weight: 300;
+  cursor: pointer;
+}
+
+.member-name-text {
+  font-size: 11px; /* 字体微调 */
+  color: #666;
+  width: 100%;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+

@@ -1,0 +1,8 @@
+/* 自动拆分生成: css/responsive.css */
+
+/* 响应式适配 */
+    @media (max-width: 375px) {
+      .chat-name, .contact-name, .discover-text {
+        font-size: 15px;
+      }
+

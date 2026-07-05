@@ -1,0 +1,81 @@
+/* 自动拆分生成: css/contacts.css */
+
+/* 小鱼修改：通讯录样式升级版 */
+.contact-section {
+  background: #FFFFFF;
+  /* 去掉底部边距，让列表看起来更连贯 */
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px; /* 稍微调整间距 */
+  border-bottom: 1px solid #F0F0F0;
+  cursor: pointer;
+  position: relative; /* 为可能得徽标定位 */
+}
+
+.contact-item:active {
+  background: var(--bg-color);
+}
+
+.contact-icon {
+  width: 44px; /* 图标放大 */
+  height: 44px;
+  border-radius: 4px; /* 圆角变小，更像微信 */
+  margin-right: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.contact-name {
+  flex: 1;
+  font-size: 17px; /* 字体稍微加大 */
+  color: #000;
+  font-weight: 500; /* 字体加粗 */
+}
+
+/* 小鱼修复：显示列表右侧箭头，并设置标准灰色 */
+.contact-arrow {
+  display: block;      /* 关键修改：从 none 改为 block，让它显示出来 */
+  color: #B2B2B2;      /* 设置为微信标准的浅灰色 */
+  font-size: 22px;     /* 设置合适的大小 */
+  font-family: sans-serif; /* 设置字体 */
+  margin-left: 8px;    /* 给左边的文字留点空隙 */
+  font-weight: 300;    /* 让箭头线条细一点，更精致 */
+}
+
+/* 底部企业文字样式 */
+.contact-footer-text {
+  text-align: center;
+  padding: 6px;
+  color: #7d7d7d;
+  font-size: 12px;
+  background: #EDEDED;
+}
+
+/* 右侧字母索引条 */
+.index-bar {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 2px;
+  z-index: 10;
+  font-size: 11px;
+  color: #555;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.index-bar span {
+  display: block;
+  width: 16px;
+  text-align: center;
+}
+

@@ -1,0 +1,216 @@
+/* 自动拆分生成: css/moments.css */
+
+/* --- 小鱼新增：朋友圈页面样式 --- */
+#momentsPage {
+  background: #FFFFFF;
+  display: none;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 2000; /* 确保层级够高 */
+}
+
+/* Moments Likes and Comments Section */
+.moment-actions-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  font-size: 13px;
+  color: #B2B2B2;
+}
+
+.moment-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.moment-action-btn:active {
+  background-color: #F0F0F0;
+}
+
+.moment-like-comment-area {
+  background-color: #F7F7F7;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-top: 10px;
+}
+
+.moment-likes {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #E0E0E0;
+  margin-bottom: 5px;
+}
+
+.moment-likes:empty {
+  display: none; /* Hide if no likes */
+}
+
+.moment-likes svg {
+  flex-shrink: 0;
+}
+
+.moment-likes span {
+  color: #576B95; /* Blue for names */
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.moment-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.moment-comment-item {
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.moment-comment-author {
+  color: #576B95;
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.moment-comment-content {
+  color: #333;
+  word-break: break-word;
+}
+
+/* Specific styling for the like/comment action menu */
+#globalMomentActionMenu {
+  background: #4C5154;
+  border-radius: 4px; /* Adjust radius to match the screenshot */
+  color: white;
+  font-size: 14px;
+  overflow: hidden;
+  white-space: nowrap;
+  z-index: 99999;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+  display: flex; /* Ensure flex for items */
+  align-items: center;
+}
+
+#globalMomentActionMenu .menu-item { /* Reuse menu-item for consistency */
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+#globalMomentActionMenu .menu-item:first-child {
+  border-right: 1px solid #3B3F42; /* Separator between like and comment */
+}
+
+#globalMomentActionMenu .menu-item svg {
+  margin-right: 6px;
+  flex-shrink: 0;
+}
+
+.moments-header {
+  position: relative;
+  width: 100%;
+  height: 250px; /* 封面高度，可自行调整 */
+  background-color: #333;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 30px; /* 只留头像悬出部分的高度，消除多余白边 */
+  flex-shrink: 0; /* 防止被压缩 */
+}
+
+.moments-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 40px 15px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 2010;
+  box-sizing: border-box;
+  pointer-events: none;
+  transition: background-color 0.3s; /* 背景渐变动画 */
+}
+
+/* 初始状态：白色图标带阴影 */
+.moments-nav .nav-icon-svg {
+  pointer-events: auto;
+  cursor: pointer;
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  transition: color 0.3s, filter 0.3s;
+}
+
+/* 初始状态：标题完全透明 */
+.moments-nav .moments-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: auto;
+}
+
+/* ★★★ 滑动后的状态：白底黑字，显示标题 ★★★ */
+.moments-nav.scrolled {
+  background-color: #EDEDED; /* 微信标准的浅灰底色 */
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.moments-nav.scrolled .nav-icon-svg {
+  color: #000; /* 图标变黑 */
+  filter: none; /* 阴影消失 */
+}
+
+.moments-nav.scrolled .moments-title {
+  opacity: 1; /* 标题显现 */
+}
+
+.moments-profile {
+  position: absolute;
+  bottom: -20px; /* 头像悬挂效果 */
+  right: 20px;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.moments-name {
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  margin-top: 10px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3); /* 文字阴影防止背景太白看不清 */
+}
+
+.moments-avatar {
+  width: 60px; /* 小鱼修改：从70px缩小到60px */
+  height: 60px; /* 小鱼修改：从70px缩小到60px */
+  border-radius: 8px;
+  background-color: #eee;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 0 1px rgba(0,0,0,0.1);
+}
+
+.moments-hint {
+  position: absolute;
+  bottom: 50%;
+  width: 100%;
+  text-align: center;
+  color: rgba(255,255,255,0.4);
+  font-size: 14px;
+  pointer-events: none;
+}
+

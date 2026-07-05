@@ -1,0 +1,66 @@
+/* 自动拆分生成: css/dialog.css */
+
+/* ★★★ 小鱼新增：自定义弹窗样式 ★★★ */
+.custom-alert-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-alert-box {
+  background: #FFFFFF;
+  width: 85%;
+  max-width: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: alertPop 0.2s ease-out;
+}
+
+.custom-alert-content {
+  padding: 20px;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.custom-prompt-input {
+  width: calc(100% - 40px);
+  margin: 0 20px 15px 20px;
+  padding: 10px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  font-size: 15px;
+  outline: none;
+}
+
+.custom-prompt-input:focus {
+  border-color: #07C160;
+}
+
+.custom-alert-footer {
+  border-top: 1px solid #eee;
+}
+
+.custom-alert-btn {
+  width: 100%;
+  padding: 15px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.custom-alert-btn:active {
+  background: #f5f5f5;
+}
+

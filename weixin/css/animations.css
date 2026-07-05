@@ -1,0 +1,87 @@
+/* 自动拆分生成: css/animations.css */
+
+/* 小鱼新增：从左侧进入的页面动画 */
+.page.slide-from-left {
+  transform: translateX(-100%);
+}
+
+/* 小鱼新增：向右侧退出的页面动画 */
+.page.slide-to-right {
+  transform: translateX(100%);
+}
+
+/* 小鱼新增：向左侧退出的页面动画 */
+.page.slide-to-left {
+  transform: translateX(-100%);
+}
+
+/* 向左滑出 */
+.slide-out-left {
+  transform: translateX(-50px);
+  opacity: 0;
+}
+
+/* 向右滑出 */
+.slide-out-right {
+  transform: translateX(50px);
+  opacity: 0;
+}
+
+/* 从右滑入 */
+.slide-in-right {
+  animation: slideInRight 0.2s forwards;
+}
+
+/* 从左滑入 */
+.slide-in-left {
+  animation: slideInLeft 0.2s forwards;
+}
+
+/* 小鱼新增：向右侧退出的页面动画 */
+.page.slide-to-right {
+  transform: translateX(100%);
+}
+
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-50px); opacity: 0; }
+
+/* --- 小鱼新增：定义动画关键帧 --- */
+/* 1. 消息气泡上浮淡入动画 */
+@keyframes msgSlideUpFade {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98); /* 初始位置：向下偏移20px，稍微缩小 */
+  }
+
+100% {
+    opacity: 1;
+    transform: translateY(0) scale(1); /* 结束位置：复原 */
+  }
+
+}
+
+/* 2. 顶部标题呼吸闪烁动画 */
+@keyframes titleBlink {
+  0%, 100% { opacity: 1; }
+
+50% { opacity: 0.4; }
+
+/* 中间变淡 */
+}
+
+/* 消息气泡容器 */
+.message-bubble {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0;
+  box-sizing: border-box;
+  margin-bottom: 15px;
+  /* ★★★ 核心修改：添加动画效果 (0.4秒，丝滑缓动) ★★★ */
+  animation: msgSlideUpFade 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  /* 小鱼新增：允许换行，以便回溯按钮显示在下方 */
+  flex-wrap: wrap; 
+}
+

@@ -1,0 +1,45 @@
+/* 自动拆分生成: css/chat-settings.css */
+
+/* 聊天信息设置页样式 */
+.settings-group {
+  margin-top: 10px;
+  background: #FFFFFF;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 20px;
+  border-bottom: 1px solid #F0F0F0;
+  font-size: 16px;
+  color: #000;
+  cursor: pointer;
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-row:active {
+  background-color: #F5F5F5;
+}
+
+/* 成员头像区域 */
+.member-section {
+  padding: 20px 6px; /* 调整内边距，给两边留点空隙 */
+  background: #FFFFFF;
+  display: grid; /* ★ 改为 Grid 布局，最稳妥 */
+  grid-template-columns: repeat(5, 1fr); /* ★ 强制一行5个，平分宽度 */
+  row-gap: 15px; /* 垂直间距 */
+  justify-items: center; /* 内容居中 */
+}
+
+.member-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%; /* 占满格子宽度 */
+  overflow: hidden;
+}
+

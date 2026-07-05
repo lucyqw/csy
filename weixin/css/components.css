@@ -1,0 +1,229 @@
+/* 自动拆分生成: css/components.css */
+
+.badge {
+      position: absolute;
+      top: 6px;
+      right: 20px;
+      background: #FA5151;
+      color: white;
+      border-radius: 10px;
+      padding: 2px 6px;
+      font-size: 10px;
+      min-width: 18px;
+      text-align: center;
+    }
+
+.save-button {
+  background-color: #E2E2E2;
+  color: #FFFFFF;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 15px;
+  cursor: not-allowed;
+  transition: background-color 0.3s;
+}
+
+.save-button.active {
+  background-color: var(--primary-color);
+  cursor: pointer;
+}
+
+/* iOS风格开关 */
+.ios-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 32px;
+}
+
+.ios-switch input { 
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.ios-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #E9E9EA; /* 关闭时的灰色 */
+  transition: .3s;
+  border-radius: 34px;
+}
+
+.ios-slider:before {
+  position: absolute;
+  content: "";
+  height: 28px;
+  width: 28px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+/* 开启状态 */
+.ios-switch input:checked + .ios-slider {
+  background-color: #07C160; /* 微信绿 */
+}
+
+.ios-switch input:checked + .ios-slider:before {
+  transform: translateX(20px);
+}
+
+/* 列表右侧箭头 */
+.arrow-right {
+  color: #C7C7CC;
+  font-size: 18px;
+  font-family: Consolas, monospace;
+}
+
+/* 小鱼新增：自定义编辑弹窗样式 */
+.custom-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* 半透明遮罩 */
+  z-index: 10000;
+  display: none; /* 默认隐藏 */
+  align-items: center;
+  justify-content: center;
+}
+
+.custom-modal-box {
+  background: #FFFFFF;
+  width: 85%;
+  max-width: 320px;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: modalPop 0.2s ease-out;
+}
+
+.custom-modal-header {
+  padding: 15px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 17px;
+  border-bottom: 1px solid #eee;
+}
+
+.custom-modal-body {
+  padding: 15px;
+}
+
+#customEditInput {
+  width: 100%;
+  height: 100px;
+  border: 1px solid #eee;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 16px;
+  resize: none; /* 禁止手动拉伸 */
+  outline: none;
+  background: #FAFAFA;
+  box-sizing: border-box; /* 确保padding不撑大宽度 */
+}
+
+#customEditInput:focus {
+  background: #FFF;
+  border-color: #07C160;
+}
+
+.custom-modal-footer {
+  display: flex;
+  border-top: 1px solid #eee;
+}
+
+.custom-modal-btn {
+  flex: 1;
+  padding: 15px;
+  text-align: center;
+  font-size: 16px;
+  cursor: pointer;
+  background: #fff;
+  border: none;
+}
+
+.custom-modal-btn:active {
+  background: #f5f5f5;
+}
+
+.btn-cancel { color: #000; border-right: 1px solid #eee; }
+
+.btn-confirm { color: #07C160; font-weight: 600; }
+
+}
+
+/* 复制成功的提示框 */
+.toast-message {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 10001;
+  pointer-events: none;
+  animation: fadeInOut 1.5s ease forwards;
+}
+
+/* 按钮激活状态动画 */
+.btn-pulse {
+  animation: pulse 0.2s ease;
+}
+
+/* --- 小鱼新增：图片翻转卡片样式 --- */
+.img-flip-container {
+  perspective: 1000px;
+  width: fit-content;
+  height: fit-content;
+  cursor: pointer;
+}
+
+.img-flipper {
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+  position: relative;
+  display: flex; /* 关键：让宽高自适应 */
+}
+
+/* 翻转状态 */
+.img-flip-container.flipped .img-flipper {
+  transform: rotateY(-180deg);
+}
+
+.img-front, .img-back {
+  backface-visibility: hidden;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.img-front, .img-back {
+  backface-visibility: hidden;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.img-front, .img-back {
+  backface-visibility: hidden;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* 增加一个滚动条美化，防止滚动条挡住文字 */
+.img-back::-webkit-scrollbar {
+  width: 4px;
+}
+
+.img-back::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 2px;
+}
+
