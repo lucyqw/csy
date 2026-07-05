@@ -100,16 +100,14 @@
   <link rel="stylesheet" href="css/dropdown.css">
   <link rel="stylesheet" href="css/app-icon.css">
   
-  <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 (现在放在最后，且用最高优先级选择器) ★★★ -->
-  <style id="ultimate-wall-style">
+  <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 ★★★ -->
+  <style>
     /* 只要系统没有判定为"已打开应用(app-open)"，微信容器绝对不可见！ */
-    html body:not(.app-open) div#app-viewer { 
+    body:not(.app-open) #app-viewer { 
       display: none !important; 
-      visibility: hidden !important;
     }
-    html body:not(.app-open) div#wechat-native-app { 
+    body:not(.app-open) #wechat-native-app { 
       display: none !important; 
-      visibility: hidden !important;
     }
   </style>
 </head>
