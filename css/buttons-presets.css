@@ -1,0 +1,32 @@
+/* 自动生成: css/buttons-presets.css */
+
+.preset-btn { width: 100%; padding: 12px; background: rgb(255, 182, 193); border: 2px solid rgb(255, 192, 203); border-radius: 10px; font-size: 15px; font-weight: 600; color: rgb(93, 64, 55); cursor: pointer; transition: 0.2s; margin-top: 10px; }
+
+.preset-btn:active { background: rgb(255, 192, 203); transform: scale(0.98); }
+
+.ios-btn-outline { width: 100%; padding: 13px; background: rgb(255, 251, 235); border: 2px solid rgb(255, 182, 193); color: rgb(93, 64, 55); border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+
+.ios-btn-outline:active { background: rgb(255, 228, 225); transform: scale(0.98); }
+
+.preset-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 14px; background: rgb(255, 251, 235); border: 2px solid rgb(255, 228, 225); border-radius: 10px; cursor: pointer; transition: 0.2s; }
+
+.preset-item:active { background: rgb(255, 228, 225); transform: scale(0.98); }
+
+.preset-item-name { font-weight: 600; color: rgb(93, 64, 55); font-size: 15px; }
+
+.preset-item-delete { padding: 6px 10px; background: rgb(255, 59, 48); color: white; border: none; border-radius: 6px; font-size: 12px; cursor: pointer; transition: transform 0.1s; }
+
+.preset-item-delete:active { transform: scale(0.9); }
+
+.modal-actions button[type="submit"], .change-icon-btn, #add-memo-item-btn, #import-export-modal button[onclick^="export"], #import-export-modal label[for="import-file-input"], #large-icon-menu-modal button[onclick^="change"], #custom-confirm-dialog #confirm-ok-btn, #custom-alert-dialog #alert-ok-btn, #apply-time-widget-settings-standalone, #apply-bg-image-url-standalone { background-color: rgb(255, 182, 193) !important; color: rgb(93, 64, 55) !important; border: 2px solid rgb(255, 192, 203) !important; transition: 0.2s !important; }
+
+.modal-actions button[type="submit"]:hover, .change-icon-btn:hover, #add-memo-item-btn:hover, #import-export-modal button[onclick^="export"]:hover, #import-export-modal label[for="import-file-input"]:hover, #large-icon-menu-modal button[onclick^="change"]:hover, #custom-confirm-dialog #confirm-ok-btn:hover, #custom-alert-dialog #alert-ok-btn:hover, #apply-time-widget-settings-standalone:hover, #apply-bg-image-url-standalone:hover { transform: translateY(-2px); background-color: rgb(255, 192, 203) !important; box-shadow: rgba(255, 192, 203, 0.4) 0px 4px 10px !important; }
+
+.modal-actions button[type="button"], #theme-form button[type="button"], #close-import-export-modal, #cancel-large-icon-menu, #custom-confirm-dialog #confirm-cancel-btn, #cancel-time-widget-settings-standalone, #reset-time-widget-settings-standalone, #restore-original-css-btn { background-color: rgb(255, 214, 214) !important; color: rgb(93, 64, 55) !important; border: 2px solid rgb(255, 214, 214) !important; }
+
+.modal-actions button[type="button"]:hover, #close-import-export-modal:hover, #cancel-large-icon-menu:hover, #custom-confirm-dialog #confirm-cancel-btn:hover, #cancel-time-widget-settings-standalone:hover, #reset-time-widget-settings-standalone:hover, #restore-original-css-btn:hover { background-color: rgb(255, 251, 235) !important; border-color: rgb(255, 192, 203) !important; }
+
+.delete-app-btn, .permanently-delete-btn, #import-export-modal button[onclick^="clear"], #large-icon-menu-modal button[onclick^="remove"], #remove-time-widget-bg-image-standalone { background-color: rgb(240, 128, 128) !important; color: white !important; border: 2px solid rgb(205, 92, 92) !important; }
+
+.delete-app-btn:hover, .permanently-delete-btn:hover, #import-export-modal button[onclick^="clear"]:hover, #large-icon-menu-modal button[onclick^="remove"]:hover, #remove-time-widget-bg-image-standalone:hover { transform: translateY(-2px); background-color: rgb(205, 92, 92) !important; box-shadow: rgba(205, 92, 92, 0.4) 0px 4px 10px !important; }
+
