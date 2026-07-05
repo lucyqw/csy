@@ -101,16 +101,17 @@
   <link rel="stylesheet" href="css/app-icon.css">
   
   <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 (现在放在最后，且用最高优先级选择器) ★★★ -->
-<style id="ultimate-wall-style">
-  /* 只要系统没有判定为"已打开应用(app-open)"，微信容器绝对不可见！ */
-  /* 小鱼修正：去掉 visibility，避免连坐隐藏内部的设置/主题等弹窗和按钮 */
-  body:not(.app-open) div#app-viewer { 
-    display: none !important; 
-  }
-  body:not(.app-open) div#wechat-native-app { 
-    display: none !important; 
-  }
-</style>
+  <style id="ultimate-wall-style">
+    /* 只要系统没有判定为"已打开应用(app-open)"，微信容器绝对不可见！ */
+    html body:not(.app-open) div#app-viewer { 
+      display: none !important; 
+      visibility: hidden !important;
+    }
+    html body:not(.app-open) div#wechat-native-app { 
+      display: none !important; 
+      visibility: hidden !important;
+    }
+  </style>
 </head>
 <body>
   <div id="global-fab-trigger"></div>
@@ -3134,23 +3135,29 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/wechat/call.js?v=999"></script>
   <script src="js/wechat/ringtone.js?v=999"></script>
 
-  <!-- 引入父项目(WebBox)的JS脚本 -->
-  <script src="js/state.js?v=999"></script>
-  <script src="js/apps-core.js?v=999"></script>
-  <script src="js/dock-fab.js?v=999"></script>
-  <script src="js/recycle-bin.js?v=999"></script>
-  <script src="js/memo.js?v=999"></script>
-  <script src="js/import-export.js?v=999"></script>
-  <script src="js/api-settings.js?v=999"></script>
-  <script src="js/theme.js?v=999"></script>
-  <script src="js/large-icon.js?v=999"></script>
-  <script src="js/change-icon.js?v=999"></script>
-  <script src="js/status-widget.js?v=999"></script>
-  <script src="js/fullscreen.js?v=999"></script>
-  <script src="js/time-widget.js?v=999"></script>
-  <script src="js/dialogs.js?v=999"></script>
-  <script src="js/world-book.js?v=999"></script>
-  <script src="js/wechat-bridge.js?v=999"></script>
+<!-- 引入父项目(WebBox)的JS脚本 (小鱼修复：重新排列了加载顺序，防止指挥官崩溃) -->
+
+<!-- 1. 最先加载全局状态 -->
+<script src="js/state.js?v=999"></script>
+
+<!-- 2. 加载所有基础弹窗和功能模块（士兵就位） -->
+<script src="js/dialogs.js?v=999"></script>
+<script src="js/theme.js?v=999"></script>
+<script src="js/recycle-bin.js?v=999"></script>
+<script src="js/memo.js?v=999"></script>
+<script src="js/import-export.js?v=999"></script>
+<script src="js/api-settings.js?v=999"></script>
+<script src="js/large-icon.js?v=999"></script>
+<script src="js/change-icon.js?v=999"></script>
+<script src="js/status-widget.js?v=999"></script>
+<script src="js/fullscreen.js?v=999"></script>
+<script src="js/time-widget.js?v=999"></script>
+<script src="js/world-book.js?v=999"></script>
+<script src="js/wechat-bridge.js?v=999"></script>
+
+<!-- 3. 最后加载核心调度引擎（指挥官出场，此时所有依赖的函数都已经存在了） -->
+<script src="js/apps-core.js?v=999"></script>
+<script src="js/dock-fab.js?v=999"></script>
   
   <!-- 终极桌面守护者 (加强版：多重保险，确保云端环境下也一定生效) -->
 <script>
