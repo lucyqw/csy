@@ -3155,6 +3155,44 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
 <script src="js/world-book.js?v=999"></script>
 <script src="js/wechat-bridge.js?v=999"></script>
 
+<!-- ★★★ 小鱼新增：防崩溃急救包（补齐丢失的函数） ★★★ -->
+<script>
+  // 1. 补齐“管理应用”的显示和隐藏功能
+  window.showSettingsModal = window.showSettingsModal || function() {
+    var modal = document.getElementById('settings-modal');
+    if(modal) {
+      modal.style.display = 'block';
+      modal.style.zIndex = '9999';
+    }
+  };
+  window.hideSettingsModal = window.hideSettingsModal || function() {
+    var modal = document.getElementById('settings-modal');
+    if(modal) modal.style.display = 'none';
+  };
+
+  // 2. 补齐“记忆管理”的显示和隐藏功能
+  window.showMemoryModal = window.showMemoryModal || function() {
+    var modal = document.getElementById('memory-modal');
+    if(modal) {
+      modal.style.display = 'block';
+      modal.style.zIndex = '9999';
+    }
+  };
+  window.closeMemoryModal = window.closeMemoryModal || function() {
+    var modal = document.getElementById('memory-modal');
+    if(modal) modal.style.display = 'none';
+  };
+  
+  // 给关闭按钮绑定点击事件
+  document.addEventListener('DOMContentLoaded', function() {
+    var closeSettingsBtn = document.getElementById('close-settings-modal-btn');
+    if(closeSettingsBtn) closeSettingsBtn.onclick = hideSettingsModal;
+    
+    var closeMemoryBtn = document.getElementById('memory-back-btn');
+    if(closeMemoryBtn) closeMemoryBtn.onclick = closeMemoryModal;
+  });
+</script>
+
 <!-- 3. 最后加载核心调度引擎（指挥官出场，此时所有依赖的函数都已经存在了） -->
 <script src="js/apps-core.js?v=999"></script>
 <script src="js/dock-fab.js?v=999"></script>
