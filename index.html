@@ -4972,7 +4972,27 @@ async function updateFabIcon(options = {}) {
 }
 
 
-async function getApps() { const defaultApps = []; const apps = await localforage.getItem(STORAGE_KEY); return apps || defaultApps; }
+async function getApps() { 
+    // 定义默认应用：微信
+    const defaultApps = [{
+        id: 'app_wechat_native',
+        name: '微信',
+        icon: 'https://res.wx.qq.com/a/wx_fed/assets/res/NTI4MWU5.ico', // 微信官方图标
+        lastUsed: Date.now(),
+        sourceType: 'internal'
+    }]; 
+    
+    // 从本地数据库读取已保存的应用
+    const apps = await localforage.getItem(STORAGE_KEY); 
+    
+    // 如果本地没有任何应用（第一次打开网页，或者用户清空了数据）
+    if (!apps || apps.length === 0) {
+        await localforage.setItem(STORAGE_KEY, defaultApps); // 将微信存入数据库
+        return defaultApps; // 在桌面显示微信
+    }
+    
+    return apps; 
+}
     async function saveApps(apps) { return localforage.setItem(STORAGE_KEY, apps); }
     
 async function getLargeIcons() {
