@@ -3102,11 +3102,39 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
 
 <!-- 小鱼提示：这个 iframe 桥已不再需要，因为微信现在是原生 div，和 WebBox 共享同一个 JS 环境和 IndexedDB。已删除。 -->
 
+<!-- ★★★ 小鱼新增：开机强制防劫持锁 ★★★ -->
+<script>
+  (function() {
+    var viewer = document.getElementById('app-viewer');
+    var wechat = document.getElementById('wechat-native-app');
+    if (!viewer) return;
+    
+    var isLocked = true; // 开启最高级别锁定
+    
+    // 监视器：只要发现有脚本试图修改 display 把它显示出来，立刻按回去
+    var observer = new MutationObserver(function() {
+      if (isLocked && (viewer.style.display !== 'none' || (wechat && wechat.style.display !== 'none'))) {
+        console.warn('【小鱼拦截系统】拦截到某个脚本在开机时试图偷跑打开微信，已强制按回！');
+        viewer.style.display = 'none';
+        if (wechat) wechat.style.display = 'none';
+        document.body.classList.remove('app-open');
+      }
+    });
+    
+    observer.observe(viewer, { attributes: true, attributeFilter: ['style'] });
+    if (wechat) observer.observe(wechat, { attributes: true, attributeFilter: ['style'] });
+    
+    // 锁定 2 秒钟（足够熬过所有脚本的开机自启期），然后解锁
+    setTimeout(function() {
+      isLocked = false;
+      console.log('【小鱼拦截系统】开机保护期结束，微信现已允许正常点击打开。');
+    }, 2000);
+  })();
+</script>
 
-
-  <!-- 引入微信的JS脚本 (加了 ?v=999 强行刺穿缓存) -->
-  <script src="js/wechat/config.js?v=999"></script>
-  <script src="js/wechat/db.js?v=999"></script>
+<!-- 下面是你原本引入的脚本，保持不动 -->
+<script src="js/wechat/config.js?v=999"></script>
+<script src="js/wechat/db.js?v=999"></script>
   <script src="js/wechat/api.js?v=999"></script>
   <script src="js/wechat/dom.js?v=999"></script>
   <script src="js/wechat/ui.js?v=999"></script>
@@ -3151,58 +3179,31 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/world-book.js?v=999"></script>
   <script src="js/wechat-bridge.js?v=999"></script>
   
-  <!-- 终极桌面守护者 (绝对防御版) -->
-  <script>
-    (function() {
-      console.log("🛡️ 桌面守护结界已开启");
-      
-      // 强制退回桌面的核心动作
-      function forceDesktop() {
-        document.body.classList.remove('app-open');
-        var viewer = document.getElementById('app-viewer');
-        var wechat = document.getElementById('wechat-native-app');
-        // 强制加上 display: none !important，神仙来了也得隐藏
-        if (viewer) viewer.style.setProperty('display', 'none', 'important');
-        if (wechat) wechat.style.setProperty('display', 'none', 'important');
-        if (typeof goHome === 'function') {
-          try { goHome(); } catch(e) {}
-        }
-      }
+  <!-- 终极桌面守护者 (加强版：多重保险，确保云端环境下也一定生效) -->
+<script>
+  function forceGoHome() {
+    if (typeof goHome === 'function') {
+      goHome();
+    } else {
+      // 即使 goHome 函数还没加载出来，也手动把微信隐藏、body 的 app-open 去掉
+      var viewer = document.getElementById('app-viewer');
+      var wechatApp = document.getElementById('wechat-native-app');
+      if (viewer) viewer.style.display = 'none';
+      if (wechatApp) wechatApp.style.display = 'none';
+    }
+    document.body.classList.remove('app-open');
+  }
 
-      // 1. 网页刚加载，立刻执行一次强制回桌面
-      forceDesktop();
+  // 第一重保险：DOM 结构解析完就立刻执行一次（不等图片/CSS/CDN资源）
+  document.addEventListener('DOMContentLoaded', forceGoHome);
 
-      // 2. 建立结界：死死盯住网页的状态变化
-      var isBooting = true;
-      var observer = new MutationObserver(function(mutations) {
-        if (!isBooting) return; // 开机完毕后，允许正常打开
-        mutations.forEach(function(mutation) {
-          // 如果发现有 JS 偷偷给 body 加上了 app-open（试图打开APP），立刻拦截！
-          if (mutation.attributeName === 'class' && document.body.classList.contains('app-open')) {
-            console.log("拦截到代码自动打开微信，强行退回桌面！");
-            forceDesktop();
-          }
-        });
-      });
-      
-      // 开始监控
-      observer.observe(document.body, { attributes: true });
+  // 第二重保险：所有资源（图片、CSS、CDN脚本）都加载完之后再执行一次
+  window.addEventListener('load', () => {
+    setTimeout(forceGoHome, 500);
+  });
 
-      // 3. 2秒后解除结界，这样你后续手动点图标就能正常打开了
-      setTimeout(function() {
-        isBooting = false;
-        console.log("✅ 开机完毕，结界解除，允许正常点击");
-        // 解除结界时，顺便把内联的强制隐藏去掉，以免影响后续点击打开
-        var viewer = document.getElementById('app-viewer');
-        var wechat = document.getElementById('wechat-native-app');
-        if (viewer) viewer.style.display = '';
-        if (wechat) wechat.style.display = '';
-      }, 2000);
-
-      // 4. 兜底保险，等所有图片加载完再按一次
-      window.addEventListener('load', function() {
-        if(isBooting) forceDesktop();
-      });
-    })();
-  </script>
+  // 第三重保险：即使上面两个时机都因为某些资源卡住而没触发，
+  // 3秒后强制兜底执行一次，确保用户看到的一定是桌面而不是微信
+  setTimeout(forceGoHome, 3000);
+</script>
 </body></html>
