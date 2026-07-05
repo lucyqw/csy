@@ -1,0 +1,8 @@
+/* 自动拆分生成: css/gender-select.css */
+
+.gender-option { display: flex; justify-content: space-between; align-items: center; background: rgb(255, 255, 255); padding: 16px; border-bottom: 1px solid rgb(240, 240, 240); cursor: pointer; }
+
+.gender-option .checkmark-icon { display: none; }
+
+.gender-option.selected .checkmark-icon { display: block; color: var(--primary-color); }
+
