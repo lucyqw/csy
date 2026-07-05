@@ -1,12 +1,31 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<head>
+<html lang="zh-CN"><head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>微信</title>
-  <style>
-<link rel="stylesheet" href="css/weixin.css">
-  </style>
+  
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/nav-bar.css">
+  <link rel="stylesheet" href="css/page.css">
+  <link rel="stylesheet" href="css/chat-list.css">
+  <link rel="stylesheet" href="css/contacts.css">
+  <link rel="stylesheet" href="css/discover.css">
+  <link rel="stylesheet" href="css/profile.css">
+  <link rel="stylesheet" href="css/tab-bar.css">
+  <link rel="stylesheet" href="css/scrollbar.css">
+  <link rel="stylesheet" href="css/personal-info.css">
+  <link rel="stylesheet" href="css/edit-name.css">
+  <link rel="stylesheet" href="css/gender-select.css">
+  <link rel="stylesheet" href="css/signature.css">
+  <link rel="stylesheet" href="css/ringtone.css">
+  <link rel="stylesheet" href="css/action-sheet.css">
+  <link rel="stylesheet" href="css/sticker-overlay.css">
+  <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/sticker.css">
+  <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/transfer.css">
+  <link rel="stylesheet" href="css/moments.css">
 </head>
 <body>
     
@@ -15,14 +34,14 @@
   <div class="notif-header">
     <div class="notif-app-info">
       <svg class="notif-app-icon" viewBox="0 0 24 24" fill="#07C160">
-        <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2z"/>
+        <path d="M20 2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14l4 4V4c0-1.1-.9-2-2-2z"></path>
       </svg>
       <span style="font-weight: 500; color: #333;">微信</span>
       <span style="margin: 0 4px;">·</span>
       <span>现在</span>
       <!-- 铃铛图标移至此处 -->
       <svg width="14" height="14" viewBox="0 0 24 24" fill="#333" style="margin-left: 4px;">
-        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+        <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path>
       </svg>
     </div>
   </div>
@@ -55,15 +74,15 @@
       <div class="menu-triangle"></div>
       <div class="menu-list">
         <div class="menu-option" id="menuGroupChat">
-          <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"/></svg>
+          <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M21 6h-2v9H6v2c0 .55.45 1 1 1h11l4 4V7c0-.55-.45-1-1-1zm-4 6V3c0-.55-.45-1-1-1H3c-.55 0-1 .45-1 1v14l4-4h10c.55 0 1-.45 1-1z"></path></svg>
           <span>发起群聊</span>
         </div>
         <div class="menu-option" id="menuAddFriend">
-          <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+          <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
           <span>发起聊天</span>
         </div>
         <div class="menu-option">
-          <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M4 8V6a2 2 0 0 1 2-2h2"/><path d="M4 16v2a2 2 0 0 0 2 2h2"/><path d="M16 4h2a2 2 0 0 1 2 2v2"/><path d="M16 20h2a2 2 0 0 0 2-2v-2"/><line x1="4" y1="12" x2="20" y2="12" stroke="white" stroke-width="1.5"/></svg>
+          <svg viewBox="0 0 24 24" fill="white" width="20" height="20"><path d="M4 8V6a2 2 0 0 1 2-2h2"></path><path d="M4 16v2a2 2 0 0 0 2 2h2"></path><path d="M16 4h2a2 2 0 0 1 2 2v2"></path><path d="M16 20h2a2 2 0 0 0 2-2v-2"></path><line x1="4" y1="12" x2="20" y2="12" stroke="white" stroke-width="1.5"></line></svg>
           <span>扫一扫</span>
         </div>
       </div>
@@ -102,7 +121,7 @@
   <!-- 新的朋友 (小鱼修改：添加了ID以便点击) -->
   <div class="contact-item" id="newFriendBtn">
     <div class="contact-icon" style="background: #FA9D3B;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg>
     </div>
     <span class="contact-name">新的朋友</span>
   </div>
@@ -110,7 +129,7 @@
   <!-- 仅聊天的朋友 -->
   <div class="contact-item">
     <div class="contact-icon" style="background: #FA9D3B;">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path></svg>
     </div>
     <span class="contact-name">仅聊天的朋友</span>
   </div>
@@ -118,7 +137,7 @@
   <!-- 群聊 -->
 <div class="contact-item" id="groupChatsBtn"> <!-- ★★★ 小鱼新增：添加ID以便JS控制 ★★★ -->
   <div class="contact-icon" style="background: #07C160;">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"></path></svg>
     </div>
     <span class="contact-name">群聊</span>
   </div>
@@ -126,7 +145,7 @@
   <!-- 标签 -->
 <div class="contact-item" id="tagsGroupBtn">
   <div class="contact-icon" style="background: #2782D7;">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16zM16 17H5V7h11l3.55 5L16 17z"/><circle cx="8" cy="12" r="1.5"/></svg>
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="white"><path d="M17.63 5.84C17.27 5.33 16.67 5 16 5L5 5.01C3.9 5.01 3 5.9 3 7v10c0 1.1.9 1.99 2 1.99L16 19c.67 0 1.27-.33 1.63-.84L22 12l-4.37-6.16zM16 17H5V7h11l3.55 5L16 17z"></path><circle cx="8" cy="12" r="1.5"></circle></svg>
   </div>
   <span class="contact-name">标签</span>
 </div>
@@ -145,440 +164,7 @@
 <!-- 发现页 -->
 <div class="page" id="discover">
   <!-- 小鱼新增：发现页专属样式 -->
-  <style>
-    /* 1. 页面底色设为灰色 */
-    #discover {
-      background-color: #EDEDED !important;
-    }
-    /* 2. 列表组样式：白色背景，底部留出灰色间隔 */
-    #discover .discover-section {
-      background: #FFFFFF;
-      margin-bottom: 8px; /* 灰色分割条高度 */
-    }
-    /* 3. 列表项样式：增加内边距，设置分割线 */
-    #discover .discover-item {
-      padding: 15px 16px; /* 调整高度更像截图 */
-      border-bottom: 0.5px solid #f0f0f0; /* 细微分割线 */
-      display: flex;
-      align-items: center;
-    }
-    /* 最后一个项目去掉底边线 */
-    #discover .discover-item:last-child {
-      border-bottom: none;
-    }
-    /* 4. 图标容器：去掉原来的圆角背景色，改为透明 */
-    #discover .discover-icon {
-      width: 24px;
-      height: 24px;
-      margin-right: 16px;
-      background: none !important; /* 强制去掉背景色 */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    /* 5. 文字样式 */
-    #discover .discover-text {
-      font-size: 16px;
-      color: #111;
-      font-weight: 400;
-    }
-    /* 右侧箭头颜色变浅 */
-    #discover .contact-arrow {
-      color: #C7C7CC;
-      font-size: 18px;
-      font-family: Consolas, monospace;
-    }
-    
-    /* ★ 小鱼修复：补全缺失的动画定义 */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* --- 微信风格草稿箱工具栏 (微调位置) --- */
-.wx-draft-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 5px 0 15px 55px; /* 增加底部padding防止贴底，左侧避开头像 */
-  margin-top: -5px; /* 紧贴上一条消息 */
-  font-size: 12px;
-  color: #999;
-  opacity: 0;
-  animation: fadeIn 0.3s ease-out forwards; /* 使用刚才定义的动画 */
-  width: 100%;
-  box-sizing: border-box;
-}
-
-    /* --- 小鱼新增：微信风格草稿箱工具栏 --- */
-/* ★ 小鱼修复：草稿箱工具栏样式 */
-.wx-draft-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  padding: 5px 0 15px 55px;
-  margin-top: -5px;
-  font-size: 12px;
-  color: #999;
-  width: 100%;
-  box-sizing: border-box;
-  /* 移除了 opacity:0 和 animation，避免因动画未定义而不显示 */
-}
-
-.wx-draft-nav {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: rgba(0,0,0,0.05);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.wx-draft-btn {
-  cursor: pointer;
-  padding: 4px 8px;
-  font-weight: bold;
-  user-select: none;
-}
-.wx-draft-btn:active { color: #07C160; }
-
-.wx-refresh-btn {
-  width: 24px; 
-  height: 24px;
-  border-radius: 50%;
-  background: rgba(0,0,0,0.05);
-  display: flex; 
-  align-items: center; 
-  justify-content: center;
-  cursor: pointer;
-}
-.wx-refresh-btn:active { background: rgba(0,0,0,0.15); }
-.wx-refresh-btn svg { width: 14px; height: 14px; fill: #666; }
-
-/* --- 小鱼新增：世界书分类折叠样式 (微信风格) --- */
-.wb-category-group {
-  margin-bottom: 8px;
-  background: #fff;
-  border-radius: 6px;
-  overflow: hidden;
-  border: 1px solid #f0f0f0;
-}
-.wb-category-header {
-  background: #F7F7F7;
-  padding: 12px;
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
-  cursor: pointer;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  user-select: none;
-}
-.wb-category-header:active {
-  background: #EDEDED;
-}
-.wb-category-arrow {
-  font-size: 12px;
-  color: #999;
-  transition: transform 0.2s ease;
-}
-/* 展开时的箭头旋转 */
-.wb-category-header.active .wb-category-arrow {
-  transform: rotate(180deg);
-}
-.wb-category-content {
-  display: none; /* 默认折叠 */
-  padding: 0 0 0 10px; /* 左缩进 */
-  background: #fff;
-}
-.wb-category-content.show {
-  display: block;
-  border-top: 1px solid #f0f0f0;
-}
-.wb-item-row {
-  display: flex; 
-  align-items: center; 
-  padding: 10px 10px 10px 0; 
-  border-bottom: 1px solid #f5f5f5; 
-  cursor: pointer;
-}
-.wb-item-row:last-child {
-  border-bottom: none;
-}
-
-/* 确保发送按钮不换行，且高度与其他图标一致 */
-.chat-send-btn {
-  white-space: nowrap;
-  flex-shrink: 0;
-  height: 32px; /* 稍微调整高度以匹配输入框 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-left: 0; /* 由父容器 gap 控制间距 */
-}
-
-/* 确保所有图标在 flex 容器中垂直居中且不被压缩 */
-.chat-input-area svg {
-  flex-shrink: 0;
-}
-
-/* --- 小鱼新增：底部面板分页滑动样式 --- */
-
-/* 滑动窗口容器 */
-.action-sheet-swiper-window {
-  width: 100%;
-  overflow: hidden; /* 隐藏溢出部分 */
-  position: relative;
-}
-
-/* 滑动轨道 (包含所有页面) */
-.action-sheet-track {
-  display: flex;
-  width: 200%; /* 两个页面宽度就是200%，三个就是300% */
-  transition: transform 0.3s cubic-bezier(0.25, 0.1, 0.25, 1);
-}
-
-/* 单个页面 */
-.action-sheet-page {
-  width: 50%; /* 相对于轨道宽度的占比，2页就是50%，3页就是33.33% */
-  flex-shrink: 0;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4列 */
-  grid-template-rows: repeat(2, auto);   /* 2行 */
-  gap: 15px 12px;
-  padding: 0 5px; /* 页面内边距 */
-  box-sizing: border-box;
-  align-content: start; /* 内容靠上对齐 */
-}
-
-/* 指示点容器 */
-.action-sheet-indicators {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 15px;
-  height: 10px;
-}
-
-/* 指示点 */
-.indicator-dot {
-  width: 6px;
-  height: 6px;
-  background: #D6D6D6; /* 未选中颜色 */
-  border-radius: 50%;
-  transition: background 0.3s;
-}
-
-.indicator-dot.active {
-  background: #7F7F7F; /* 选中颜色 (深灰) */
-}
-/* --- 小鱼新增：朋友圈页面样式 --- */
-#momentsPage {
-  background: #FFFFFF;
-  display: none;
-  flex-direction: column;
-  overflow-y: auto;
-  z-index: 2000; /* 确保层级够高 */
-}
-
-/* Moments Likes and Comments Section */
-.moment-actions-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-  font-size: 13px;
-  color: #B2B2B2;
-}
-
-.moment-action-btn {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
-}
-.moment-action-btn:active {
-  background-color: #F0F0F0;
-}
-
-.moment-like-comment-area {
-  background-color: #F7F7F7;
-  border-radius: 4px;
-  padding: 8px 10px;
-  margin-top: 10px;
-}
-
-.moment-likes {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding-bottom: 5px;
-  border-bottom: 1px solid #E0E0E0;
-  margin-bottom: 5px;
-}
-.moment-likes:empty {
-  display: none; /* Hide if no likes */
-}
-.moment-likes svg {
-  flex-shrink: 0;
-}
-.moment-likes span {
-  color: #576B95; /* Blue for names */
-  font-weight: 500;
-  line-height: 1.2;
-}
-
-.moment-comments {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.moment-comment-item {
-  font-size: 14px;
-  line-height: 1.4;
-}
-.moment-comment-author {
-  color: #576B95;
-  font-weight: 500;
-  margin-right: 4px;
-}
-.moment-comment-content {
-  color: #333;
-  word-break: break-word;
-}
-
-/* Specific styling for the like/comment action menu */
-#globalMomentActionMenu {
-  background: #4C5154;
-  border-radius: 4px; /* Adjust radius to match the screenshot */
-  color: white;
-  font-size: 14px;
-  overflow: hidden;
-  white-space: nowrap;
-  z-index: 99999;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.35);
-  display: flex; /* Ensure flex for items */
-  align-items: center;
-}
-#globalMomentActionMenu .menu-item { /* Reuse menu-item for consistency */
-  padding: 10px 18px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-#globalMomentActionMenu .menu-item:first-child {
-  border-right: 1px solid #3B3F42; /* Separator between like and comment */
-}
-#globalMomentActionMenu .menu-item svg {
-  margin-right: 6px;
-  flex-shrink: 0;
-}
-
-.moments-header {
-  position: relative;
-  width: 100%;
-  height: 250px; /* 封面高度，可自行调整 */
-  background-color: #333;
-  background-size: cover;
-  background-position: center;
-  margin-bottom: 30px; /* 只留头像悬出部分的高度，消除多余白边 */
-  flex-shrink: 0; /* 防止被压缩 */
-}
-
-.moments-nav {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  padding: 40px 15px 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  z-index: 2010;
-  box-sizing: border-box;
-  pointer-events: none;
-  transition: background-color 0.3s; /* 背景渐变动画 */
-}
-
-/* 初始状态：白色图标带阴影 */
-.moments-nav .nav-icon-svg {
-  pointer-events: auto;
-  cursor: pointer;
-  color: white;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
-  transition: color 0.3s, filter 0.3s;
-}
-
-/* 初始状态：标题完全透明 */
-.moments-nav .moments-title {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 17px;
-  font-weight: 600;
-  color: #000;
-  opacity: 0;
-  transition: opacity 0.3s;
-  pointer-events: auto;
-}
-
-/* ★★★ 滑动后的状态：白底黑字，显示标题 ★★★ */
-.moments-nav.scrolled {
-  background-color: #EDEDED; /* 微信标准的浅灰底色 */
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-}
-
-.moments-nav.scrolled .nav-icon-svg {
-  color: #000; /* 图标变黑 */
-  filter: none; /* 阴影消失 */
-}
-
-.moments-nav.scrolled .moments-title {
-  opacity: 1; /* 标题显现 */
-}
-
-.moments-profile {
-  position: absolute;
-  bottom: -20px; /* 头像悬挂效果 */
-  right: 20px;
-  display: flex;
-  align-items: flex-start;
-  gap: 5px;
-}
-
-.moments-name {
-  color: white;
-  font-weight: 600;
-  font-size: 16px;
-  margin-top: 10px;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.3); /* 文字阴影防止背景太白看不清 */
-}
-
-.moments-avatar {
-  width: 60px; /* 小鱼修改：从70px缩小到60px */
-  height: 60px; /* 小鱼修改：从70px缩小到60px */
-  border-radius: 8px;
-  background-color: #eee;
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 0 1px rgba(0,0,0,0.1);
-}
-
-.moments-hint {
-  position: absolute;
-  bottom: 50%;
-  width: 100%;
-  text-align: center;
-  color: rgba(255,255,255,0.4);
-  font-size: 14px;
-  pointer-events: none;
-}
-  </style>
+  
 
   <!-- 第一组：朋友圈 -->
 <div class="discover-section">
@@ -588,17 +174,13 @@
         <!-- 朋友圈图标：四色圆环 (重绘版) -->
         <svg viewBox="0 0 24 24" fill="none">
           <!-- 外圈 - 蓝色弧 (左上) -->
-          <path d="M 6.5 6.5 A 7.78 7.78 0 0 1 12 4 A 7.78 7.78 0 0 1 17.5 6.5" 
-                stroke="#5294E0" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M 6.5 6.5 A 7.78 7.78 0 0 1 12 4 A 7.78 7.78 0 0 1 17.5 6.5" stroke="#5294E0" stroke-width="2.8" stroke-linecap="round"></path>
           <!-- 外圈 - 绿色弧 (右上) -->
-          <path d="M 17.5 6.5 A 7.78 7.78 0 0 1 20 12 A 7.78 7.78 0 0 1 17.5 17.5" 
-                stroke="#5DD468" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M 17.5 6.5 A 7.78 7.78 0 0 1 20 12 A 7.78 7.78 0 0 1 17.5 17.5" stroke="#5DD468" stroke-width="2.8" stroke-linecap="round"></path>
           <!-- 外圈 - 橙黄色弧 (右下) -->
-          <path d="M 17.5 17.5 A 7.78 7.78 0 0 1 12 20 A 7.78 7.78 0 0 1 6.5 17.5" 
-                stroke="#F5B950" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M 17.5 17.5 A 7.78 7.78 0 0 1 12 20 A 7.78 7.78 0 0 1 6.5 17.5" stroke="#F5B950" stroke-width="2.8" stroke-linecap="round"></path>
           <!-- 外圈 - 红色弧 (左下) -->
-          <path d="M 6.5 17.5 A 7.78 7.78 0 0 1 4 12 A 7.78 7.78 0 0 1 6.5 6.5" 
-                stroke="#E85146" stroke-width="2.8" stroke-linecap="round"/>
+          <path d="M 6.5 17.5 A 7.78 7.78 0 0 1 4 12 A 7.78 7.78 0 0 1 6.5 6.5" stroke="#E85146" stroke-width="2.8" stroke-linecap="round"></path>
         </svg>
       </div>
       <span class="discover-text">朋友圈</span>
@@ -612,10 +194,10 @@
       <div class="discover-icon">
 <svg viewBox="0 0 24 24" fill="none">
           <!-- 外圈波纹 -->
-          <circle cx="12" cy="12" r="10" stroke="#FA9D3B" stroke-width="1.2" opacity="0.3"/>
-          <circle cx="12" cy="12" r="7" stroke="#FA9D3B" stroke-width="1.5" opacity="0.6"/>
+          <circle cx="12" cy="12" r="10" stroke="#FA9D3B" stroke-width="1.2" opacity="0.3"></circle>
+          <circle cx="12" cy="12" r="7" stroke="#FA9D3B" stroke-width="1.5" opacity="0.6"></circle>
           <!-- 内部播放三角 -->
-          <path d="M10 8l6 4-6 4z" fill="#FA9D3B"/>
+          <path d="M10 8l6 4-6 4z" fill="#FA9D3B"></path>
         </svg>
       </div>
       <span class="discover-text">视频号</span>
@@ -625,8 +207,8 @@
       <div class="discover-icon">
         <!-- 红色直播图标 (同心圆) -->
         <svg viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="9" stroke="#E95F4D" stroke-width="1.5"/>
-          <circle cx="12" cy="12" r="4" stroke="#E95F4D" stroke-width="1.5"/>
+          <circle cx="12" cy="12" r="9" stroke="#E95F4D" stroke-width="1.5"></circle>
+          <circle cx="12" cy="12" r="4" stroke="#E95F4D" stroke-width="1.5"></circle>
         </svg>
       </div>
       <span class="discover-text">直播</span>
@@ -640,11 +222,11 @@
       <div class="discover-icon">
 <!-- 扫一扫图标：蓝色扫描框 -->
         <svg viewBox="0 0 24 24" fill="none" stroke="#4A7FDF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 8V6a2 2 0 0 1 2-2h2"/>
-          <path d="M4 16v2a2 2 0 0 0 2 2h2"/>
-          <path d="M16 4h2a2 2 0 0 1 2 2v2"/>
-          <path d="M16 20h2a2 2 0 0 0 2-2v-2"/>
-          <line x1="4" y1="12" x2="20" y2="12" stroke-width="1" stroke-dasharray="4 2"/>
+          <path d="M4 8V6a2 2 0 0 1 2-2h2"></path>
+          <path d="M4 16v2a2 2 0 0 0 2 2h2"></path>
+          <path d="M16 4h2a2 2 0 0 1 2 2v2"></path>
+          <path d="M16 20h2a2 2 0 0 0 2-2v-2"></path>
+          <line x1="4" y1="12" x2="20" y2="12" stroke-width="1" stroke-dasharray="4 2"></line>
         </svg>
       </div>
       <span class="discover-text">扫一扫</span>
@@ -654,9 +236,9 @@
       <div class="discover-icon">
         <!-- 红色听一听 (音符) -->
         <svg viewBox="0 0 24 24" fill="none" stroke="#E95F4D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 18V5l12-2v13"/>
-          <circle cx="6" cy="18" r="3"/>
-          <circle cx="18" cy="16" r="3"/>
+          <path d="M9 18V5l12-2v13"></path>
+          <circle cx="6" cy="18" r="3"></circle>
+          <circle cx="18" cy="16" r="3"></circle>
         </svg>
       </div>
       <span class="discover-text">听一听</span>
@@ -670,7 +252,7 @@
       <div class="discover-icon">
         <!-- 黄色看一看 (六角星) -->
         <svg viewBox="0 0 24 24" fill="none" stroke="#F6C446" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2l2.5 6.5L21 9l-5 4.5 1.5 7-5.5-3.5-5.5 3.5 1.5-7-5-4.5 6.5-.5L12 2z"/>
+          <path d="M12 2l2.5 6.5L21 9l-5 4.5 1.5 7-5.5-3.5-5.5 3.5 1.5-7-5-4.5 6.5-.5L12 2z"></path>
         </svg>
       </div>
       <span class="discover-text">看一看</span>
@@ -680,9 +262,9 @@
       <div class="discover-icon">
         <!-- 搜一搜图标：红色发光放大镜 -->
         <svg viewBox="0 0 24 24" fill="none" stroke="#E94F5C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          <path d="M11 8a3 3 0 0 1 3 3" stroke-width="1.5" stroke-opacity="0.5"/>
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          <path d="M11 8a3 3 0 0 1 3 3" stroke-width="1.5" stroke-opacity="0.5"></path>
         </svg>
       </div>
       <span class="discover-text">搜一搜</span>
@@ -696,8 +278,8 @@
       <div class="discover-icon">
         <!-- 蓝色附近 (定位人像) -->
         <svg viewBox="0 0 24 24" fill="none" stroke="#4A90E2" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
-          <circle cx="12" cy="10" r="3"/>
+          <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
         </svg>
       </div>
       <span class="discover-text">附近</span>
@@ -734,10 +316,8 @@
       <div class="discover-icon">
         <!-- 小程序图标：紫色S标 -->
         <svg viewBox="0 0 24 24" fill="none">
-        <circle cx="12" cy="12" r="10" stroke="#7D72C4" stroke-width="1.8"/>
-        <path d="M15 9 C15 7.5 13.5 6.5 12 6.5 C10.5 6.5 9 7.5 9 9 C9 10.5 10.5 11.5 12 11.5 C13.5 11.5 15 12.5 15 14 C15 15.5 13.5 17.5 12 17.5 C10.5 17.5 9 16.5 9 15" 
-              stroke="#7D72C4" stroke-width="1.8" stroke-linecap="round" fill="none"
-              transform="rotate(25 12 12)"/>
+        <circle cx="12" cy="12" r="10" stroke="#7D72C4" stroke-width="1.8"></circle>
+        <path d="M15 9 C15 7.5 13.5 6.5 12 6.5 C10.5 6.5 9 7.5 9 9 C9 10.5 10.5 11.5 12 11.5 C13.5 11.5 15 12.5 15 14 C15 15.5 13.5 17.5 12 17.5 C10.5 17.5 9 16.5 9 15" stroke="#7D72C4" stroke-width="1.8" stroke-linecap="round" fill="none" transform="rotate(25 12 12)"></path>
       </svg>
       </div>
       <span class="discover-text">小程序</span>
@@ -752,50 +332,7 @@
 <!-- 我的页 -->
 <div class="page" id="profile">
   <!-- 小鱼新增：专属样式覆盖 -->
-  <style>
-    /* 1. 关键修改：把整个我的页面背景设为灰色 */
-    #profile {
-      background-color: #EDEDED !important; 
-    }
-    /* 2. 让头部和列表组变成白色背景 */
-    #profile .profile-header, 
-    #profile .discover-section {
-      background-color: #FFFFFF;
-    }
-    /* 3. 利用下边距露出灰色的背景，形成分割条 */
-    #profile .discover-section {
-      margin-bottom: 8px; /* 灰色分割条的高度 */
-    }
-    /* 4. 头部状态栏样式 */
-    .profile-status-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 16px;
-      padding-left: 86px;
-    }
-    .status-pill {
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 100px;
-      padding: 3px 10px;
-      font-size: 13px;
-      color: #333;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      background: #fff;
-      font-weight: 500;
-    }
-    /* 5. 优化列表内的分割线：左侧留白，不通栏 */
-    #profile .discover-item {
-      border-bottom: 0.5px solid #f0f0f0; /* 细线 */
-    }
-    /* 最后一个项目不要底边线 */
-    #profile .discover-item:last-child {
-      border-bottom: none;
-    }
-    /* 图标统一大小 */
-    .discover-icon svg { width: 24px; height: 24px; }
-  </style>
+  
   <!-- 小鱼新增：拼音转换库 -->
 <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.19.4/dist/index.js"></script>
 <!-- ★★★ 新增：中国农历日历库 ★★★ -->
@@ -811,7 +348,7 @@
       </div>
       <div style="flex:1"></div>
       <div style="display:flex; align-items: center; gap: 10px; color: #7f7f7f;">
-         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>
+         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"></path></svg>
          <span class="contact-arrow" style="font-size: 20px;">›</span>
       </div>
     </div>
@@ -895,7 +432,7 @@
 <div class="discover-item" id="stickerEntryBtn">
   <div class="discover-icon" style="background: none; width: 28px; height: 28px;">
     <svg width="26" height="26" viewBox="0 0 24 24" fill="#FA9D3B">
-      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+      <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path>
     </svg>
   </div>
   <span class="discover-text">表情</span>
@@ -927,13 +464,9 @@
   <div class="tab-item active" data-tab="chats">
     <div class="tab-icon">
       <!-- 未选中图标 -->
-      <img class="icon-outline" width="26" height="26"
-        src="https://img.heliar.top/file/1774242361595_retouch_2026032312585986.png"
-        style="object-fit:contain;">
+      <img class="icon-outline" width="26" height="26" src="https://img.heliar.top/file/1774242361595_retouch_2026032312585986.png" style="object-fit:contain;">
       <!-- 选中图标 -->
-      <img class="icon-filled" width="26" height="26"
-        src="https://img.heliar.top/file/1774242985797_retouch_2026032313133369.png"
-        style="display:none; object-fit:contain;">
+      <img class="icon-filled" width="26" height="26" src="https://img.heliar.top/file/1774242985797_retouch_2026032313133369.png" style="display:none; object-fit:contain;">
     </div>
     <span class="tab-label">微信</span>
   </div>
@@ -941,12 +474,8 @@
   <!-- 2. 通讯录 Tab -->
   <div class="tab-item" data-tab="contacts">
     <div class="tab-icon">
-      <img class="icon-outline" width="26" height="26"
-        src="https://img.heliar.top/file/1774242356912_retouch_2026032313015386.png"
-        style="object-fit:contain;">
-      <img class="icon-filled" width="26" height="26"
-        src="https://iili.io/BWW9xUB.png"
-        style="display:none; object-fit:contain;">
+      <img class="icon-outline" width="26" height="26" src="https://img.heliar.top/file/1774242356912_retouch_2026032313015386.png" style="object-fit:contain;">
+      <img class="icon-filled" width="26" height="26" src="https://iili.io/BWW9xUB.png" style="display:none; object-fit:contain;">
     </div>
     <span class="tab-label">通讯录</span>
   </div>
@@ -954,12 +483,8 @@
   <!-- 3. 发现 Tab -->
   <div class="tab-item" data-tab="discover">
     <div class="tab-icon">
-      <img class="icon-outline" width="26" height="26"
-        src="https://img.heliar.top/file/1774242364564_retouch_2026032312592185.png"
-        style="object-fit:contain;">
-      <img class="icon-filled" width="26" height="26"
-        src="https://img.heliar.top/file/1774242987924_retouch_2026032313152116.png"
-        style="display:none; object-fit:contain;">
+      <img class="icon-outline" width="26" height="26" src="https://img.heliar.top/file/1774242364564_retouch_2026032312592185.png" style="object-fit:contain;">
+      <img class="icon-filled" width="26" height="26" src="https://img.heliar.top/file/1774242987924_retouch_2026032313152116.png" style="display:none; object-fit:contain;">
     </div>
     <span class="tab-label">发现</span>
   </div>
@@ -967,12 +492,8 @@
   <!-- 4. 我 Tab -->
   <div class="tab-item" data-tab="profile">
     <div class="tab-icon">
-      <img class="icon-outline" width="26" height="26"
-        src="https://img.heliar.top/file/1774242370561_retouch_2026032313003348.png"
-        style="object-fit:contain;">
-      <img class="icon-filled" width="26" height="26"
-        src="https://img.heliar.top/file/1774242987407_retouch_2026032313155470.png"
-        style="display:none; object-fit:contain;">
+      <img class="icon-outline" width="26" height="26" src="https://img.heliar.top/file/1774242370561_retouch_2026032313003348.png" style="object-fit:contain;">
+      <img class="icon-filled" width="26" height="26" src="https://img.heliar.top/file/1774242987407_retouch_2026032313155470.png" style="display:none; object-fit:contain;">
     </div>
     <span class="tab-label">我</span>
   </div>
@@ -1155,17 +676,17 @@
 <!-- Location, visibility settings etc. can go here -->
 <div style="font-size: 14px; color: #999; padding: 10px 0; border-top: 1px solid #F0F0F0; display: flex; align-items: center; gap: 8px;">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-    <circle cx="12" cy="9" r="2.5"/>
+    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"></path>
+    <circle cx="12" cy="9" r="2.5"></circle>
   </svg>
   所在位置
 </div>
 <div onclick="openMomentVisibilityPicker()" style="font-size: 14px; color: #999; padding: 10px 0; border-top: 1px solid #F0F0F0; display: flex; align-items: center; gap: 8px; cursor: pointer;">
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-    <circle cx="9" cy="7" r="4"/>
-    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+    <circle cx="9" cy="7" r="4"></circle>
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
   </svg>
   <span style="flex: 1;">谁可以看</span>
   <span id="momentVisibilityLabel" style="color: #576B95; font-size: 13px;">公开</span>
@@ -1184,7 +705,7 @@
     <!-- 公开选项 -->
     <div style="background:#fff; margin:10px 0 0; border-top:1px solid #F0F0F0; border-bottom:1px solid #F0F0F0;">
       <div onclick="toggleMomentPublic()" id="momentPublicRow" style="display:flex; align-items:center; padding:14px 16px; cursor:pointer; border-bottom:1px solid #F0F0F0;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#07C160" stroke-width="2" style="margin-right:12px; flex-shrink:0;"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#07C160" stroke-width="2" style="margin-right:12px; flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
         <span style="flex:1; font-size:15px; color:#333;">公开（所有角色都可看到）</span>
         <div id="momentPublicCheck" style="width:20px; height:20px; border-radius:50%; background:#07C160; display:flex; align-items:center; justify-content:center;">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
@@ -1200,7 +721,7 @@
 </div>
 
 <!-- Hidden input for image selection for Moments -->
-<input type="file" id="momentImageInput" accept="image/*" multiple style="display: none;">
+<input type="file" id="momentImageInput" accept="image/*" multiple="" style="display: none;">
 
 <!-- 小鱼提示：隐藏的文件选择器 -->
 <input type="file" id="avatarInput" accept="image/*" style="display: none;">
@@ -1434,11 +955,11 @@
     <div class="multi-select-bottom-bar" id="multiSelectBottomBar" style="display: none;">
       <!-- 总结按钮 (使用类似微信收藏/立方的图标) -->
       <div class="ms-bottom-btn" onclick="submitSelectedSummary()">
-        <svg viewBox="0 0 24 24"><path d="M21 16.5C21 16.8 20.8 17.1 20.6 17.3L12.6 21.8C12.2 22.1 11.8 22.1 11.4 21.8L3.4 17.3C3.2 17.1 3 16.8 3 16.5V7.5C3 7.2 3.2 6.9 3.4 6.7L11.4 2.2C11.8 1.9 12.2 1.9 12.6 2.2L20.6 6.7C20.8 6.9 21 7.2 21 7.5V16.5ZM12 4.3L5.5 8L12 11.7L18.5 8L12 4.3ZM4.5 9.7V15.6L11.2 19.3V13.4L4.5 9.7ZM19.5 9.7L12.8 13.4V19.3L19.5 15.6V9.7Z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M21 16.5C21 16.8 20.8 17.1 20.6 17.3L12.6 21.8C12.2 22.1 11.8 22.1 11.4 21.8L3.4 17.3C3.2 17.1 3 16.8 3 16.5V7.5C3 7.2 3.2 6.9 3.4 6.7L11.4 2.2C11.8 1.9 12.2 1.9 12.6 2.2L20.6 6.7C20.8 6.9 21 7.2 21 7.5V16.5ZM12 4.3L5.5 8L12 11.7L18.5 8L12 4.3ZM4.5 9.7V15.6L11.2 19.3V13.4L4.5 9.7ZM19.5 9.7L12.8 13.4V19.3L19.5 15.6V9.7Z"></path></svg>
       </div>
       <!-- 删除按钮 (垃圾桶图标) -->
       <div class="ms-bottom-btn" onclick="deleteSelectedMessages()">
-        <svg viewBox="0 0 24 24"><path d="M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19ZM19 4H15.5L14.5 3H9.5L8.5 4H5V6H19V4Z"/></svg>
+        <svg viewBox="0 0 24 24"><path d="M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19ZM19 4H15.5L14.5 3H9.5L8.5 4H5V6H19V4Z"></path></svg>
       </div>
     </div>
     <div class="chat-messages" id="chatMessagesContainer">
@@ -1466,11 +987,11 @@
   <!-- 1. 左侧：AI按钮 -->
   <svg id="chatAiBtn" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" style="cursor: pointer;">
     <g id="iconMagic">
-      <path d="M12 2L14.4 7.2L20 9.6L14.4 12L12 17.2L9.6 12L4 9.6L9.6 7.2L12 2Z" stroke-linejoin="round"/>
-      <path d="M18 16L19 18L21 19L19 20L18 22L17 20L15 19L17 18L18 16Z" stroke-linejoin="round"/>
+      <path d="M12 2L14.4 7.2L20 9.6L14.4 12L12 17.2L9.6 12L4 9.6L9.6 7.2L12 2Z" stroke-linejoin="round"></path>
+      <path d="M18 16L19 18L21 19L19 20L18 22L17 20L15 19L17 18L18 16Z" stroke-linejoin="round"></path>
     </g>
     <g id="iconSplit" style="display: none;">
-      <path d="M4 12h16M12 4v16" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+      <path d="M4 12h16M12 4v16" stroke="#333" stroke-width="2" stroke-linecap="round"></path>
     </g>
   </svg>
 
@@ -1479,14 +1000,14 @@
 
   <!-- 3. 右侧：表情按钮 (新提取出来的) -->
   <svg id="mainStickerBtn" width="28" height="28" viewBox="0 0 24 24" fill="#333" style="cursor: pointer;" onclick="openChatStickerPicker()">
-<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"></path>
 
   </svg>
 
   <!-- 4. 右侧：功能面板(+)按钮 (默认显示) -->
   <svg id="chatRefreshBtn" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.5" style="cursor: pointer;" onclick="toggleActionSheet()">
     <circle cx="12" cy="12" r="10"></circle>
-    <path d="M8 12h8M12 8v8"/>
+    <path d="M8 12h8M12 8v8"></path>
   </svg>
 
   <!-- 5. 右侧：发送按钮 (默认隐藏，与+号互斥) -->
@@ -1513,7 +1034,7 @@
 <!-- 1. 相册 (小鱼修改：改为打开选择菜单) -->
 <div class="action-item" onclick="openAlbumChoiceMenu()">
   <div class="action-icon-box">
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
   </div>
   <span class="action-text">相册</span>
 </div>
@@ -1532,7 +1053,7 @@
         <!-- 3. 视频通话 -->
         <div class="action-item" onclick="customAlert('视频通话功能开发中')">
           <div class="action-icon-box">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><path d="M23 7l-7 5 7 5V7z"></path><rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect></svg>
           </div>
           <span class="action-text">视频通话</span>
         </div>
@@ -1540,7 +1061,7 @@
         <!-- 4. 位置 -->
         <div class="action-item">
           <div class="action-icon-box">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
           </div>
           <span class="action-text">位置</span>
         </div>
@@ -1559,7 +1080,7 @@
         <!-- 6. 转账 -->
         <div class="action-item">
           <div class="action-icon-box">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
           </div>
           <span class="action-text">转账</span>
         </div>
@@ -1567,7 +1088,7 @@
         <!-- 7. 语音输入 -->
         <div class="action-item" onclick="openVoiceInputModal()">
           <div class="action-icon-box">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
           </div>
           <span class="action-text">语音输入</span>
         </div>
@@ -1789,7 +1310,7 @@
   <!-- 4. 新增：长按预览弹窗 (默认隐藏) -->
   <div id="stickerPreviewPopup" style="display: none;">
     <div class="preview-content">
-      <img id="previewImg" src="" />
+      <img id="previewImg" src="">
       <div id="previewDesc"></div>
     </div>
     <div class="preview-actions">
@@ -1869,7 +1390,7 @@
   <div style="padding: 20px; text-align: center;">
     <div style="width: 80px; height: 80px; background: #f0f0f0; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 40px; color: #ccc; cursor: pointer;" onclick="document.getElementById('stickerFileInput').click()">+</div>
     <p style="color: #999; margin-top: 10px;">点击选择图片 (支持多选)</p>
-    <input type="file" id="stickerFileInput" multiple accept="image/*" style="display: none;">
+    <input type="file" id="stickerFileInput" multiple="" accept="image/*" style="display: none;">
   </div>
   
   <!-- 小鱼新增：预览区域 -->
@@ -1895,7 +1416,11 @@
   </div>
 
   <!-- 小鱼修改：增加 overflow-y: auto 以支持上下滑动 -->
-<textarea id="importUrlInput" placeholder="粘贴任何包含图片链接的文本...&#10;点击上方「AI 智能分拣」自动整理格式&#10;标准格式示例：&#10;开心：img002.jpg&#10;https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; padding: 10px; resize: none; font-size: 14px; overflow-y: auto;"></textarea>
+<textarea id="importUrlInput" placeholder="粘贴任何包含图片链接的文本...
+点击上方「AI 智能分拣」自动整理格式
+标准格式示例：
+开心：img002.jpg
+https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; padding: 10px; resize: none; font-size: 14px; overflow-y: auto;"></textarea>
 </div>
 
     <div class="modal-actions" style="margin-top: 15px;">
@@ -2067,56 +1592,52 @@
 <div class="msg-context-menu" id="msgContextMenu">
   <!-- 1. 复制 -->
   <div class="menu-item" onclick="copyCurrentMessage()">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"></path></svg>
     <span class="menu-text">复制</span>
   </div>
   <!-- 2. 转发 (暂未实现) -->
   <div class="menu-item" onclick="customAlert('转发功能开发中')">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"></path></svg>
     <span class="menu-text">转发</span>
   </div>
   <!-- 3. 收藏 (暂未实现) -->
   <div class="menu-item" onclick="customAlert('已收藏')">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
     <span class="menu-text">收藏</span>
   </div>
   <!-- 4. 删除 -->
   <div class="menu-item" onclick="deleteCurrentMessage()">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>
     <span class="menu-text">删除</span>
   </div>
   <!-- 5. 多选 -->
   <div class="menu-item" onclick="enterMultiSelectMode()">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M14 10H2v2h12v-2zm0-4H2v2h12V6zm4 8v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM2 16h8v-2H2v2z"></path></svg>
     <span class="menu-text">多选</span>
   </div>
   <!-- 6. 引用 -->
 <div class="menu-item" onclick="quoteCurrentMessage()">
-  <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"/></svg>
+  <svg class="menu-icon" viewBox="0 0 24 24"><path d="M6 17h3l2-4V7H5v6h3zm8 0h3l2-4V7h-6v6h3z"></path></svg>
   <span class="menu-text">引用</span>
 </div>
   <!-- 7. 提醒 (暂未实现) -->
   <div class="menu-item" onclick="customAlert('提醒功能开发中')">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2zm-2 1H8v-6c0-2.48 1.51-4.5 4-4.5s4 2.02 4 4.5v6z"></path></svg>
     <span class="menu-text">提醒</span>
   </div>
   <!-- 8. 编辑 (新增) -->
   <div class="menu-item" onclick="editCurrentMessage()">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path></svg>
     <span class="menu-text">编辑</span>
   </div>
   <!-- 9. 搜一搜 (装饰) -->
   <div class="menu-item">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"></path></svg>
     <span class="menu-text">搜一搜</span>
   </div>
   <!-- 10. 翻译 (单击翻译，长按选择引擎) -->
-  <div class="menu-item" id="translateMenuItem"
-    onclick="translateCurrentMessage()"
-    ontouchstart="startTranslateEngineTimer(event)"
-    ontouchend="clearTranslateEngineTimer()"
-    ontouchmove="clearTranslateEngineTimer()">
-    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+  <div class="menu-item" id="translateMenuItem" onclick="translateCurrentMessage()" ontouchstart="startTranslateEngineTimer(event)" ontouchend="clearTranslateEngineTimer()" ontouchmove="clearTranslateEngineTimer()">
+    <svg class="menu-icon" viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"></path></svg>
     <span class="menu-text">翻译</span>
   </div>
 </div>
@@ -2127,8 +1648,7 @@
     <div class="custom-modal-header">选择翻译引擎</div>
     <div class="custom-modal-body" style="padding: 0;">
 
-      <div id="engineOptGoogle" onclick="selectTranslateEngine('google')"
-        style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #f0f0f0; cursor:pointer;">
+      <div id="engineOptGoogle" onclick="selectTranslateEngine('google')" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; border-bottom:1px solid #f0f0f0; cursor:pointer;">
         <div>
           <div style="font-size:16px; color:#000;">谷歌翻译</div>
           <div style="font-size:12px; color:#999; margin-top:3px;">质量最佳，需要加速器</div>
@@ -2136,8 +1656,7 @@
         <span id="engineCheckGoogle" style="color:#07C160; font-size:20px; display:none;">✓</span>
       </div>
 
-      <div id="engineOptLibre" onclick="selectTranslateEngine('libre')"
-        style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; cursor:pointer;">
+      <div id="engineOptLibre" onclick="selectTranslateEngine('libre')" style="display:flex; align-items:center; justify-content:space-between; padding:16px 20px; cursor:pointer;">
         <div>
           <div style="font-size:16px; color:#000;">LibreTranslate</div>
           <div style="font-size:12px; color:#999; margin-top:3px;">免费开源，无需加速器</div>
@@ -2147,8 +1666,7 @@
 
     </div>
     <div class="custom-modal-footer">
-      <button class="custom-modal-btn btn-cancel"
-        onclick="document.getElementById('translateEngineModal').style.display='none'">取消</button>
+      <button class="custom-modal-btn btn-cancel" onclick="document.getElementById('translateEngineModal').style.display='none'">取消</button>
     </div>
   </div>
 </div>
@@ -2361,7 +1879,7 @@
 <!-- 小鱼新增：内部相机全屏界面 -->
 <div id="internalCameraModal">
   <!-- 视频流显示 -->
-  <video id="cameraVideo" autoplay playsinline muted></video>
+  <video id="cameraVideo" autoplay="" playsinline="" muted=""></video>
   
   <!-- 用于截图的画布 (定格时显示) -->
   <canvas id="cameraCanvas" style="display: none; width: 100%; height: 100%; object-fit: cover;"></canvas>
@@ -2624,24 +2142,57 @@
 <div id="customPromptOverlay" class="custom-alert-overlay">
   <div class="custom-alert-box">
     <div class="custom-alert-content" id="customPromptContent"></div>
-    <input type="text" id="customPromptInput" class="custom-prompt-input" />
+    <input type="text" id="customPromptInput" class="custom-prompt-input">
     <div class="custom-alert-footer" style="display: flex; gap: 0;">
       <button class="custom-alert-btn" id="customPromptCancelBtn" style="flex: 1; border-right: 1px solid #eee; color: #000;">取消</button>
       <button class="custom-alert-btn" id="customPromptOkBtn" style="flex: 1; color: #07C160; font-weight: 600;">确定</button>
     </div>
   </div>
 </div>
-<!-- 1. 最先引入底层和外部库 -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/localforage/1.10.0/localforage.min.js"></script>
-<!-- 如果有拼音库、阴历库等，在这里引入 -->
 
-<!-- 2. 引入 WebBox 的核心与大脑 -->
-<script src="js/webbox-core.js"></script>
-<script src="js/webbox-ai.js"></script>
+</div>
+  <!-- ================= 小鱼优化：模块化 JS 依赖注入 ================= -->
+  
+  <!-- 1. 核心与基础配置 (全局变量、数据库缓存、网络请求、DOM工具) -->
+  <script src="js/config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/dom.js"></script>
 
-<!-- 3. 引入微信的模块 (注意先后顺序) -->
-<script src="js/weixin-core.js"></script>
-<script src="js/weixin-chat.js"></script>
-<script src="js/weixin-social.js"></script>
+  <!-- 2. 全局 UI 与交互工具 (弹窗、手势滑动、顶部通知) -->
+  <script src="js/ui.js"></script>
+  <script src="js/gestures.js"></script>
+  <script src="js/notifications.js"></script>
+
+  <!-- 3. 数据层与关系网 (AI记忆库、好友关系、标签、通讯录) -->
+  <script src="js/memory.js"></script>
+  <script src="js/relations.js"></script>
+  <script src="js/tag-relations.js"></script>
+  <script src="js/contacts.js"></script>
+
+  <!-- 4. 聊天支撑功能库 (表情、相册多媒体、相机、翻译) -->
+  <script src="js/stickers.js"></script>
+  <script src="js/media.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/translate.js"></script>
+
+  <!-- 5. 核心主业务 (单聊逻辑、群聊逻辑、长按菜单、话题切换) -->
+  <script src="js/chat.js"></script>
+  <script src="js/group-chat.js"></script>
+  <script src="js/message-actions.js"></script>
+  <script src="js/topic.js"></script>
+
+  <!-- 6. 聊天详情与设置 (聊天信息页、聊天背景、上下文设置) -->
+  <script src="js/chat-info.js"></script>
+  <script src="js/chat-settings.js"></script>
+  <script src="js/chat-background.js"></script>
+
+  <!-- 7. 独立外围功能模块 (朋友圈、转账、音视频通话、个人主页、铃声) -->
+  <script src="js/moments.js"></script>
+  <script src="js/transfer.js"></script>
+  <script src="js/call.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/ringtone.js"></script>
+
 </body>
 </html>
