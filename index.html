@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-<html lang="zh-CN"><head>
+<head>
   <!-- 小鱼自动生成的基础结构 -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes">
@@ -3114,13 +3114,31 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/world-book.js?v=999"></script>
   <script src="js/wechat-bridge.js?v=999"></script>
   
-  <!-- 终极桌面守护者 -->
-  <script>
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        if (typeof goHome === 'function') goHome();
-        document.body.classList.remove('app-open');
-      }, 500); 
-    });
-  </script>
+  <!-- 终极桌面守护者 (加强版：多重保险，确保云端环境下也一定生效) -->
+<script>
+  function forceGoHome() {
+    if (typeof goHome === 'function') {
+      goHome();
+    } else {
+      // 即使 goHome 函数还没加载出来，也手动把微信隐藏、body 的 app-open 去掉
+      var viewer = document.getElementById('app-viewer');
+      var wechatApp = document.getElementById('wechat-native-app');
+      if (viewer) viewer.style.display = 'none';
+      if (wechatApp) wechatApp.style.display = 'none';
+    }
+    document.body.classList.remove('app-open');
+  }
+
+  // 第一重保险：DOM 结构解析完就立刻执行一次（不等图片/CSS/CDN资源）
+  document.addEventListener('DOMContentLoaded', forceGoHome);
+
+  // 第二重保险：所有资源（图片、CSS、CDN脚本）都加载完之后再执行一次
+  window.addEventListener('load', () => {
+    setTimeout(forceGoHome, 500);
+  });
+
+  // 第三重保险：即使上面两个时机都因为某些资源卡住而没触发，
+  // 3秒后强制兜底执行一次，确保用户看到的一定是桌面而不是微信
+  setTimeout(forceGoHome, 3000);
+</script>
 </body></html>
