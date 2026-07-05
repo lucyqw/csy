@@ -1,0 +1,62 @@
+/* 自动生成: css/fab.css */
+
+#fab-container { position: fixed; bottom: 120px; right: 25px; z-index: 1000; width: var(--fab-size); height: var(--fab-size); transition: left 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), top 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s; }
+
+#fab-container.dragging { transition: opacity 0.3s !important; }
+
+#fab-container.edge-snapped:not(.menu-open) { opacity: 0.8; }
+
+#fab-main { width: 100%; height: 100%; border-radius: 50%; background-color: rgba(255, 255, 255, 0.5); backdrop-filter: blur(10px); box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 12px; display: flex; justify-content: center; align-items: center; cursor: pointer; position: relative; transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); -webkit-tap-highlight-color: transparent; border: 1.5px solid rgba(255, 255, 255, 0.2); }
+
+#fab-main::before, #fab-main::after { display: none; }
+
+#fab-main svg { width: 20px; height: 20px; fill: rgb(93, 64, 55); stroke: rgb(93, 64, 55); stroke-width: 1.5px; paint-order: stroke; z-index: 3; position: relative; filter: drop-shadow(rgba(255, 255, 255, 0.6) 0px 1px 1px) drop-shadow(rgba(0, 0, 0, 0.4) 0px 1px 2px); }
+
+#fab-main:not(.custom-icon-mode):active { transform: scale(0.92); }
+
+#fab-main.expanded:not(.custom-icon-mode):not(.custom-expanded-mode) { transform: rotate(90deg); background-color: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); background-image: none; }
+
+#fab-main.expanded:not(.custom-icon-mode):not(.custom-expanded-mode)::before, #fab-main.expanded:not(.custom-icon-mode):not(.custom-expanded-mode)::after { opacity: 0; }
+
+#fab-main.custom-icon-mode { filter: drop-shadow(rgba(255, 255, 255, 0.7) 0px 0px 1.5px) drop-shadow(rgba(0, 0, 0, 0.3) 0px 2px 4px); background: none transparent !important; border: none !important; box-shadow: none !important; backdrop-filter: none !important; transition: transform 0.2s ease-out !important; }
+
+#fab-main.custom-icon-mode::before, #fab-main.custom-icon-mode::after { display: none !important; }
+
+#fab-main.custom-icon-mode img { width: 100%; height: 100%; pointer-events: none; user-select: none; -webkit-user-drag: none; object-fit: cover; border-radius: 50%; }
+
+#fab-main.custom-icon-mode.original-shape-mode { border-radius: 0px !important; overflow: visible !important; }
+
+#fab-main.custom-icon-mode.original-shape-mode img { object-fit: contain; border-radius: 0px !important; }
+
+#fab-main.custom-icon-mode.original-shape-mode.expanded, #fab-main.custom-icon-mode.original-shape-mode.custom-expanded-mode { border-radius: 0px !important; overflow: visible !important; }
+
+#fab-main.custom-icon-mode.expanded, #fab-main.custom-expanded-mode { transform: none !important; background: none transparent !important; }
+
+#fab-main.expanded::before, #fab-main.expanded::after { opacity: 0; }
+
+.fab-actions { position: absolute; bottom: 80px; right: 0px; display: flex; flex-direction: column; align-items: flex-end; gap: 12px; opacity: 0; visibility: hidden; transform: translateY(15px); transition: 0.3s; pointer-events: none; width: max-content; }
+
+#fab-container.menu-open .fab-actions { opacity: 1; visibility: visible; transform: translateY(0px); pointer-events: auto; }
+
+.fab-action-btn { display: flex; align-items: center; cursor: pointer; }
+
+.fab-mini-btn { width: 44px; height: 44px; background: rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); border-radius: 50%; box-shadow: rgba(0, 0, 0, 0.08) 0px 3px 8px; display: flex; justify-content: center; align-items: center; font-weight: bold; color: rgb(85, 85, 85); font-size: 14px; border: 1px solid rgba(255, 255, 255, 0.2); padding: 0px; overflow: hidden; transition: 0.3s; }
+
+.fab-mini-btn.common-app-indicator { box-shadow: rgb(255, 222, 222) 0px 0px 0px 2.5px, rgba(255, 182, 193, 0.2) 0px 3px 8px; border-color: rgba(255, 255, 255, 0.6); }
+
+.fab-mini-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+.fab-mini-btn svg { width: 20px; height: 20px; fill: rgb(93, 64, 55); font-weight: 900; stroke: rgb(93, 64, 55); stroke-width: 0.5px; }
+
+.fab-label { background: rgb(255, 251, 235); color: rgb(93, 64, 55); padding: 5px 10px; border-radius: 8px; font-size: 12px; margin-right: 10px; box-shadow: rgba(0, 0, 0, 0.05) 0px 2px 5px; font-weight: 700; border: 2px solid rgb(255, 214, 214); }
+
+#fab-container.ghost-mode { opacity: 0; pointer-events: none; }
+
+#fab-main img { width: 28px; height: 28px; object-fit: contain; border-radius: 50%; }
+
+#fab-main { position: relative; }
+
+#global-fab-trigger { position: fixed; top: 0px; height: 44px; left: 80px; right: 80px; z-index: 9999; }
+
+#fab-container { z-index: 100000 !important; }
+
