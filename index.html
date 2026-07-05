@@ -62,6 +62,30 @@
   <link rel="stylesheet" href="css/buttons-presets.css">
   <link rel="stylesheet" href="css/dropdown.css">
   <link rel="stylesheet" href="css/app-icon.css">
+  
+  <!-- ★★★ 小鱼新增：强制清除 WebBox 的开机记忆，确保每次刷新都显示桌面 ★★★ -->
+  <script>
+    // 清除 localStorage 里的应用状态
+    localStorage.removeItem('currentOpenAppId');
+    localStorage.removeItem('ephone_current_app');
+    
+    // 如果 WebBox 用了 localforage，也强行清空当前应用状态
+    if (window.localforage) {
+      localforage.removeItem('currentOpenAppId').catch(e=>console.log(e));
+    }
+    
+    // 强制给微信容器加一把锁，确保开机绝对不可见
+    document.addEventListener('DOMContentLoaded', () => {
+      const wechatApp = document.getElementById('wechat-native-app');
+      const appViewer = document.getElementById('app-viewer');
+      if (wechatApp) wechatApp.style.setProperty('display', 'none', 'important');
+      if (appViewer) {
+        appViewer.classList.remove('active');
+        appViewer.style.setProperty('display', 'none', 'important');
+      }
+      document.body.classList.remove('app-open');
+    });
+  </script>
 </head>
 <body>
   <div id="global-fab-trigger"></div>
