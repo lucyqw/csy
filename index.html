@@ -1880,8 +1880,8 @@ input:focus, textarea:focus, button:focus, select:focus {
 <div id="app-viewer" class="app-window" style="z-index: 9000; background: #fff;">
   <!-- 微信原生容器开始 -->
   <div id="wechat-native-app" style="width: 100%; height: 100%; display: none; flex-direction: column;">
-    <!-- 小鱼新增：微信内部顶部通知弹窗 -->
-<div id="heads-up-notification" onclick="handleNotificationClick()">
+<!-- 小鱼新增：微信内部顶部通知弹窗（已改名避免与外层ID冲突） -->
+<div id="wechat-heads-up-notification" onclick="handleNotificationClick()">
   <div class="notif-header">
     <div class="notif-app-info">
       <svg class="notif-app-icon" viewBox="0 0 24 24" fill="#07C160">
@@ -1890,7 +1890,6 @@ input:focus, textarea:focus, button:focus, select:focus {
       <span style="font-weight: 500; color: #333;">微信</span>
       <span style="margin: 0 4px;">·</span>
       <span>现在</span>
-      <!-- 铃铛图标移至此处 -->
       <svg width="14" height="14" viewBox="0 0 24 24" fill="#333" style="margin-left: 4px;">
         <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"></path>
       </svg>
@@ -1898,10 +1897,10 @@ input:focus, textarea:focus, button:focus, select:focus {
   </div>
   <div class="notif-content">
     <div class="notif-text-area">
-      <div class="notif-sender" id="notif-sender-name">发送者</div>
-      <div class="notif-message" id="notif-message-text">消息内容...</div>
+      <div class="notif-sender" id="wechat-notif-sender-name">发送者</div>
+      <div class="notif-message" id="wechat-notif-message-text">消息内容...</div>
     </div>
-    <img id="notif-avatar-img" class="notif-avatar" src="" alt="头像">
+    <img id="wechat-notif-avatar-img" class="notif-avatar" src="" alt="头像">
   </div>
 </div>
   <!-- 小鱼提示：主应用容器 -->
