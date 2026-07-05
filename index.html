@@ -2151,10 +2151,266 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
 </div>
 
 </div>
-  <!-- ================= 小鱼优化：模块化 JS 依赖注入 ================= -->
+  <!-- ★★★ 小鱼新增：API测试专用悬浮按钮与弹窗 ★★★ -->
+<style>
+  /* 悬浮按钮样式 */
+  #apiConfigFab {
+    position: fixed;
+    right: 20px;
+    bottom: 120px;
+    width: 48px;
+    height: 48px;
+    background: #07C160;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(7,193,96,0.4);
+    z-index: 9999;
+    cursor: pointer;
+    user-select: none;
+    touch-action: none;
+  }
   
-  <!-- 1. 核心与基础配置 (全局变量、数据库缓存、网络请求、DOM工具) -->
-  <script src="js/config.js"></script>
+  /* 弹窗样式 */
+  #apiConfigModal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+  }
+  .api-modal-content {
+    background: #fff;
+    width: 85%;
+    max-width: 320px;
+    border-radius: 12px;
+    padding: 24px 20px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  }
+  .api-modal-content h3 {
+    margin: 0 0 15px 0;
+    font-size: 18px;
+    text-align: center;
+    color: #333;
+  }
+  .api-input-group {
+    margin-bottom: 15px;
+  }
+  .api-input-group label {
+    display: block;
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 6px;
+    font-weight: 500;
+  }
+  .api-input-group input, .api-input-group select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .api-input-group input:focus {
+    border-color: #07C160;
+  }
+  .api-fetch-btn {
+    width: 100%;
+    padding: 10px;
+    background: #F7F7F7;
+    border: 1px solid #EBEBEB;
+    border-radius: 6px;
+    color: #576B95;
+    font-weight: 600;
+    margin-top: 8px;
+    cursor: pointer;
+  }
+  .api-modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+  }
+  .api-modal-actions button {
+    flex: 1;
+    padding: 12px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .api-btn-cancel { background: #f2f2f2; color: #333; }
+  .api-btn-save { background: #07C160; color: white; }
+</style>
+
+<!-- 悬浮按钮HTML -->
+<div id="apiConfigFab">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"></circle>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+  </svg>
+</div>
+
+<!-- API配置弹窗HTML -->
+<div id="apiConfigModal">
+  <div class="api-modal-content">
+    <h3>测试 API 设定</h3>
+    <div class="api-input-group">
+      <label>接口地址 (Base URL)</label>
+      <input type="text" id="apiUrlInput" placeholder="例: https://api.openai.com/v1">
+    </div>
+    <div class="api-input-group">
+      <label>API Key (密钥)</label>
+      <input type="password" id="apiKeyInput" placeholder="sk-xxxxxxxx">
+    </div>
+    <div class="api-input-group">
+      <label>对话模型</label>
+      <select id="apiModelSelect">
+        <option value="">请先点击下方拉取</option>
+      </select>
+      <button class="api-fetch-btn" id="fetchModelsBtn">拉取最新模型</button>
+    </div>
+    <div class="api-modal-actions">
+      <button class="api-btn-cancel" id="apiCancelBtn">取消</button>
+      <button class="api-btn-save" id="apiSaveBtn">保存配置</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ======= 1. 悬浮按钮全端拖拽逻辑 =======
+  const fab = document.getElementById('apiConfigFab');
+  const modal = document.getElementById('apiConfigModal');
+  let isDragging = false, hasMoved = false;
+  let startX, startY, initialX, initialY;
+
+  function startDrag(e) {
+    isDragging = true; hasMoved = false;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    startX = clientX; startY = clientY;
+    initialX = fab.offsetLeft; initialY = fab.offsetTop;
+    fab.style.transition = 'none'; // 拖拽时取消动画，防止卡顿
+  }
+
+  function drag(e) {
+    if (!isDragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - startX, dy = clientY - startY;
+    
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) hasMoved = true; // 判定为拖拽而非点击
+    
+    let newX = initialX + dx, newY = initialY + dy;
+    // 边界锁定，防止拖出屏幕外
+    newX = Math.max(0, Math.min(window.innerWidth - fab.offsetWidth, newX));
+    newY = Math.max(0, Math.min(window.innerHeight - fab.offsetHeight, newY));
+    
+    fab.style.left = newX + 'px';
+    fab.style.top = newY + 'px';
+    fab.style.right = 'auto'; fab.style.bottom = 'auto'; // 清除初始定位限制
+  }
+
+  function endDrag() {
+    isDragging = false;
+    fab.style.transition = 'all 0.3s ease'; // 恢复动画
+  }
+
+  fab.addEventListener('mousedown', startDrag);
+  document.addEventListener('mousemove', drag);
+  document.addEventListener('mouseup', endDrag);
+  fab.addEventListener('touchstart', startDrag, {passive: false});
+  document.addEventListener('touchmove', drag, {passive: false});
+  document.addEventListener('touchend', endDrag);
+
+  // ======= 2. 弹窗与配置保存逻辑 =======
+  const urlInput = document.getElementById('apiUrlInput');
+  const keyInput = document.getElementById('apiKeyInput');
+  const modelSelect = document.getElementById('apiModelSelect');
+  
+  // 打开弹窗并加载历史配置
+  fab.addEventListener('click', () => {
+    if (!hasMoved) {
+      modal.style.display = 'flex';
+      urlInput.value = localStorage.getItem('testApiUrl') || '';
+      keyInput.value = localStorage.getItem('testApiKey') || '';
+      const savedModel = localStorage.getItem('testApiModel');
+      if (savedModel) {
+        modelSelect.innerHTML = `<option value="${savedModel}">${savedModel}</option>`;
+      }
+    }
+  });
+
+  document.getElementById('apiCancelBtn').addEventListener('click', () => modal.style.display = 'none');
+
+  document.getElementById('apiSaveBtn').addEventListener('click', () => {
+    localStorage.setItem('testApiUrl', urlInput.value.trim());
+    localStorage.setItem('testApiKey', keyInput.value.trim());
+    localStorage.setItem('testApiModel', modelSelect.value);
+    alert('✅ API配置已保存至本地缓存！\n你的其他JS文件现在可以通过 localStorage.getItem("testApiUrl") 获取它了！');
+    modal.style.display = 'none';
+  });
+
+  // ======= 3. 拉取远端大模型列表 =======
+  document.getElementById('fetchModelsBtn').addEventListener('click', async function() {
+    let baseUrl = urlInput.value.trim();
+    const apiKey = keyInput.value.trim();
+    
+    if (!baseUrl) return alert('❌ 请先填写接口地址！');
+    if (!apiKey) return alert('❌ 请先填写API Key！');
+    
+    this.textContent = '正在拉取...';
+    this.disabled = true;
+
+    try {
+      // 自动格式化 URL 确保结尾带有 /models 路径
+      if (!baseUrl.endsWith('/models') && !baseUrl.endsWith('/v1')) {
+          baseUrl = baseUrl.replace(/\/+$/, '') + '/v1';
+          urlInput.value = baseUrl;
+      }
+      const requestUrl = baseUrl.endsWith('/models') ? baseUrl : baseUrl + '/models';
+
+      const res = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!res.ok) throw new Error(`状态码: ${res.status}`);
+      
+      const data = await res.json();
+      const modelsArray = data.data || [];
+      
+      if (modelsArray.length === 0) throw new Error('接口未返回任何可用模型');
+
+      modelSelect.innerHTML = ''; 
+      modelsArray.forEach(m => {
+        const option = document.createElement('option');
+        option.value = m.id; option.textContent = m.id;
+        modelSelect.appendChild(option);
+      });
+      
+      alert('🎉 成功拉取模型列表！请在下拉框中选择。');
+    } catch (err) {
+      alert('❌ 拉取失败: ' + err.message + '\n\n可能原因：URL填写错误、密钥错误，或提供商不支持跨域访问(CORS)。');
+    } finally {
+      this.textContent = '拉取最新模型';
+      this.disabled = false;
+    }
+  });
+</script>
+
+<!-- ================= 小鱼优化：模块化 JS 依赖注入 ================= -->
+
+<!-- 1. 核心与基础配置 (全局变量、数据库缓存、网络请求、DOM工具) -->
+<script src="js/config.js"></script>
   <script src="js/db.js"></script>
   <script src="js/api.js"></script>
   <script src="js/dom.js"></script>
