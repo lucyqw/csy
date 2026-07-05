@@ -3133,14 +3133,33 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/world-book.js"></script>
   <script src="js/wechat-bridge.js"></script>
   
-  <!-- 强制开机回到桌面 -->
+  <!-- ★★★ 小鱼新增：终极桌面守护者 ★★★ -->
   <script>
     window.addEventListener('load', () => {
+      // 把延迟时间加长到 500 毫秒，等 WebBox 彻底折腾完，我们再动手
       setTimeout(() => {
+        // 1. 调用系统回桌面指令
         if (typeof goHome === 'function') {
           goHome();
         }
-      }, 100);
+        
+        // 2. 暴力隐藏微信的两个外壳，绝不留情
+        const appViewer = document.getElementById('app-viewer');
+        const wechatApp = document.getElementById('wechat-native-app');
+        
+        if (appViewer) {
+          appViewer.classList.remove('active');
+          appViewer.style.display = 'none';
+        }
+        if (wechatApp) {
+          wechatApp.style.display = 'none';
+        }
+        
+        // 3. 告诉手机机身：现在没有打开任何APP
+        document.body.classList.remove('app-open');
+        
+        console.log("🚀 小鱼守护者执行完毕：已强制退回桌面！");
+      }, 500); 
     });
   </script>
 </body></html>
