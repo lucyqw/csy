@@ -393,45 +393,9 @@ const WX_STORE = 'userProfile';
 // [Variable] activeMsgTimer
 let activeMsgTimer = null;
 
-// [Variable] notifTimer
-let notifTimer = null;
-
-// [Variable] notifQueueTimer
-let notifQueueTimer = null;
-
-// [Variable] currentNotifChatId
-let currentNotifChatId = null;
-
-// [Variable] notifMessageQueue
-let notifMessageQueue = [];
-
-// [Variable] notifCurrentIndex
-let notifCurrentIndex = 0;
-
-// [Variable] notifIsSequencePlaying
-let notifIsSequencePlaying = false;
-
-// [Variable] notifCurrentDismissResolver
-let notifCurrentDismissResolver = null;
-
-// [Variable] notifTouchStartX
-let notifTouchStartX = 0;
-
-// [Variable] notifTouchStartY
-let notifTouchStartY = 0;
-
-// [Variable] notifTouchCurrentX
-let notifTouchCurrentX = 0;
-
-// [Variable] notifTouchCurrentY
-let notifTouchCurrentY = 0;
-
-// [Variable] notifIsDragging
-let notifIsDragging = false;
-
-// [Variable] notifHasSwipedToClose
-let notifHasSwipedToClose = false;
-
-// [Variable] notifSwipeDirectionLock
-let notifSwipeDirectionLock = '';
+/* 
+  小鱼修改：删除了底部所有 notif... 开头的变量。
+  因为微信的 notifications.js 里已经定义过它们了，
+  合并后它们共享同一个网页，留在这里会导致“重复声明”的致命报错！
+*/
 
