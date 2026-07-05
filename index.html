@@ -1,6 +1,43 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+  <!-- ★★★ 小鱼新增：云端数据库崩溃自动修复补丁 ★★★ -->
+  <script>
+    window.addEventListener('unhandledrejection', function(event) {
+      // 精准拦截截图中出现的 IDBDatabase 报错
+      if (event.reason && event.reason.message && event.reason.message.includes('IDBDatabase') && event.reason.message.includes('object store')) {
+        console.error("检测到云端数据库冲突，启动自动修复程序...");
+        alert('系统检测到首次部署的数据冲突，正在为您自动重置修复，请点击确定。');
+        
+        // 1. 清空常规缓存
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // 2. 暴力摧毁所有损坏的 IndexedDB 数据库，让代码重新建表
+        if (window.indexedDB && indexedDB.databases) {
+          indexedDB.databases().then(function(dbs) {
+            let promises = dbs.map(function(db) {
+              return new Promise(function(resolve) {
+                let req = indexedDB.deleteDatabase(db.name);
+                req.onsuccess = resolve;
+                req.onerror = resolve;
+                req.onblocked = resolve;
+              });
+            });
+            // 删完之后强制刷新页面
+            Promise.all(promises).then(function() {
+              window.location.reload(true);
+            });
+          }).catch(function() {
+            window.location.reload(true);
+          });
+        } else {
+          window.location.reload(true);
+        }
+      }
+    });
+  </script>
+
   <!-- 小鱼自动生成的基础结构 -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0, user-scalable=yes">
