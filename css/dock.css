@@ -1,8 +1,0 @@
-/* 自动生成: css/dock.css */
-
-#dock { flex-shrink: 0; margin: 15px auto; width: 90%; max-width: 380px; height: 80px; background: linear-gradient(rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 100%); border-radius: 28px; display: flex; justify-content: space-around; align-items: center; padding: 0px 10px; border: 1.5px solid rgba(255, 255, 255, 0.5); box-shadow: rgba(0, 0, 0, 0.15) 0px 4px 15px; }
-
-.dock-icon { width: 60px; height: 60px; border-radius: var(--dock-icon-radius); display: flex; justify-content: center; align-items: center; background: rgba(255, 255, 255, 0.7); box-shadow: rgba(0, 0, 0, 0.05) 0px 1px 3px; transition: transform 0.1s ease-out; }
-
-.dock-icon:active { transform: scale(0.9); }
-
