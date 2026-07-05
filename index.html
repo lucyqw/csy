@@ -100,14 +100,16 @@
   <link rel="stylesheet" href="css/dropdown.css">
   <link rel="stylesheet" href="css/app-icon.css">
   
-  <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 ★★★ -->
-  <style>
+  <!-- ★★★ 小鱼新增：CSS 终极铁壁，强制隐藏微信直到被点击 (现在放在最后，且用最高优先级选择器) ★★★ -->
+  <style id="ultimate-wall-style">
     /* 只要系统没有判定为"已打开应用(app-open)"，微信容器绝对不可见！ */
-    body:not(.app-open) #app-viewer { 
+    html body:not(.app-open) div#app-viewer { 
       display: none !important; 
+      visibility: hidden !important;
     }
-    body:not(.app-open) #wechat-native-app { 
+    html body:not(.app-open) div#wechat-native-app { 
       display: none !important; 
+      visibility: hidden !important;
     }
   </style>
 </head>
@@ -3102,39 +3104,11 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
 
 <!-- 小鱼提示：这个 iframe 桥已不再需要，因为微信现在是原生 div，和 WebBox 共享同一个 JS 环境和 IndexedDB。已删除。 -->
 
-<!-- ★★★ 小鱼新增：开机强制防劫持锁 ★★★ -->
-<script>
-  (function() {
-    var viewer = document.getElementById('app-viewer');
-    var wechat = document.getElementById('wechat-native-app');
-    if (!viewer) return;
-    
-    var isLocked = true; // 开启最高级别锁定
-    
-    // 监视器：只要发现有脚本试图修改 display 把它显示出来，立刻按回去
-    var observer = new MutationObserver(function() {
-      if (isLocked && (viewer.style.display !== 'none' || (wechat && wechat.style.display !== 'none'))) {
-        console.warn('【小鱼拦截系统】拦截到某个脚本在开机时试图偷跑打开微信，已强制按回！');
-        viewer.style.display = 'none';
-        if (wechat) wechat.style.display = 'none';
-        document.body.classList.remove('app-open');
-      }
-    });
-    
-    observer.observe(viewer, { attributes: true, attributeFilter: ['style'] });
-    if (wechat) observer.observe(wechat, { attributes: true, attributeFilter: ['style'] });
-    
-    // 锁定 2 秒钟（足够熬过所有脚本的开机自启期），然后解锁
-    setTimeout(function() {
-      isLocked = false;
-      console.log('【小鱼拦截系统】开机保护期结束，微信现已允许正常点击打开。');
-    }, 2000);
-  })();
-</script>
 
-<!-- 下面是你原本引入的脚本，保持不动 -->
-<script src="js/wechat/config.js?v=999"></script>
-<script src="js/wechat/db.js?v=999"></script>
+
+  <!-- 引入微信的JS脚本 (加了 ?v=999 强行刺穿缓存) -->
+  <script src="js/wechat/config.js?v=999"></script>
+  <script src="js/wechat/db.js?v=999"></script>
   <script src="js/wechat/api.js?v=999"></script>
   <script src="js/wechat/dom.js?v=999"></script>
   <script src="js/wechat/ui.js?v=999"></script>
