@@ -3151,31 +3151,58 @@ https://完整链接.com/img.jpg" style="flex: 1; border: 1px solid #eee; paddin
   <script src="js/world-book.js?v=999"></script>
   <script src="js/wechat-bridge.js?v=999"></script>
   
-  <!-- 终极桌面守护者 (加强版：多重保险，确保云端环境下也一定生效) -->
-<script>
-  function forceGoHome() {
-    if (typeof goHome === 'function') {
-      goHome();
-    } else {
-      // 即使 goHome 函数还没加载出来，也手动把微信隐藏、body 的 app-open 去掉
-      var viewer = document.getElementById('app-viewer');
-      var wechatApp = document.getElementById('wechat-native-app');
-      if (viewer) viewer.style.display = 'none';
-      if (wechatApp) wechatApp.style.display = 'none';
-    }
-    document.body.classList.remove('app-open');
-  }
+  <!-- 终极桌面守护者 (绝对防御版) -->
+  <script>
+    (function() {
+      console.log("🛡️ 桌面守护结界已开启");
+      
+      // 强制退回桌面的核心动作
+      function forceDesktop() {
+        document.body.classList.remove('app-open');
+        var viewer = document.getElementById('app-viewer');
+        var wechat = document.getElementById('wechat-native-app');
+        // 强制加上 display: none !important，神仙来了也得隐藏
+        if (viewer) viewer.style.setProperty('display', 'none', 'important');
+        if (wechat) wechat.style.setProperty('display', 'none', 'important');
+        if (typeof goHome === 'function') {
+          try { goHome(); } catch(e) {}
+        }
+      }
 
-  // 第一重保险：DOM 结构解析完就立刻执行一次（不等图片/CSS/CDN资源）
-  document.addEventListener('DOMContentLoaded', forceGoHome);
+      // 1. 网页刚加载，立刻执行一次强制回桌面
+      forceDesktop();
 
-  // 第二重保险：所有资源（图片、CSS、CDN脚本）都加载完之后再执行一次
-  window.addEventListener('load', () => {
-    setTimeout(forceGoHome, 500);
-  });
+      // 2. 建立结界：死死盯住网页的状态变化
+      var isBooting = true;
+      var observer = new MutationObserver(function(mutations) {
+        if (!isBooting) return; // 开机完毕后，允许正常打开
+        mutations.forEach(function(mutation) {
+          // 如果发现有 JS 偷偷给 body 加上了 app-open（试图打开APP），立刻拦截！
+          if (mutation.attributeName === 'class' && document.body.classList.contains('app-open')) {
+            console.log("拦截到代码自动打开微信，强行退回桌面！");
+            forceDesktop();
+          }
+        });
+      });
+      
+      // 开始监控
+      observer.observe(document.body, { attributes: true });
 
-  // 第三重保险：即使上面两个时机都因为某些资源卡住而没触发，
-  // 3秒后强制兜底执行一次，确保用户看到的一定是桌面而不是微信
-  setTimeout(forceGoHome, 3000);
-</script>
+      // 3. 2秒后解除结界，这样你后续手动点图标就能正常打开了
+      setTimeout(function() {
+        isBooting = false;
+        console.log("✅ 开机完毕，结界解除，允许正常点击");
+        // 解除结界时，顺便把内联的强制隐藏去掉，以免影响后续点击打开
+        var viewer = document.getElementById('app-viewer');
+        var wechat = document.getElementById('wechat-native-app');
+        if (viewer) viewer.style.display = '';
+        if (wechat) wechat.style.display = '';
+      }, 2000);
+
+      // 4. 兜底保险，等所有图片加载完再按一次
+      window.addEventListener('load', function() {
+        if(isBooting) forceDesktop();
+      });
+    })();
+  </script>
 </body></html>
