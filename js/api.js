@@ -18,6 +18,22 @@ async function copyContextToClipboard() {
 
 // [FunctionDeclaration] Function: getApiConfigForWechat
 async function getApiConfigForWechat(featureType = 'wechat') {
+    // ★★★ 小鱼新增：优先尝试从本地悬浮窗(localStorage)读取配置 ★★★
+    const localUrl = localStorage.getItem('testApiUrl');
+    const localKey = localStorage.getItem('testApiKey');
+    const localModel = localStorage.getItem('testApiModel');
+
+    if (localUrl && localKey) {
+        console.log('✅ 检测到本地悬浮窗配置，跳过外部桥梁，直接使用本地配置');
+        return Promise.resolve({
+            baseUrl: localUrl,
+            apiKey: localKey,
+            model: localModel || 'gpt-3.5-turbo',
+            type: 'custom'
+        });
+    }
+
+    // 如果本地没配置，再走原来的外部桥梁逻辑
     return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
             cleanup();
@@ -31,7 +47,6 @@ async function getApiConfigForWechat(featureType = 'wechat') {
             
             cleanup();
             
-            // 直接使用父窗口返回的配置（父窗口已经根据 featureType 选好了是主还是副）
             const config = event.data.payload;
             console.log(`微信收到API配置 (${featureType}):`, config ? '成功' : '空');
             resolve(config);
@@ -43,10 +58,9 @@ async function getApiConfigForWechat(featureType = 'wechat') {
         }
         
         window.addEventListener('message', handler);
-        // ★★★ 关键修改：告诉父窗口具体的功能类型，让父窗口决定给哪个API ★★★
         window.parent.postMessage({ 
             action: 'get-api-settings',
-            featureType: featureType // ★ 使用传入的类型，默认为 'wechat'
+            featureType: featureType 
         }, '*');
     });
 }
@@ -77,11 +91,11 @@ function requestMemoriesFromWebBox(characterId, count) {
 
         window.addEventListener('message', handleResponse);
 
-                        window.parent.postMessage({
+        window.parent.postMessage({
             action: 'request-memories',
             requestId: requestId,
             data: {
-                characterId: String(characterId), // ★★★ 核心修复：强制转为字符串，解决IndexedDB严格类型匹配查不到数据的问题 ★★★
+                characterId: String(characterId), 
                 count: parseInt(count) || 5
             }
         }, '*');
@@ -90,15 +104,30 @@ function requestMemoriesFromWebBox(characterId, count) {
 
 // [FunctionDeclaration] Function: callAIAPI
 async function callAIAPI(messages, customSettings = null) {
-    // ★★★ 核心修改：如果传入了自定义配置，直接使用；否则请求主界面配置 ★★★
     if (customSettings) {
         return await executeApiCall(messages, customSettings);
     }
     
+    // ★★★ 小鱼新增：优先尝试从本地悬浮窗(localStorage)读取配置 ★★★
+    const localUrl = localStorage.getItem('testApiUrl');
+    const localKey = localStorage.getItem('testApiKey');
+    const localModel = localStorage.getItem('testApiModel');
+
+    if (localUrl && localKey) {
+        console.log('✅ 检测到本地悬浮窗配置，正在发送请求...');
+        return await executeApiCall(messages, {
+            baseUrl: localUrl,
+            apiKey: localKey,
+            model: localModel || 'gpt-3.5-turbo',
+            type: 'custom'
+        });
+    }
+
+    // 如果本地没配置，再走原来的外部桥梁逻辑
     return new Promise((resolve, reject) => {
         const timeoutId = setTimeout(() => {
             cleanup();
-            reject(new Error('获取API配置超时，请检查主界面是否已打开'));
+            reject(new Error('获取API配置超时，请检查是否已在右下角悬浮窗配置API'));
         }, 10000);
         
         const handler = async (event) => {
@@ -111,7 +140,6 @@ async function callAIAPI(messages, customSettings = null) {
             const settings = event.data.payload;
             console.log('收到API配置:', settings);
             
-                        // ★★★ 核心修改：调用提取出来的执行函数 ★★★
             try {
                 const result = await executeApiCall(messages, settings);
                 resolve(result);
@@ -138,7 +166,7 @@ async function callAIAPI(messages, customSettings = null) {
 // [FunctionDeclaration] Function: executeApiCall
 async function executeApiCall(messages, settings) {
     if (!settings || !settings.apiKey) {
-        throw new Error('请先在主界面设置API密钥');
+        throw new Error('请先配置API密钥');
     }
     
     const defaultUrls = {
@@ -147,14 +175,23 @@ async function executeApiCall(messages, settings) {
         'custom': settings.baseUrl
     };
     
-    const apiUrl = settings.baseUrl || defaultUrls[settings.type];
+    let apiUrl = settings.baseUrl || defaultUrls[settings.type];
     if (!apiUrl) {
         throw new Error('API地址未配置');
+    }
+
+    // ★★★ 小鱼智能纠错：自动补全 URL 后缀，防止小白填错 ★★★
+    // 如果用户填的是 https://api.xxx.com/v1，自动帮他加上 /chat/completions
+    if (!apiUrl.endsWith('/chat/completions')) {
+        // 去掉末尾可能多余的斜杠
+        apiUrl = apiUrl.replace(/\/+$/, '');
+        // 如果是以 /v1 结尾，或者根本没有路径，加上标准后缀
+        apiUrl = apiUrl + '/chat/completions';
     }
     
     const model = settings.model || (settings.type === 'deepseek' ? 'deepseek-chat' : 'gpt-3.5-turbo');
     
-    console.log('准备调用API:', apiUrl, '模型:', model);
+    console.log('🚀 准备调用API:', apiUrl, '模型:', model);
     
     const response = await fetch(apiUrl, {
         method: 'POST',
@@ -191,4 +228,3 @@ async function executeApiCall(messages, settings) {
         throw new Error('API返回格式错误');
     }
 }
-
